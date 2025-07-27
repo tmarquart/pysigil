@@ -27,12 +27,25 @@ class Sigil:
         user_scope: Path | None = None,
         project_scope: Path | None = None,
         defaults: Mapping[str, Any] | None = None,
+        default_path: Path | None = None,
         env_reader: Callable[[str], Mapping[str, str]] = read_env,
     ) -> None:
         self.app_name = app_name
         self.user_path = Path(user_scope) if user_scope else Path(user_config_dir(app_name)) / "settings.ini"
         self.project_path = Path(project_scope) if project_scope else Path.cwd() / "settings.ini"
-        self._defaults_flat = self._ensure_flat(defaults or {})
+        defaults_map: MutableMapping[str, Any] = {}
+        if default_path is not None:
+            backend = get_backend_for_path(Path(default_path))
+            loaded = backend.load(Path(default_path))
+            for section, values in loaded.items():
+                for key, value in values.items():
+                    if section == "global":
+                        defaults_map[key] = value
+                    else:
+                        defaults_map[f"{section}.{key}"] = value
+        if defaults:
+            defaults_map.update(defaults)
+        self._defaults_flat = self._ensure_flat(defaults_map)
         self._env_reader = env_reader
         self._lock = RLock()
         self._default_scope = "user"
