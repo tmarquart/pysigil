@@ -5,13 +5,14 @@ from pathlib import Path
 from typing import Dict, Type
 
 from .base import BaseBackend
-from .ini_backend import IniBackend
 
 _REGISTRY: Dict[str, Type[BaseBackend]] = {}
 
-def register_backend(backend: Type[BaseBackend]) -> None:
+def register_backend(backend: Type[BaseBackend]) -> Type[BaseBackend]:
+    """Register a backend class and return it for decorator use."""
     for suf in backend.suffixes:
         _REGISTRY[suf] = backend
+    return backend
 
 def get_backend_for_path(path: Path) -> BaseBackend:
     backend_cls = _REGISTRY.get(path.suffix.lower())
@@ -19,5 +20,5 @@ def get_backend_for_path(path: Path) -> BaseBackend:
         raise ValueError(f"No backend for {path.suffix}")
     return backend_cls()
 
-# register default ini backend
-register_backend(IniBackend)
+# register default backends
+from . import ini_backend, json_backend  # noqa: F401

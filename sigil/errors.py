@@ -3,3 +3,8 @@ class SigilError(Exception):
 
 class UnknownScopeError(SigilError):
     pass
+
+
+class SigilLoadError(SigilError):
+    """Raised when a backend fails to parse its file."""
+    pass

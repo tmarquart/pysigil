@@ -5,8 +5,10 @@ from pathlib import Path
 from typing import Mapping, MutableMapping
 
 from .base import BaseBackend
+from . import register_backend
 
 
+@register_backend
 class IniBackend(BaseBackend):
     suffixes = (".ini",)
 
