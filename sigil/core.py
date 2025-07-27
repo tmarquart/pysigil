@@ -150,6 +150,86 @@ class Sigil:
                 pass
         return value
 
+    # ----- typed helper getters -----
+
+    def get_int(self, key: str, *, default: int | None = None) -> int | None:
+        """Return an int preference or ``default``.
+
+        ``TypeError`` is raised if the stored value cannot be interpreted as an
+        integer.
+        """
+        val = self.get_pref(key)
+        if val is None:
+            return default
+        if isinstance(val, int):
+            return val
+        if isinstance(val, float) and val.is_integer():
+            return int(val)
+        if isinstance(val, str):
+            try:
+                return int(float(val)) if "." in val else int(val)
+            except ValueError:
+                pass
+        raise TypeError(f"Expected int for {key}")
+
+    def get_float(self, key: str, *, default: float | None = None) -> float | None:
+        """Return a float preference or ``default``."""
+        val = self.get_pref(key)
+        if val is None:
+            return default
+        if isinstance(val, (int, float)):
+            return float(val)
+        if isinstance(val, str):
+            try:
+                return float(val)
+            except ValueError:
+                pass
+        raise TypeError(f"Expected float for {key}")
+
+    def get_bool(self, key: str, *, default: bool | None = None) -> bool | None:
+        """Return a boolean preference or ``default``."""
+        val = self.get_pref(key)
+        if val is None:
+            return default
+        if isinstance(val, bool):
+            return val
+        if isinstance(val, int) and val in {0, 1}:
+            return bool(val)
+        if isinstance(val, str):
+            lower = val.lower()
+            if lower in {"true", "1"}:
+                return True
+            if lower in {"false", "0"}:
+                return False
+        raise TypeError(f"Expected bool for {key}")
+
+    # ----- export helpers -----
+
+    def export_env(
+        self,
+        *,
+        prefix: str = "SIGIL_",
+        uppercase: bool = True,
+        include_secrets: bool = False,
+    ) -> dict[str, str]:
+        """Return a mapping of environment variable names to values."""
+        base = f"{prefix}{self.app_name.upper()}_"
+        out: dict[str, str] = {}
+        for key in sorted(self._merged):
+            if key.startswith("secret.") or self._meta_secret(key):
+                if not include_secrets:
+                    continue
+                val = self.get_pref(key)
+                if val is None:
+                    continue
+            else:
+                val = self._merged[key]
+            env_key = base + key.replace(".", "_")
+            if uppercase:
+                env_key = env_key.upper()
+            out[env_key] = str(val)
+        return out
+
     def set_pref(self, key: str, value: Any, *, scope: str | None = None) -> None:
         if key.startswith("secret.") or self._meta_secret(key):
             if not self._secrets.can_write():

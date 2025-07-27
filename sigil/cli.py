@@ -36,6 +36,11 @@ def build_parser() -> argparse.ArgumentParser:
     sec_unlock = secret_sub.add_parser("unlock")
     sec_unlock.add_argument("--app", required=True)
 
+    export_p = sub.add_parser("export")
+    export_p.add_argument("--app", required=True)
+    export_p.add_argument("--prefix", default="SIGIL_")
+    export_p.add_argument("--json", action="store_true")
+
     return parser
 
 
@@ -51,6 +56,16 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     elif args.cmd == "set":
         sigil.set_pref(args.key, args.value, scope=args.scope)
+        return 0
+    elif args.cmd == "export":
+        mapping = sigil.export_env(prefix=args.prefix)
+        if args.json:
+            import json
+
+            print(json.dumps(mapping))
+        else:
+            for k, v in mapping.items():
+                print(f"{k}={v}")
         return 0
     elif args.cmd == "secret":
         if args.scmd == "get":
