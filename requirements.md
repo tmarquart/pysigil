@@ -7,7 +7,8 @@ It consolidates every design choice we’ve locked plus the separation-of-concer
 
 Provide a lightweight, extensible preference manager for Python projects that
 	•	merges settings from multiple scopes (default → user → project → env),
-	•	supports multiple on-disk formats (INI first),
+	•       supports multiple on-disk formats (INI first),
+        •       Sigil reads .ini and .json out of the box; install ``sigil[json5]`` for relaxed JSON5 syntax,
 	•	exposes a tiny, intuitive API (get_pref, set_pref),
 	•	keeps UI layers (CLI, Tk GUI) and Secrets entirely decoupled from the core logic.
 
