@@ -1,0 +1,8 @@
+repos:
+  - repo: local
+    hooks:
+      - id: sigil-meta-validate
+        name: Sigil metadata validator
+        entry: python tools/validate_meta.py accio_data prefs/defaults.meta.csv
+        language: python
+        pass_filenames: false
