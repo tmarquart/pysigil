@@ -11,6 +11,8 @@ dependencies = ["appdirs"]
 [project.optional-dependencies]
 json5 = ["pyjson5>=1.6"]
 gui = []
+secrets = ["keyring>=25"]
+secrets-crypto = ["keyring>=25", "cryptography>=42"]
 
 [project.scripts]
 sigil = "sigil.cli:main"

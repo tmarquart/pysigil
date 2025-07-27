@@ -13,3 +13,13 @@ class SigilLoadError(SigilError):
 class SigilMetaError(SigilError):
     """Raised when preference metadata is malformed."""
     pass
+
+
+class SigilWriteError(SigilError):
+    """Raised when attempting to write and the target is read-only."""
+    pass
+
+
+class SigilSecretsError(SigilError):
+    """Raised for errors in the secrets subsystem."""
+    pass
