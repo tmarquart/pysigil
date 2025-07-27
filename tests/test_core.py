@@ -38,3 +38,10 @@ def test_context_manager_project(tmp_path: Path):
         assert s.get_pref("setting") == "two"
     # after context manager should revert
     assert s.get_pref("setting") == "one"
+
+
+def test_defaults_from_file(tmp_path: Path):
+    defaults = tmp_path / "defaults.ini"
+    defaults.write_text("[ui]\ntheme=light\n")
+    s = Sigil("app", default_path=defaults)
+    assert s.get_pref("ui.theme") == "light"
