@@ -5,7 +5,7 @@ import logging
 from contextlib import contextmanager
 from pathlib import Path
 from threading import RLock
-from typing import Any, Callable, Mapping, MutableMapping
+from typing import Any, Callable, Mapping, MutableMapping, Sequence
 
 try:
     from appdirs import user_config_dir
@@ -14,7 +14,14 @@ except ModuleNotFoundError:
 
 from .backend import get_backend_for_path
 from .env import read_env
-from .errors import UnknownScopeError
+from .errors import UnknownScopeError, SigilWriteError
+from .secrets import (
+    SecretChain,
+    SecretProvider,
+    KeyringProvider,
+    EncryptedFileProvider,
+    EnvSecretProvider,
+)
 
 logger = logging.getLogger("sigil")
 
@@ -29,6 +36,8 @@ class Sigil:
         defaults: Mapping[str, Any] | None = None,
         default_path: Path | None = None,
         env_reader: Callable[[str], Mapping[str, str]] = read_env,
+        secrets: Sequence[SecretProvider] | None = None,
+        meta_path: Path | None = None,
     ) -> None:
         self.app_name = app_name
         self.user_path = Path(user_scope) if user_scope else Path(user_config_dir(app_name)) / "settings.ini"
@@ -49,6 +58,25 @@ class Sigil:
         self._env_reader = env_reader
         self._lock = RLock()
         self._default_scope = "user"
+        self._meta = {}
+        mpath = meta_path or self.user_path.parent / "defaults.meta.csv"
+        try:
+            from .helpers import load_meta
+
+            if mpath.exists():
+                self._meta = load_meta(mpath)
+        except Exception as exc:  # pragma: no cover - malformed meta
+            logger.error("Failed to load metadata: %s", exc)
+        enc_path = default_path.with_suffix(".enc.json") if default_path else None
+        if secrets is None:
+            providers = [
+                KeyringProvider(),
+                EncryptedFileProvider(enc_path, prompt=False, required=False),
+                EnvSecretProvider(app_name),
+            ]
+            self._secrets = SecretChain(providers)
+        else:
+            self._secrets = SecretChain(secrets)
         self.invalidate_cache()
 
     def _ensure_flat(self, data: Mapping[str, Any]) -> MutableMapping[str, str]:
@@ -90,7 +118,14 @@ class Sigil:
             section, k = "global", key
         return section, k
 
+    def _meta_secret(self, key: str) -> bool:
+        return bool(self._meta.get(key, {}).get("secret"))
+
     def get_pref(self, key: str, *, default: Any = None, cast: Callable[[str], Any] | None = None) -> Any:
+        if key.startswith("secret.") or self._meta_secret(key):
+            val = self._secrets.get(key)
+            if val is not None:
+                return self._cast(val, cast)
         with self._lock:
             value = self._merged.get(key)
         if value is None:
@@ -116,6 +151,11 @@ class Sigil:
         return value
 
     def set_pref(self, key: str, value: Any, *, scope: str | None = None) -> None:
+        if key.startswith("secret.") or self._meta_secret(key):
+            if not self._secrets.can_write():
+                raise SigilWriteError("Secrets backend is read-only or locked")
+            self._secrets.set(key, str(value))
+            return
         target_scope = scope or self._default_scope
         if target_scope not in {"user", "project"}:
             raise UnknownScopeError(target_scope)
