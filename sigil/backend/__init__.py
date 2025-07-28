@@ -21,4 +21,4 @@ def get_backend_for_path(path: Path) -> BaseBackend:
     return backend_cls()
 
 # register default backends
-from . import ini_backend, json_backend, yaml_backend  # noqa: F401
+from . import ini_backend, json_backend, yaml_backend  # noqa: F401,E402

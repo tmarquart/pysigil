@@ -37,7 +37,7 @@ def test_invalid_json(tmp_path: Path):
 
 def test_json5_relaxed(tmp_path: Path):
     try:
-        import pyjson5  # type: ignore
+        import pyjson5  # type: ignore  # noqa: F401
     except ModuleNotFoundError:
         pytest.skip("pyjson5 not installed")
     path = tmp_path / "relaxed.json5"
