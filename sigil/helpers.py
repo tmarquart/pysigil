@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from importlib import resources
+import csv
 import inspect
 import json
-import csv
 import logging
+from collections.abc import Callable, Mapping
+from importlib import resources
 from pathlib import Path
 from threading import Lock
-from typing import Callable, Mapping
 
 try:
     from distutils.util import strtobool  # type: ignore
@@ -181,8 +181,8 @@ def _parse_csv(path: Path) -> dict[str, dict]:
             if (
                 "min" in entry
                 and "max" in entry
-                and isinstance(entry["min"], (int, float))
-                and isinstance(entry["max"], (int, float))
+                and isinstance(entry["min"], int | float)
+                and isinstance(entry["max"], int | float)
                 and entry["min"] > entry["max"]
             ):
                 raise SigilMetaError(f"{path}:{lineno} min > max")

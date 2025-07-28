@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Callable, Mapping, MutableMapping, Sequence
 from contextlib import contextmanager
 from pathlib import Path
 from threading import RLock
-from typing import Any, Callable, Mapping, MutableMapping, Sequence
+from typing import Any
 
 try:
     from appdirs import user_config_dir
@@ -14,13 +15,13 @@ except ModuleNotFoundError:
 
 from .backend import get_backend_for_path
 from .env import read_env
-from .errors import UnknownScopeError, SigilWriteError
+from .errors import SigilWriteError, UnknownScopeError
 from .secrets import (
-    SecretChain,
-    SecretProvider,
-    KeyringProvider,
     EncryptedFileProvider,
     EnvSecretProvider,
+    KeyringProvider,
+    SecretChain,
+    SecretProvider,
 )
 
 logger = logging.getLogger("sigil")
@@ -177,7 +178,7 @@ class Sigil:
         val = self.get_pref(key)
         if val is None:
             return default
-        if isinstance(val, (int, float)):
+        if isinstance(val, int | float):
             return float(val)
         if isinstance(val, str):
             try:

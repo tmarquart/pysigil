@@ -17,3 +17,19 @@ secrets-crypto = ["keyring>=25", "cryptography>=42"]
 [project.scripts]
 sigil = "sigil.cli:main"
 sigil-gui = "sigil.gui:launch_gui"
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+select = ["F", "E", "W", "I", "B", "UP", "N"]
+ignore = ["E501", "N801", "N812", "N815"]
+fix = true
+unsafe-fixes = false
+
+[tool.ruff.lint.isort]
+known-first-party = ["sigil"]
+combine-as-imports = true
+
+[tool.ruff.format]
+quote-style = "preserve"
+docstring-code-format = true
