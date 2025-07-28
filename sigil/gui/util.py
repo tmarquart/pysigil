@@ -35,11 +35,11 @@ class Tooltip:
 def numeric_validator(min_val: float | None = None, max_val: float | None = None):
     """Return a Tk validation function for numeric entry."""
 
-    def _validate(P: str) -> bool:
-        if P == "":
+    def _validate(value: str) -> bool:
+        if value == "":
             return True
         try:
-            num = float(P)
+            num = float(value)
         except ValueError:
             return False
         if min_val is not None and num < min_val:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, Mapping, MutableMapping
+from collections.abc import Mapping, MutableMapping
+from typing import Any
 
 from ..core import Sigil
 
@@ -24,7 +25,7 @@ class PrefModel:
         keys.update(self._dirty["project"].keys())
         def sort_key(k: str) -> tuple[int, str]:
             order = self._meta.get(k, {}).get("order")
-            if isinstance(order, (int, float)):
+            if isinstance(order, int | float):
                 return (int(order), k)
             return (9999, k)
         return sorted(keys, key=sort_key)

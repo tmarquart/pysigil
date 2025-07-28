@@ -3,8 +3,9 @@ from __future__ import annotations
 import json
 import logging
 import os
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Protocol, Sequence
+from typing import Protocol
 
 from ..errors import SigilSecretsError
 
@@ -235,7 +236,7 @@ class EncryptedFileProvider:
             return data.get(dotted_key)
         except Exception as exc:  # pragma: no cover - corruption
             logger.error("failed to decrypt vault: %s", exc)
-            raise SigilSecretsError(str(exc))
+            raise SigilSecretsError(str(exc)) from exc
 
     def set(self, dotted_key: str, value: str) -> None:
         if not self.available():
@@ -251,7 +252,7 @@ class EncryptedFileProvider:
             raise
         except Exception as exc:  # pragma: no cover - corruption
             logger.error("failed to write vault: %s", exc)
-            raise SigilSecretsError(str(exc))
+            raise SigilSecretsError(str(exc)) from exc
 
 
 __all__ = [

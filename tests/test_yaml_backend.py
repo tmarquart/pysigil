@@ -8,7 +8,7 @@ from sigil.errors import SigilLoadError
 
 def require_pyyaml():
     try:
-        import yaml  # type: ignore
+        import yaml  # type: ignore  # noqa: F401
     except ModuleNotFoundError:
         pytest.skip("PyYAML not installed")
 
