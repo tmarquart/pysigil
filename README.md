@@ -2,24 +2,26 @@
 
 Preference management for small apps.
 
-Install the package in your virtual environment to get the
-`sigil` command-line tool:
+## Quick start
+
+Install Sigil in a virtual environment to make the `sigil` command available:
 
 ```bash
+python -m venv .venv && source .venv/bin/activate  # Windows: .venv\Scripts\Activate
 pip install -e .  # or `pip install .` for a normal install
 ```
 
-After installing you can run commands like:
+Once installed, try a few commands:
 
 ```bash
 sigil set ui.color blue --app demo
 sigil get ui.color --app demo
-eval "$(sigil export --app demo)"  # shell-friendly
+sigil export --app demo
 ```
 
-You don't need a separate project to try Sigil. The CLI stores data in your user
-config directory, so you can run these commands from the source tree itself.
-See `tests/manual_tests/README.md` for a step-by-step guide.
+The CLI stores data under your user config directory (e.g. `~/.config/demo`),
+so you can run these commands right from the source tree without creating a
+separate project. See `tests/manual_tests/README.md` for more examples.
 
 Typed helper methods are available for convenient access:
 `Sigil.get_int()`, `get_float()`, `get_bool()`.
