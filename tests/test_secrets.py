@@ -1,14 +1,13 @@
 from __future__ import annotations
 
-import os
 import sys
 import types
 from pathlib import Path
 
 import pytest
 
-from sigil.secrets import KeyringProvider, EnvSecretProvider, EncryptedFileProvider
 from sigil.errors import SigilSecretsError
+from sigil.secrets import EncryptedFileProvider, EnvSecretProvider, KeyringProvider
 
 
 def test_keyring_roundtrip(monkeypatch):

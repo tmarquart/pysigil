@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import Mapping, MutableMapping
+from collections.abc import MutableMapping
 
 
 def read_env(app_name: str) -> MutableMapping[str, str]:
