@@ -12,7 +12,7 @@ jobs:
       - name: Set up virtualenv
         run: uv venv .venv
       - name: Install deps
-        run: .venv/bin/uv pip install -r requirements.txt
+        run: uv pip install -p .venv/bin/python -r requirements.txt
       - name: Run Ruff
         run: .venv/bin/ruff check . --fix
       - name: Run tests
