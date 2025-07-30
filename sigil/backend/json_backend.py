@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping, MutableMapping
 from pathlib import Path
-from typing import Mapping, MutableMapping
 
-from .base import BaseBackend
-from . import register_backend
 from ..errors import SigilLoadError
+from . import register_backend
+from .base import BaseBackend
 
 
 def _flatten(src: Mapping[str, object], prefix: str = "") -> MutableMapping[str, object]:

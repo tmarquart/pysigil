@@ -1,10 +1,6 @@
 from __future__ import annotations
 
-import os
 from pathlib import Path
-from tempfile import TemporaryDirectory
-
-import pytest
 
 from sigil.core import Sigil
 

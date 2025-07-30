@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import configparser
+from collections.abc import Mapping, MutableMapping
 from pathlib import Path
-from typing import Mapping, MutableMapping
 
-from .base import BaseBackend
 from . import register_backend
+from .base import BaseBackend
 
 
 @register_backend

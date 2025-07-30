@@ -3,8 +3,8 @@ from pathlib import Path
 
 import pytest
 
-from sigil.helpers import load_meta
 from sigil.errors import SigilMetaError
+from sigil.helpers import load_meta
 
 
 def test_csv_happy_path(tmp_path: Path):

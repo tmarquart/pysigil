@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import importlib
-import sys
 import shutil
+import sys
 from pathlib import Path
 
 from sigil.helpers import make_package_prefs
