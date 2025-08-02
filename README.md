@@ -25,3 +25,4 @@ separate project. See `tests/manual_tests/README.md` for more examples.
 
 Typed helper methods are available for convenient access:
 `Sigil.get_int()`, `get_float()`, `get_bool()`.
+For package integration details see [docs/integration.md](docs/integration.md).
