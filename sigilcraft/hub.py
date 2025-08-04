@@ -35,6 +35,11 @@ class GetPref(Protocol):
 class SetPref(Protocol):
     def __call__(self, key: str, value: Any, *, scope: str = "user") -> Any: ...
 
+
+@runtime_checkable
+class LaunchGui(Protocol):
+    def __call__(self) -> None: ...
+
 # ---------------------------------------------------------------------------
 # 2.  Internal helpers
 # ---------------------------------------------------------------------------
@@ -94,10 +99,10 @@ def get_preferences(
     *,
     default_pref_directory: str | None = None,
     settings_filename: str = "settings.ini",
-) -> tuple[GetPref, SetPref]:
+) -> tuple[GetPref, SetPref, LaunchGui]:
     """
-    Resolve and cache a Sigil instance for *package* and return two thin
-    wrappers: `get_pref` and `set_pref`.
+    Resolve and cache a Sigil instance for *package* and return three thin
+    wrappers: `get_pref`, `set_pref`, and `launch_gui`.
 
     Parameters
     ----------
@@ -138,7 +143,14 @@ def get_preferences(
     def set_pref(key: str, value: Any, *, scope: str = "user") -> Any:
         return _lazy().set_pref(key, value, scope=scope)
 
-    return get_pref, set_pref
+    def launch_gui() -> None:
+        """Launch a preferences GUI configured for this package."""
+        from .gui import PrefModel, run
+
+        sigil = _lazy()
+        run(PrefModel(sigil, sigil._meta), f"Sigil Preferences — {sigil.app_name}")
+
+    return get_pref, set_pref, launch_gui
 
 
 # def _find_pyproject(start: Path) -> Path | None:
