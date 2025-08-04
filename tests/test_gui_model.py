@@ -1,5 +1,5 @@
-from sigil.core import Sigil
-from sigil.gui.model import PrefModel
+from sigilcraft.core import Sigil
+from sigilcraft.gui.model import PrefModel
 
 
 def test_prefmodel_set_get_save(tmp_path):

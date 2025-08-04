@@ -5,8 +5,8 @@ import sys
 from importlib import resources
 from pathlib import Path
 
-from sigil.errors import SigilMetaError
-from sigil.helpers import load_meta
+from sigilcraft.errors import SigilMetaError
+from sigilcraft.helpers import load_meta
 
 
 class WarnCounter(logging.Handler):

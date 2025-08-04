@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from sigil.backend.yaml_backend import YamlBackend
-from sigil.errors import SigilLoadError
+from sigilcraft.backend.yaml_backend import YamlBackend
+from sigilcraft.errors import SigilLoadError
 
 
 def require_pyyaml():

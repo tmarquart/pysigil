@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from sigil.backend.ini_backend import IniBackend
+from sigilcraft.backend.ini_backend import IniBackend
 
 
 def test_ini_backend_roundtrip(tmp_path: Path):

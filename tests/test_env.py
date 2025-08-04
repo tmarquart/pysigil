@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sigil.env import read_env
+from sigilcraft.env import read_env
 
 
 def test_read_env(monkeypatch):

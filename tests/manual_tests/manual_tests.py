@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
-from sigil.backend.ini_backend import IniBackend
+from requests_toolbelt.adapters.appengine import monkeypatch
 
-from sigil.backend.yaml_backend import YamlBackend
+from sigilcraft.backend.ini_backend import IniBackend
+
+from sigilcraft import cli, core
+
+from sigilcraft.backend.yaml_backend import YamlBackend
 import shutil
 import sys
 from pathlib import Path
 
-from sigil.helpers import make_package_prefs
+from sigilcraft.helpers import make_package_prefs
 
 def manual_ini_backend_roundtrip():
     path = Path("artifacts/cfg.ini")
@@ -49,6 +53,6 @@ def manual_make_package_prefs_explicit(tmp_path: Path):
     set_pref()
 
 if __name__=='__main__':
-    #manual_ini_backend_roundtrip()
+    manual_ini_backend_roundtrip()
     #manual_yaml_backend_roundtrip(Path('artifacts'))
-    manual_make_package_prefs_explicit(Path('artifacts'))
+    #manual_make_package_prefs_explicit(Path('artifacts'))

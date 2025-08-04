@@ -5,7 +5,7 @@ from .core import Sigil
 from .helpers import make_package_prefs
 
 __all__ = ["Sigil", "make_package_prefs", "get_int", "get_float", "get_bool"]
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 
 def get_int(key: str, *, app: str, default: int | None = None) -> int | None:

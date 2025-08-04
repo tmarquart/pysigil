@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from sigil.backend.json_backend import JsonBackend
-from sigil.errors import SigilLoadError
+from sigilcraft.backend.json_backend import JsonBackend
+from sigilcraft.errors import SigilLoadError
 
 
 def test_json_backend_roundtrip(tmp_path: Path):

@@ -39,9 +39,11 @@ class Sigil:
         env_reader: Callable[[str], Mapping[str, str]] = read_env,
         secrets: Sequence[SecretProvider] | None = None,
         meta_path: Path | None = None,
+        settings_filename='settings.ini'
     ) -> None:
         self.app_name = app_name
-        self.user_path = Path(user_scope) if user_scope else Path(user_config_dir(app_name)) / "settings.ini"
+        #self.user_path = Path(user_scope) if user_scope else Path(user_config_dir(app_name)) / "settings.ini"
+        self.user_path = Path(user_scope) if user_scope else Path(user_config_dir('sigil'),self.app_name) / settings_filename
         self.project_path = Path(project_scope) if project_scope else Path.cwd() / "settings.ini"
         defaults_map: MutableMapping[str, Any] = {}
         if default_path is not None:
@@ -243,9 +245,12 @@ class Sigil:
         section, k = self._split(key)
         with self._lock:
             data = getattr(self, f"_{target_scope}")
+            # print(f'data:{data}')
+            # print(f'appname:{self.app_name}')
             sec = data.setdefault(section, {})
             sec[k] = str(value)
             path = getattr(self, f"{target_scope}_path")
+            # print(f'path:{path}')
             backend = get_backend_for_path(path)
             backend.save(path, data)
             self.invalidate_cache()
