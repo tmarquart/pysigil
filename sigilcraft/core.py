@@ -45,19 +45,16 @@ class Sigil:
         #self.user_path = Path(user_scope) if user_scope else Path(user_config_dir(app_name)) / "settings.ini"
         self.user_path = Path(user_scope) if user_scope else Path(user_config_dir('sigil'),self.app_name) / settings_filename
         self.project_path = Path(project_scope) if project_scope else Path.cwd() / "settings.ini"
-        defaults_map: MutableMapping[str, Any] = {}
-        if default_path is not None:
-            backend = get_backend_for_path(Path(default_path))
-            loaded = backend.load(Path(default_path))
-            for section, values in loaded.items():
-                for key, value in values.items():
-                    if section == "global":
-                        defaults_map[key] = value
-                    else:
-                        defaults_map[f"{section}.{key}"] = value
+        self.default_path = Path(default_path) if default_path else None
+        self._defaults: MutableMapping[str, MutableMapping[str, str]] = {}
+        if self.default_path is not None:
+            backend = get_backend_for_path(self.default_path)
+            self._defaults = backend.load(self.default_path)
         if defaults:
-            defaults_map.update(defaults)
-        self._defaults_flat = self._ensure_flat(defaults_map)
+            for k, v in defaults.items():
+                section, key = self._split(k)
+                sec = self._defaults.setdefault(section, {})
+                sec[key] = str(v)
         self._env_reader = env_reader
         self._lock = RLock()
         self._default_scope = "user"
@@ -82,11 +79,22 @@ class Sigil:
             self._secrets = SecretChain(secrets)
         self.invalidate_cache()
 
-    def _ensure_flat(self, data: Mapping[str, Any]) -> MutableMapping[str, str]:
-        flat: MutableMapping[str, str] = {}
-        for key, value in data.items():
-            flat[key] = str(value)
-        return flat
+    @property
+    def default_scope(self) -> str:
+        """Return the current default scope for writes."""
+        return self._default_scope
+
+    def set_default_scope(self, scope: str) -> None:
+        """Set the default scope for writes.
+
+        Only ``"user"``, ``"project"`` and ``"default"`` scopes are supported.
+        ``"default"`` requires ``default_path`` to be configured.
+        """
+        if scope == "default" and self.default_path is None:
+            raise UnknownScopeError(scope)
+        if scope not in {"user", "project", "default"}:
+            raise UnknownScopeError(scope)
+        self._default_scope = scope
 
     def invalidate_cache(self) -> None:
         with self._lock:
@@ -95,14 +103,29 @@ class Sigil:
             project_backend = get_backend_for_path(self.project_path)
             self._user = user_backend.load(self.user_path)
             self._project = project_backend.load(self.project_path)
+            if self.default_path is not None:
+                default_backend = get_backend_for_path(self.default_path)
+                self._defaults = default_backend.load(self.default_path)
             self._merge_cache()
 
     def _merge_cache(self) -> None:
         self._merged = {}
-        self._merged.update(self._defaults_flat)
+        self._merged.update(self._flatten(self._defaults))
         self._merged.update(self._flatten(self._user))
         self._merged.update(self._flatten(self._project))
         self._merged.update(self._env)
+
+    def scoped_values(self) -> Mapping[str, MutableMapping[str, str]]:
+        """Return all known preferences grouped by scope.
+
+        The returned mapping contains ``"default"``, ``"user"`` and ``"project"``
+        keys, each mapping to a flat dictionary of preference keys to values.
+        """
+        with self._lock:
+            default_flat = self._flatten(self._defaults)
+            user_flat = self._flatten(self._user)
+            project_flat = self._flatten(self._project)
+            return {"default": default_flat, "user": user_flat, "project": project_flat}
 
     def _flatten(self, data: Mapping[str, Mapping[str, str]]) -> MutableMapping[str, str]:
         flat: MutableMapping[str, str] = {}
@@ -240,20 +263,23 @@ class Sigil:
             self._secrets.set(key, str(value))
             return
         target_scope = scope or self._default_scope
-        if target_scope not in {"user", "project"}:
-            raise UnknownScopeError(target_scope)
+        data, path = self._get_scope_storage(target_scope)
         section, k = self._split(key)
         with self._lock:
-            data = getattr(self, f"_{target_scope}")
-            # print(f'data:{data}')
-            # print(f'appname:{self.app_name}')
             sec = data.setdefault(section, {})
             sec[k] = str(value)
-            path = getattr(self, f"{target_scope}_path")
-            # print(f'path:{path}')
             backend = get_backend_for_path(path)
             backend.save(path, data)
             self.invalidate_cache()
+
+    def _get_scope_storage(self, scope: str) -> tuple[MutableMapping[str, MutableMapping[str, str]], Path]:
+        if scope == "user":
+            return self._user, self.user_path
+        if scope == "project":
+            return self._project, self.project_path
+        if scope == "default" and self.default_path is not None:
+            return self._defaults, self.default_path
+        raise UnknownScopeError(scope)
 
     @contextmanager
     def project(self, path: Path):

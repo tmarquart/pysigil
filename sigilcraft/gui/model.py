@@ -13,6 +13,7 @@ class PrefModel:
         self.sigil = sigil
         self._meta = dict(meta)
         self._dirty: dict[str, MutableMapping[str, Any]] = {
+            "default": {},
             "user": {},
             "project": {},
         }
@@ -53,8 +54,8 @@ class PrefModel:
 
     # ----- write operations -----
     def set(self, key: str, value: Any, scope: str = "user") -> None:
-        if scope not in {"user", "project"}:
-            raise ValueError("scope must be 'user' or 'project'")
+        if scope not in {"user", "project", "default"}:
+            raise ValueError("scope must be 'user', 'project' or 'default'")
         self._dirty[scope][key] = value
 
     def save(self, scope: str) -> None:
@@ -66,8 +67,8 @@ class PrefModel:
 
     def reload(self) -> None:
         self.sigil.invalidate_cache()
-        self._dirty["user"].clear()
-        self._dirty["project"].clear()
+        for scope in self._dirty:
+            self._dirty[scope].clear()
 
     # ----- change tracking -----
     def is_dirty(self, scope: str) -> bool:
@@ -75,11 +76,13 @@ class PrefModel:
 
     # internal helper
     def _merged(self) -> MutableMapping[str, Any]:
-        merged = dict(self.sigil._defaults_flat)
+        merged = self.sigil._flatten(self.sigil._defaults)
         user = self.sigil._flatten(self.sigil._user)
         user.update(self._dirty["user"])
         proj = self.sigil._flatten(self.sigil._project)
         proj.update(self._dirty["project"])
+        default_dirty = self._dirty["default"]
+        merged.update(default_dirty)
         merged.update(user)
         merged.update(proj)
         merged.update(self.sigil._env)
