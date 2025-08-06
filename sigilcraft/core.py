@@ -42,15 +42,26 @@ class Sigil:
         settings_filename='settings.ini'
     ) -> None:
         self.app_name = app_name
-        #self.user_path = Path(user_scope) if user_scope else Path(user_config_dir(app_name)) / "settings.ini"
-        self.user_path = Path(user_scope) if user_scope else Path(user_config_dir('sigil'),self.app_name) / settings_filename
-        self.project_path = Path(project_scope) if project_scope else Path.cwd() / settings_filename
+        self.settings_filename = settings_filename
+
+        self.user_path = (
+            Path(user_scope)
+            if user_scope
+            else Path(user_config_dir("sigil"), self.app_name)
+        )
+        if self.user_path.suffix == "" or self.user_path.name != self.settings_filename:
+            self.user_path = self.user_path / self.settings_filename
+
+        self.project_path = Path(project_scope) if project_scope else Path.cwd()
+        if self.project_path.suffix == "" or self.project_path.name != self.settings_filename:
+            self.project_path = self.project_path / self.settings_filename
+
         self.default_path = Path(default_path) if default_path else None
-        self._defaults: MutableMapping[str, MutableMapping[str, str]] = {}
         if self.default_path is not None:
-            self.default_path=Path(self.default_path)
-            backend = get_backend_for_path(self.default_path.joinpath(settings_filename))
-            self._defaults = backend.load(self.default_path.joinpath(settings_filename))
+            if self.default_path.suffix == "" or self.default_path.name != self.settings_filename:
+                self.default_path = self.default_path / self.settings_filename
+
+        self._defaults: MutableMapping[str, MutableMapping[str, str]] = {}
         if defaults:
             for k, v in defaults.items():
                 section, key = self._split(k)
@@ -68,7 +79,7 @@ class Sigil:
                 self._meta = load_meta(mpath)
         except Exception as exc:  # pragma: no cover - malformed meta
             logger.error("Failed to load metadata: %s", exc)
-        enc_path = Path(default_path).with_suffix(".enc.json") if default_path else None
+        enc_path = self.default_path.with_suffix(".enc.json") if self.default_path else None
         if secrets is None:
             providers = [
                 KeyringProvider(),

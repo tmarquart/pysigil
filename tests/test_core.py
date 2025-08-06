@@ -37,19 +37,19 @@ def test_context_manager_project(tmp_path: Path):
 
 
 def test_defaults_from_file(tmp_path: Path):
-    defaults = tmp_path / "defaults.ini"
-    defaults.write_text("[ui]\ntheme=light\n")
-    s = Sigil("app", default_path=defaults)
+    defaults_dir = tmp_path
+    (defaults_dir / "settings.ini").write_text("[ui]\ntheme=light\n")
+    s = Sigil("app", default_path=defaults_dir)
     assert s.get_pref("ui.theme") == "light"
 
 
 def test_set_pref_default_scope(tmp_path: Path):
-    defaults = tmp_path / "defaults.ini"
-    s = Sigil("app", default_path=defaults)
+    defaults_dir = tmp_path
+    s = Sigil("app", default_path=defaults_dir)
     s.set_pref("ui.theme", "dark", scope="default")
     s.set_default_scope("default")
     s.set_pref("color", "red")
-    s2 = Sigil("app", default_path=defaults)
+    s2 = Sigil("app", default_path=defaults_dir)
     assert s2.get_pref("ui.theme") == "dark"
     assert s2.get_pref("color") == "red"
 
