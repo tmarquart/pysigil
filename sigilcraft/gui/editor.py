@@ -14,14 +14,22 @@ def _gui() -> object:
     return import_module("sigilcraft.gui")
 
 
-def edit_preferences(package: str | None = None, *, allow_default_write: bool = True) -> None:
-    """Launch the preference editor for *package*.
+def edit_preferences(
+    package: str | None = None,
+    *,
+    allow_default_write: bool = True,
+    sigil: Sigil | None = None,
+) -> None:
+    """Launch the preference editor for *package* or provided ``sigil`` instance.
 
     This function blocks until the window is closed.
     """
     gui = _gui()
-    app = package or "app"
-    gui._sigil_instance = Sigil(app)
+    if sigil is None:
+        app = package or "app"
+        gui._sigil_instance = Sigil(app)
+    else:
+        gui._sigil_instance = sigil
     root = tk.Tk()
     root.title(f"Sigil Preferences — {gui._sigil_instance.app_name}")
     widgets = _build_main_window(root)
@@ -31,9 +39,18 @@ def edit_preferences(package: str | None = None, *, allow_default_write: bool = 
     root.mainloop()
 
 
-def launch_gui() -> None:
-    """Console entry point."""
-    edit_preferences()
+def launch_gui(
+    package: str | None = None,
+    *,
+    allow_default_write: bool = True,
+    sigil: Sigil | None = None,
+) -> None:
+    """Console entry point for the editor GUI."""
+    edit_preferences(
+        package,
+        allow_default_write=allow_default_write,
+        sigil=sigil,
+    )
 
 
 # ----- helpers -----

@@ -143,8 +143,11 @@ def get_preferences(
 
     def launch_gui() -> None:
         """Launch a preferences GUI configured for this package."""
-        from .gui import PrefModel, run
+        from .gui import launch_gui as _launch
+
         sigil = _lazy()
-        run(PrefModel(sigil, sigil._meta), f"Sigil Preferences — {sigil.app_name}")
+        # Pass the resolved Sigil instance so that the editor reflects the
+        # caller's package-specific defaults and metadata.
+        _launch(sigil=sigil)
 
     return get_pref, set_pref, launch_gui
