@@ -13,6 +13,8 @@ try:
 except ModuleNotFoundError:
     from ._appdirs_stub import user_config_dir
 
+from sigil import events
+
 from .backend import get_backend_for_path
 from .env import read_env
 from .errors import SigilWriteError, UnknownScopeError
@@ -149,6 +151,13 @@ class Sigil:
                     flat[f"{section}.{key}"] = value
         return flat
 
+    def list_keys(self, scope: str) -> list[str]:
+        """Return all preference keys defined in *scope* sorted alphabetically."""
+        values = self.scoped_values().get(scope)
+        if values is None:
+            raise UnknownScopeError(scope)
+        return sorted(values)
+
     def _split(self, key: str) -> tuple[str, str]:
         if "." in key:
             section, k = key.split(".", 1)
@@ -273,16 +282,21 @@ class Sigil:
             if not self._secrets.can_write():
                 raise SigilWriteError("Secrets backend is read-only or locked")
             self._secrets.set(key, str(value))
+            events.emit("pref_changed", key, value, scope or self._default_scope)
             return
         target_scope = scope or self._default_scope
         data, path = self._get_scope_storage(target_scope)
         section, k = self._split(key)
         with self._lock:
             sec = data.setdefault(section, {})
-            sec[k] = str(value)
+            if value is None:
+                sec.pop(k, None)
+            else:
+                sec[k] = str(value)
             backend = get_backend_for_path(path)
             backend.save(path, data)
             self.invalidate_cache()
+        events.emit("pref_changed", key, value, target_scope)
 
     def _get_scope_storage(self, scope: str) -> tuple[MutableMapping[str, MutableMapping[str, str]], Path]:
         if scope == "user":
