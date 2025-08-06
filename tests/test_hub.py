@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from sigilcraft.gui import PrefModel
+from sigilcraft.core import Sigil
 from sigilcraft.hub import get_preferences
 
 
@@ -14,11 +14,10 @@ def test_get_preferences_launch_gui(tmp_path, monkeypatch):
 
     called: dict[str, object] = {}
 
-    def fake_run(model: PrefModel, title: str) -> None:  # type: ignore[override]
-        called["model"] = model
-        called["title"] = title
+    def fake_launch(*, package=None, allow_default_write=True, sigil=None):
+        called["sigil"] = sigil
 
-    monkeypatch.setattr("sigilcraft.gui.run", fake_run)
+    monkeypatch.setattr("sigilcraft.gui.launch_gui", fake_launch)
 
     get_pref, set_pref, launch_gui = get_preferences(
         "sigilcraft", default_pref_directory=str(prefs_dir)
@@ -28,5 +27,5 @@ def test_get_preferences_launch_gui(tmp_path, monkeypatch):
 
     launch_gui()
 
-    assert isinstance(called["model"], PrefModel)
-    assert called["title"] == "Sigil Preferences — sigilcraft"
+    assert isinstance(called["sigil"], Sigil)
+    assert called["sigil"].app_name == "sigilcraft"
