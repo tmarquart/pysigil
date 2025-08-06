@@ -52,6 +52,10 @@ class PrefModel:
     def meta(self, key: str) -> Mapping:
         return self._meta.get(key, {})
 
+    def scoped_values(self) -> Mapping[str, MutableMapping[str, str]]:
+        """Return preferences grouped by scope."""
+        return self.sigil.scoped_values()
+
     # ----- write operations -----
     def set(self, key: str, value: Any, scope: str = "user") -> None:
         if scope not in {"user", "project", "default"}:
