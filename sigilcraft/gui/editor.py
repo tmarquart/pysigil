@@ -1,16 +1,17 @@
-"""Tk GUI for editing Sigil preferences."""
 from __future__ import annotations
 
 import tkinter as tk
+from importlib import import_module
 from tkinter import simpledialog, ttk
 from typing import Literal
 
-from sigilcraft.core import Sigil
+from .. import events
+from ..core import Sigil
+from ..widgets import widget_for
 
-from . import events
-from .widgets import widget_for
 
-_sigil_instance: Sigil | None = None
+def _gui() -> object:
+    return import_module("sigilcraft.gui")
 
 
 def edit_preferences(package: str | None = None, *, allow_default_write: bool = True) -> None:
@@ -18,11 +19,11 @@ def edit_preferences(package: str | None = None, *, allow_default_write: bool = 
 
     This function blocks until the window is closed.
     """
-    global _sigil_instance
+    gui = _gui()
     app = package or "app"
-    _sigil_instance = Sigil(app)
+    gui._sigil_instance = Sigil(app)
     root = tk.Tk()
-    root.title(f"Sigil Preferences — {_sigil_instance.app_name}")
+    root.title(f"Sigil Preferences — {gui._sigil_instance.app_name}")
     widgets = _build_main_window(root)
     for scope, tree in widgets["trees"].items():
         _populate_tree(tree, scope)
@@ -36,6 +37,7 @@ def launch_gui() -> None:
 
 
 # ----- helpers -----
+
 
 def _current_scope(widgets: dict) -> str:
     nb: ttk.Notebook = widgets["notebook"]
@@ -78,9 +80,10 @@ def _build_main_window(root: tk.Tk) -> dict:
 
 
 def _populate_tree(tree: ttk.Treeview, scope: str) -> None:
-    assert _sigil_instance is not None
+    gui = _gui()
+    assert gui._sigil_instance is not None
     tree.delete(*tree.get_children())
-    values = _sigil_instance.scoped_values().get(scope, {})
+    values = gui._sigil_instance.scoped_values().get(scope, {})
     for key, value in sorted(values.items()):
         tree.insert("", "end", iid=key, values=(key, value))
 
@@ -116,12 +119,13 @@ def _open_value_dialog(
 
 def _on_add(widgets: dict) -> None:
     scope = _current_scope(widgets)
-    res = _open_value_dialog("add", scope)
+    gui = _gui()
+    res = gui._open_value_dialog("add", scope)
     if not res:
         return
     key, value = res
-    assert _sigil_instance is not None
-    _sigil_instance.set_pref(key, value, scope=scope)
+    assert gui._sigil_instance is not None
+    gui._sigil_instance.set_pref(key, value, scope=scope)
 
 
 def _on_edit(widgets: dict) -> None:
@@ -132,15 +136,16 @@ def _on_edit(widgets: dict) -> None:
         return
     key = sel[0]
     current = tree.item(key, "values")[1]
-    res = _open_value_dialog("edit", scope, key=key, value=current)
+    gui = _gui()
+    res = gui._open_value_dialog("edit", scope, key=key, value=current)
     if not res:
         return
     new_key, new_val = res
-    assert _sigil_instance is not None
+    assert gui._sigil_instance is not None
     if new_key != key:
-        _sigil_instance.set_pref(key, None, scope=scope)
+        gui._sigil_instance.set_pref(key, None, scope=scope)
         key = new_key
-    _sigil_instance.set_pref(key, new_val, scope=scope)
+    gui._sigil_instance.set_pref(key, new_val, scope=scope)
 
 
 def _on_delete(widgets: dict) -> None:
@@ -150,8 +155,9 @@ def _on_delete(widgets: dict) -> None:
     if not sel:
         return
     key = sel[0]
-    assert _sigil_instance is not None
-    _sigil_instance.set_pref(key, None, scope=scope)
+    gui = _gui()
+    assert gui._sigil_instance is not None
+    gui._sigil_instance.set_pref(key, None, scope=scope)
 
 
 def _on_pref_changed(widgets: dict, key: str, new_val: str | None, scope: str) -> None:
@@ -166,3 +172,6 @@ def _on_pref_changed(widgets: dict, key: str, new_val: str | None, scope: str) -
             tree.item(key, values=(key, new_val))
         else:
             tree.insert("", "end", iid=key, values=(key, new_val))
+
+
+__all__ = ["edit_preferences", "launch_gui"]

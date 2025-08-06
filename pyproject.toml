@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["sigilcraft*", "sigil*"]
+include = ["sigilcraft*"]
 exclude = ["appdirs"]
 
 [project]
@@ -20,8 +20,8 @@ secrets = ["keyring>=25"]
 secrets-crypto = ["keyring>=25", "cryptography>=42"]
 
 [project.scripts]
-sigil = "sigil.cli:main"
-sigil-gui = "sigil.gui:launch_gui"
+sigil = "sigilcraft.cli:main"
+sigil-gui = "sigilcraft.gui:launch_gui"
 
 [tool.ruff]
 line-length = 88
