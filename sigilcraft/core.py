@@ -13,7 +13,7 @@ try:
 except ModuleNotFoundError:
     from ._appdirs_stub import user_config_dir
 
-import events
+from . import events
 
 from .backend import get_backend_for_path
 from .env import read_env
