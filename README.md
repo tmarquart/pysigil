@@ -26,3 +26,12 @@ separate project. See `tests/manual_tests/README.md` for more examples.
 Typed helper methods are available for convenient access:
 `Sigil.get_int()`, `get_float()`, `get_bool()`.
 For package integration details see [docs/integration.md](docs/integration.md).
+
+## Using the GUI
+
+Sigil ships with a simple graphical editor for viewing and editing
+preferences. After installation launch it with:
+
+```bash
+sigil-gui
+```
