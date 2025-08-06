@@ -44,12 +44,13 @@ class Sigil:
         self.app_name = app_name
         #self.user_path = Path(user_scope) if user_scope else Path(user_config_dir(app_name)) / "settings.ini"
         self.user_path = Path(user_scope) if user_scope else Path(user_config_dir('sigil'),self.app_name) / settings_filename
-        self.project_path = Path(project_scope) if project_scope else Path.cwd() / "settings.ini"
+        self.project_path = Path(project_scope) if project_scope else Path.cwd() / settings_filename
         self.default_path = Path(default_path) if default_path else None
         self._defaults: MutableMapping[str, MutableMapping[str, str]] = {}
         if self.default_path is not None:
-            backend = get_backend_for_path(self.default_path)
-            self._defaults = backend.load(self.default_path)
+            self.default_path=Path(self.default_path)
+            backend = get_backend_for_path(self.default_path.joinpath(settings_filename))
+            self._defaults = backend.load(self.default_path.joinpath(settings_filename))
         if defaults:
             for k, v in defaults.items():
                 section, key = self._split(k)
@@ -67,7 +68,7 @@ class Sigil:
                 self._meta = load_meta(mpath)
         except Exception as exc:  # pragma: no cover - malformed meta
             logger.error("Failed to load metadata: %s", exc)
-        enc_path = default_path.with_suffix(".enc.json") if default_path else None
+        enc_path = Path(default_path).with_suffix(".enc.json") if default_path else None
         if secrets is None:
             providers = [
                 KeyringProvider(),
