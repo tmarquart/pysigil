@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from sigil import events, gui
+from sigilcraft import events, gui
 from sigilcraft.core import Sigil
 
 
