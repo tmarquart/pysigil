@@ -44,13 +44,19 @@ def make_package_prefs(
     lock = Lock()
     sigil_obj: Sigil | None = None
     defaults_path: Path = resources.files(package).joinpath(defaults_rel)
+    defaults_dir = defaults_path.parent
+    settings_file = defaults_path.name
 
     def _lazy() -> Sigil:
         nonlocal sigil_obj
         if sigil_obj is None:
             with lock:
                 if sigil_obj is None:
-                    sigil_obj = Sigil(app_name, default_path=defaults_path)
+                    sigil_obj = Sigil(
+                        app_name,
+                        default_path=defaults_dir,
+                        settings_filename=settings_file,
+                    )
         return sigil_obj
 
     def _get(key: str, *, default=None, cast=None):

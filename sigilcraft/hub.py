@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import inspect
-import importlib
-import tomllib
 import threading
 from pathlib import Path
 from threading import Lock
@@ -64,7 +62,7 @@ def _load_config(
     settings_filename: str,
 ) -> tuple[Path, Path | None]:
     # ------------------------------------------------------------------
-    # Determine defaults_path (= prefs folder) and metadata path.
+    # Determine defaults directory and optional metadata sidecar.
     # ------------------------------------------------------------------
     if package:
         # Import the package and look at its __file__.
@@ -80,14 +78,14 @@ def _load_config(
         if default_pref_directory is not None
         else project_root / "prefs"
     )
-    defaults_path = prefs_dir / settings_filename
+    defaults_dir = prefs_dir
 
     # Allow optional metadata sidecar (JSON or CSV) but don't require it.
     meta_json = prefs_dir / "metadata.json"
     meta_csv = prefs_dir / "metadata.csv"
     meta_path = meta_json if meta_json.exists() else (meta_csv if meta_csv.exists() else None)
 
-    return defaults_path, meta_path
+    return defaults_dir, meta_path
 
 
 # ---------------------------------------------------------------------------
@@ -120,12 +118,12 @@ def get_preferences(
         if package not in _instances:
             with _lock:
                 if package not in _instances:
-                    defaults_path, meta_path = _load_config(
+                    defaults_dir, meta_path = _load_config(
                         package, default_pref_directory, settings_filename
                     )
                     _instances[package] = Sigil(  # type: ignore[name-defined]
                         app_name=package,
-                        default_path=defaults_path,
+                        default_path=defaults_dir,
                         meta_path=meta_path,
                         settings_filename=settings_filename,
                     )
