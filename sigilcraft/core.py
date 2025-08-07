@@ -17,7 +17,7 @@ except ModuleNotFoundError:
 from . import events
 
 from .backend import get_backend_for_path
-from .constants import BOOT_KEY_DELIMITERS, BOOT_KEY_JOIN_CHAR
+from .constants import KEY_JOIN_CHAR
 from .env import read_env
 from .errors import ReadOnlyScopeError, SigilWriteError, UnknownScopeError
 from .keys import KeyPath, parse_key
@@ -110,15 +110,8 @@ class Sigil:
         else:
             self._secrets = SecretChain(secrets)
         self._core = _load_core_defaults()
-        self._key_delimiters = BOOT_KEY_DELIMITERS
-        self._key_join_char = BOOT_KEY_JOIN_CHAR
         self.invalidate_cache()
-        # Patch helpers to access preferences at runtime
-        from . import keys as _keys
-        from .backend import ini_backend as _ini_backend
-
-        _keys.get_pref = lambda k, d=None: self.get_pref(k, default=d)  # type: ignore[assignment]
-        _ini_backend.get_pref = lambda k, d=None: self.get_pref(k, default=d)  # type: ignore[assignment]
+        # Patch helpers to access preferences at runtime (no-op currently)
 
     @property
     def default_scope(self) -> str:
@@ -156,10 +149,6 @@ class Sigil:
         self._merged.update(self._user)
         self._merged.update(self._project)
         self._merged.update(self._env)
-        kd = self._merged.get(("sigil", "key_delimiters"))
-        self._key_delimiters = kd if kd is not None else BOOT_KEY_DELIMITERS
-        kj = self._merged.get(("sigil", "key_join_char"))
-        self._key_join_char = kj if kj is not None else BOOT_KEY_JOIN_CHAR
 
     def scoped_values(self) -> Mapping[str, MutableMapping[str, str]]:
         """Return all known preferences grouped by scope.
@@ -180,13 +169,12 @@ class Sigil:
             }
 
     def _flatten(self, data: Mapping[KeyPath, str]) -> MutableMapping[str, str]:
-        joiner = self._key_join_char
         flat: MutableMapping[str, str] = {}
         for path, val in data.items():
             if len(path) == 1:
                 flat[path[0]] = val
             else:
-                flat[f"{path[0]}{joiner}{joiner.join(path[1:])}"] = val
+                flat[f"{path[0]}{KEY_JOIN_CHAR}{KEY_JOIN_CHAR.join(path[1:])}"] = val
         return flat
 
     def list_keys(self, scope: str) -> list[KeyPath]:
@@ -209,7 +197,7 @@ class Sigil:
         return bool(self._meta.get(".".join(key), {}).get("secret"))
 
     def get_pref(self, key: str | KeyPath, *, default: Any = None, cast: Callable[[str], Any] | None = None) -> Any:
-        path = parse_key(key, self._key_delimiters)
+        path = parse_key(key)
         dotted = ".".join(path)
         if dotted.startswith("secret.") or self._meta_secret(path):
             val = self._secrets.get(dotted)
@@ -314,7 +302,7 @@ class Sigil:
                     continue
             else:
                 val = self._merged[path]
-            env_key = base + "_".join(path)
+            env_key = base + KEY_JOIN_CHAR.join(path)
             if uppercase:
                 env_key = env_key.upper()
             out[env_key] = str(val)
@@ -324,7 +312,7 @@ class Sigil:
         target_scope = scope or self._default_scope
         if target_scope == "core":
             raise ReadOnlyScopeError("Core defaults are read-only")
-        path = parse_key(key, self._key_delimiters)
+        path = parse_key(key)
         dotted = ".".join(path)
         if dotted.startswith("secret.") or self._meta_secret(path):
             if not self._secrets.can_write():

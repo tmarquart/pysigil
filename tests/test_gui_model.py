@@ -16,11 +16,8 @@ def test_prefmodel_set_get_save(tmp_path):
     assert model.origin("color") == "user"
 
 
-def test_model_uses_join_char(tmp_path):
-    defaults = {
-        ("api", "v2", "timeout"): "42",
-        ("sigil", "key_join_char"): ".",
-    }
+def test_model_displays_underscore_keys(tmp_path):
+    defaults = {("api", "v2", "timeout"): "42"}
     sigil = Sigil(
         "app",
         user_scope=tmp_path / "u.ini",
@@ -28,4 +25,4 @@ def test_model_uses_join_char(tmp_path):
         defaults=defaults,
     )
     model = PrefModel(sigil, {})
-    assert "api.v2.timeout" in model.all_keys()
+    assert "api_v2_timeout" in model.all_keys()
