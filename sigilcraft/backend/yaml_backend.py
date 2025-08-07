@@ -4,29 +4,28 @@ from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
 from ..errors import SigilLoadError
+from ..keys import KeyPath
 from . import register_backend
 from .base import BaseBackend
 
 
-def _flatten(src: Mapping[str, object], prefix: str = "") -> MutableMapping[str, object]:
-    out: MutableMapping[str, object] = {}
+def _collect(src: Mapping[str, object], prefix: tuple[str, ...] = ()) -> MutableMapping[KeyPath, str]:
+    out: MutableMapping[KeyPath, str] = {}
     for k, v in src.items():
-        key = f"{prefix}{k}" if not prefix else f"{prefix}.{k}"
         if isinstance(v, dict):
-            out.update(_flatten(v, key))
+            out.update(_collect(v, prefix + (k,)))
         else:
-            out[key] = v
+            out[prefix + (k,)] = str(v)
     return out
 
 
-def _unflatten(flat: Mapping[str, object]) -> dict:
+def _build(flat: Mapping[KeyPath, str]) -> dict:
     root: dict = {}
-    for dotted, val in flat.items():
-        parts = dotted.split(".")
+    for path, val in flat.items():
         node = root
-        for p in parts[:-1]:
+        for p in path[:-1]:
             node = node.setdefault(p, {})
-        node[parts[-1]] = val
+        node[path[-1]] = val
     return root
 
 
@@ -43,7 +42,7 @@ class YamlBackend(BaseBackend):
             raise SigilLoadError("PyYAML is required for YAML backend") from exc
         return yaml
 
-    def load(self, path: Path) -> MutableMapping[str, object]:
+    def load(self, path: Path) -> MutableMapping[KeyPath, str]:
         yaml = self._require_yaml()
         path = Path(path)
         if not path.exists():
@@ -57,12 +56,12 @@ class YamlBackend(BaseBackend):
             raise SigilLoadError(str(exc)) from exc
         if not isinstance(data, dict):
             raise SigilLoadError("Root of YAML prefs must be a mapping")
-        return _flatten(data)
+        return _collect(data)
 
-    def save(self, path: Path, data: Mapping[str, object]) -> None:
+    def save(self, path: Path, data: Mapping[KeyPath, str]) -> None:
         yaml = self._require_yaml()
         path = Path(path)
-        nested = _unflatten(data)
+        nested = _build(data)
         path.parent.mkdir(parents=True, exist_ok=True)
         tmp = path.with_suffix(path.suffix + ".tmp")
         with tmp.open("w", encoding="utf-8") as fh:

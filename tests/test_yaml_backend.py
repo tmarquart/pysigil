@@ -15,7 +15,7 @@ def require_pyyaml():
 
 def test_yaml_backend_roundtrip(tmp_path: Path):
     require_pyyaml()
-    flat = {"x.y": 1, "x.z": True, "name": "Sigil"}
+    flat = {("x", "y"): "1", ("x", "z"): "true", ("name",): "Sigil"}
     path = tmp_path / "t.yaml"
     YamlBackend().save(path, flat)
     assert YamlBackend().load(path) == flat
@@ -30,7 +30,7 @@ def test_empty_file(tmp_path: Path):
 
 def test_deep_nesting(tmp_path: Path):
     require_pyyaml()
-    flat = {"a.b.c.d": 2}
+    flat = {("a", "b", "c", "d"): "2"}
     path = tmp_path / "deep.yml"
     YamlBackend().save(path, flat)
     assert YamlBackend().load(path) == flat
