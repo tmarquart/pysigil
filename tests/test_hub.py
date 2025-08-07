@@ -10,7 +10,7 @@ def test_get_preferences_launch_gui(tmp_path, monkeypatch):
     # Prepare a prefs directory with a defaults file
     prefs_dir = tmp_path / "prefs"
     prefs_dir.mkdir()
-    (prefs_dir / "settings.ini").write_text("[global]\ncolor = red\n")
+    (prefs_dir / "settings.ini").write_text("[__root__]\ncolor = red\n")
 
     called: dict[str, object] = {}
 

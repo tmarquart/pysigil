@@ -18,6 +18,7 @@ from . import events
 from .backend import get_backend_for_path
 from .env import read_env
 from .errors import SigilWriteError, UnknownScopeError
+from .keys import KeyPath, parse_key
 from .secrets import (
     EncryptedFileProvider,
     EnvSecretProvider,
@@ -36,9 +37,9 @@ class Sigil:
         *,
         user_scope: Path | None = None,
         project_scope: Path | None = None,
-        defaults: Mapping[str, Any] | None = None,
+        defaults: Mapping[str | KeyPath, Any] | None = None,
         default_path: Path | None = None,
-        env_reader: Callable[[str], Mapping[str, str]] = read_env,
+        env_reader: Callable[[str], Mapping[KeyPath, str]] = read_env,
         secrets: Sequence[SecretProvider] | None = None,
         meta_path: Path | None = None,
         settings_filename='settings.ini'
@@ -63,12 +64,10 @@ class Sigil:
             if self.default_path.suffix == "" or self.default_path.name != self.settings_filename:
                 self.default_path = self.default_path / self.settings_filename
 
-        self._defaults: MutableMapping[str, MutableMapping[str, str]] = {}
+        self._defaults: MutableMapping[KeyPath, str] = {}
         if defaults:
             for k, v in defaults.items():
-                section, key = self._split(k)
-                sec = self._defaults.setdefault(section, {})
-                sec[key] = str(v)
+                self._defaults[parse_key(k)] = str(v)
         self._env_reader = env_reader
         self._lock = RLock()
         self._default_scope = "user"
@@ -91,6 +90,7 @@ class Sigil:
             self._secrets = SecretChain(providers)
         else:
             self._secrets = SecretChain(secrets)
+        self._key_delimiters = "._"
         self.invalidate_cache()
 
     @property
@@ -124,10 +124,12 @@ class Sigil:
 
     def _merge_cache(self) -> None:
         self._merged = {}
-        self._merged.update(self._flatten(self._defaults))
-        self._merged.update(self._flatten(self._user))
-        self._merged.update(self._flatten(self._project))
+        self._merged.update(self._defaults)
+        self._merged.update(self._user)
+        self._merged.update(self._project)
         self._merged.update(self._env)
+        kd = self._merged.get(("sigil", "key_delimiters"))
+        self._key_delimiters = kd if kd is not None else "._"
 
     def scoped_values(self) -> Mapping[str, MutableMapping[str, str]]:
         """Return all known preferences grouped by scope.
@@ -141,40 +143,35 @@ class Sigil:
             project_flat = self._flatten(self._project)
             return {"default": default_flat, "user": user_flat, "project": project_flat}
 
-    def _flatten(self, data: Mapping[str, Mapping[str, str]]) -> MutableMapping[str, str]:
-        flat: MutableMapping[str, str] = {}
-        for section, values in data.items():
-            for key, value in values.items():
-                if section == "global":
-                    flat[key] = value
-                else:
-                    flat[f"{section}.{key}"] = value
-        return flat
+    def _flatten(self, data: Mapping[KeyPath, str]) -> MutableMapping[str, str]:
+        return {".".join(path): val for path, val in data.items()}
 
-    def list_keys(self, scope: str) -> list[str]:
+    def list_keys(self, scope: str) -> list[KeyPath]:
         """Return all preference keys defined in *scope* sorted alphabetically."""
-        values = self.scoped_values().get(scope)
-        if values is None:
-            raise UnknownScopeError(scope)
-        return sorted(values)
+        data = self._get_scope_dict(scope)
+        return sorted(data)
 
-    def _split(self, key: str) -> tuple[str, str]:
-        if "." in key:
-            section, k = key.split(".", 1)
-        else:
-            section, k = "global", key
-        return section, k
+    def _get_scope_dict(self, scope: str) -> MutableMapping[KeyPath, str]:
+        if scope == "user":
+            return self._user
+        if scope == "project":
+            return self._project
+        if scope == "default":
+            return self._defaults
+        raise UnknownScopeError(scope)
 
-    def _meta_secret(self, key: str) -> bool:
-        return bool(self._meta.get(key, {}).get("secret"))
+    def _meta_secret(self, key: KeyPath) -> bool:
+        return bool(self._meta.get(".".join(key), {}).get("secret"))
 
-    def get_pref(self, key: str, *, default: Any = None, cast: Callable[[str], Any] | None = None) -> Any:
-        if key.startswith("secret.") or self._meta_secret(key):
-            val = self._secrets.get(key)
+    def get_pref(self, key: str | KeyPath, *, default: Any = None, cast: Callable[[str], Any] | None = None) -> Any:
+        path = parse_key(key, self._key_delimiters)
+        dotted = ".".join(path)
+        if dotted.startswith("secret.") or self._meta_secret(path):
+            val = self._secrets.get(dotted)
             if val is not None:
                 return self._cast(val, cast)
         with self._lock:
-            value = self._merged.get(key)
+            value = self._merged.get(path)
         if value is None:
             return default
         return self._cast(value, cast)
@@ -262,43 +259,44 @@ class Sigil:
         """Return a mapping of environment variable names to values."""
         base = f"{prefix}{self.app_name.upper()}_"
         out: dict[str, str] = {}
-        for key in sorted(self._merged):
-            if key.startswith("secret.") or self._meta_secret(key):
+        for path in sorted(self._merged):
+            dotted = ".".join(path)
+            if dotted.startswith("secret.") or self._meta_secret(path):
                 if not include_secrets:
                     continue
-                val = self.get_pref(key)
+                val = self.get_pref(path)
                 if val is None:
                     continue
             else:
-                val = self._merged[key]
-            env_key = base + key.replace(".", "_")
+                val = self._merged[path]
+            env_key = base + "_".join(path)
             if uppercase:
                 env_key = env_key.upper()
             out[env_key] = str(val)
         return out
 
-    def set_pref(self, key: str, value: Any, *, scope: str | None = None) -> None:
-        if key.startswith("secret.") or self._meta_secret(key):
+    def set_pref(self, key: str | KeyPath, value: Any, *, scope: str | None = None) -> None:
+        path = parse_key(key, self._key_delimiters)
+        dotted = ".".join(path)
+        if dotted.startswith("secret.") or self._meta_secret(path):
             if not self._secrets.can_write():
                 raise SigilWriteError("Secrets backend is read-only or locked")
-            self._secrets.set(key, str(value))
-            events.emit("pref_changed", key, value, scope or self._default_scope)
+            self._secrets.set(dotted, str(value))
+            events.emit("pref_changed", dotted, value, scope or self._default_scope)
             return
         target_scope = scope or self._default_scope
-        data, path = self._get_scope_storage(target_scope)
-        section, k = self._split(key)
+        data, path_file = self._get_scope_storage(target_scope)
         with self._lock:
-            sec = data.setdefault(section, {})
             if value is None:
-                sec.pop(k, None)
+                data.pop(path, None)
             else:
-                sec[k] = str(value)
-            backend = get_backend_for_path(path)
-            backend.save(path, data)
+                data[path] = str(value)
+            backend = get_backend_for_path(path_file)
+            backend.save(path_file, data)
             self.invalidate_cache()
-        events.emit("pref_changed", key, value, target_scope)
+        events.emit("pref_changed", dotted, value, target_scope)
 
-    def _get_scope_storage(self, scope: str) -> tuple[MutableMapping[str, MutableMapping[str, str]], Path]:
+    def _get_scope_storage(self, scope: str) -> tuple[MutableMapping[KeyPath, str], Path]:
         if scope == "user":
             return self._user, self.user_path
         if scope == "project":

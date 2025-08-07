@@ -9,7 +9,7 @@ from sigilcraft.errors import SigilLoadError
 
 
 def test_json_backend_roundtrip(tmp_path: Path):
-    flat = {"x.y": 1, "x.z": True, "name": "Sigil"}
+    flat = {("x", "y"): "1", ("x", "z"): "true", ("name",): "Sigil"}
     path = tmp_path / "t.json"
     JsonBackend().save(path, flat)
     assert JsonBackend().load(path) == flat
@@ -22,7 +22,7 @@ def test_empty_file(tmp_path: Path):
 
 
 def test_deep_nesting(tmp_path: Path):
-    flat = {"a.b.c.d": 2}
+    flat = {("a", "b", "c", "d"): "2"}
     path = tmp_path / "deep.json"
     JsonBackend().save(path, flat)
     assert JsonBackend().load(path) == flat
@@ -42,5 +42,5 @@ def test_json5_relaxed(tmp_path: Path):
         pytest.skip("pyjson5 not installed")
     path = tmp_path / "relaxed.json5"
     path.write_text("//c\n{a:1,}\n", encoding="utf-8")
-    assert JsonBackend().load(path) == {"a": 1}
+    assert JsonBackend().load(path) == {("a",): "1"}
 

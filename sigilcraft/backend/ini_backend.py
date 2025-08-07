@@ -4,6 +4,7 @@ import configparser
 from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
+from ..keys import KeyPath
 from . import register_backend
 from .base import BaseBackend
 
@@ -12,27 +13,33 @@ from .base import BaseBackend
 class IniBackend(BaseBackend):
     suffixes = (".ini",)
 
-    def load(self, path: Path) -> MutableMapping[str, MutableMapping[str, str]]:
+    def load(self, path: Path) -> MutableMapping[KeyPath, str]:
         parser = configparser.ConfigParser()
         if path.exists():
             parser.read(path)
-        data: MutableMapping[str, MutableMapping[str, str]] = {}
+        data: MutableMapping[KeyPath, str] = {}
         for section in parser.sections():
-            # use private _sections to avoid mixing defaults
-            sec = dict(parser._sections.get(section, {}))
-            sec.pop("__name__", None)
-            data[section] = sec
-        if parser.defaults():
-            data.setdefault("global", {}).update(parser.defaults())
+            for key, value in parser.items(section):
+                if section == "__root__":
+                    kp = (key,)
+                else:
+                    kp = (section, *key.split("."))
+                data[kp] = value
         return data
 
-    def save(self, path: Path, data: Mapping[str, Mapping[str, str]]) -> None:
+    def save(self, path: Path, data: Mapping[KeyPath, str]) -> None:
         parser = configparser.ConfigParser()
-        for section, values in data.items():
-            if section == "global":
-                parser.defaults().update(values)
+        for kp, value in data.items():
+            if len(kp) == 1:
+                sec = "__root__"
+                if not parser.has_section(sec):
+                    parser.add_section(sec)
+                parser.set(sec, kp[0], str(value))
             else:
-                parser[section] = dict(values)
+                sec = kp[0]
+                if not parser.has_section(sec):
+                    parser.add_section(sec)
+                parser.set(sec, ".".join(kp[1:]), str(value))
         path.parent.mkdir(parents=True, exist_ok=True)
         tmp = path.with_suffix(path.suffix + ".tmp")
         with tmp.open("w") as f:

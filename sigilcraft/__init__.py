@@ -3,8 +3,17 @@ from __future__ import annotations
 
 from .core import Sigil
 from .helpers import make_package_prefs
+from .keys import KeyPath, parse_key
 
-__all__ = ["Sigil", "make_package_prefs", "get_int", "get_float", "get_bool"]
+__all__ = [
+    "Sigil",
+    "make_package_prefs",
+    "get_int",
+    "get_float",
+    "get_bool",
+    "parse_key",
+    "KeyPath",
+]
 __version__ = "0.1.1"
 
 
