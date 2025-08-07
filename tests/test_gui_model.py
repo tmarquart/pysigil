@@ -14,3 +14,18 @@ def test_prefmodel_set_get_save(tmp_path):
     assert not model.is_dirty("user")
     assert sigil.get_pref("color") == "blue"
     assert model.origin("color") == "user"
+
+
+def test_model_uses_join_char(tmp_path):
+    defaults = {
+        ("api", "v2", "timeout"): "42",
+        ("sigil", "key_join_char"): ".",
+    }
+    sigil = Sigil(
+        "app",
+        user_scope=tmp_path / "u.ini",
+        project_scope=tmp_path / "p.ini",
+        defaults=defaults,
+    )
+    model = PrefModel(sigil, {})
+    assert "api.v2.timeout" in model.all_keys()
