@@ -20,6 +20,11 @@ class SigilWriteError(SigilError):
     pass
 
 
+class ReadOnlyScopeError(SigilError):
+    """Raised when attempting to modify the read-only core scope."""
+    pass
+
+
 class SigilSecretsError(SigilError):
     """Raised for errors in the secrets subsystem."""
     pass

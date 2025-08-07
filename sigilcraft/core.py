@@ -4,6 +4,7 @@ import json
 import logging
 from collections.abc import Callable, Mapping, MutableMapping, Sequence
 from contextlib import contextmanager
+from importlib.resources import files
 from pathlib import Path
 from threading import RLock
 from typing import Any
@@ -16,8 +17,9 @@ except ModuleNotFoundError:
 from . import events
 
 from .backend import get_backend_for_path
+from .constants import BOOT_KEY_DELIMITERS, BOOT_KEY_JOIN_CHAR
 from .env import read_env
-from .errors import SigilWriteError, UnknownScopeError
+from .errors import ReadOnlyScopeError, SigilWriteError, UnknownScopeError
 from .keys import KeyPath, parse_key
 from .secrets import (
     EncryptedFileProvider,
@@ -28,6 +30,23 @@ from .secrets import (
 )
 
 logger = logging.getLogger("sigil")
+
+
+_core_cache: MutableMapping[KeyPath, str] | None = None
+
+
+def _load_core_defaults() -> MutableMapping[KeyPath, str]:
+    global _core_cache
+    if _core_cache is not None:
+        return _core_cache
+    try:
+        path = files("sigilcraft") / "core_defaults.ini"
+        backend = get_backend_for_path(Path(path))
+        _core_cache = backend.load(Path(path))
+    except Exception as exc:  # pragma: no cover - missing or malformed file
+        logger.warning("Failed to load core defaults: %s", exc)
+        _core_cache = {}
+    return _core_cache
 
 
 class Sigil:
@@ -90,8 +109,16 @@ class Sigil:
             self._secrets = SecretChain(providers)
         else:
             self._secrets = SecretChain(secrets)
-        self._key_delimiters = "._"
+        self._core = _load_core_defaults()
+        self._key_delimiters = BOOT_KEY_DELIMITERS
+        self._key_join_char = BOOT_KEY_JOIN_CHAR
         self.invalidate_cache()
+        # Patch helpers to access preferences at runtime
+        from . import keys as _keys
+        from .backend import ini_backend as _ini_backend
+
+        _keys.get_pref = lambda k, d=None: self.get_pref(k, default=d)  # type: ignore[assignment]
+        _ini_backend.get_pref = lambda k, d=None: self.get_pref(k, default=d)  # type: ignore[assignment]
 
     @property
     def default_scope(self) -> str:
@@ -124,12 +151,15 @@ class Sigil:
 
     def _merge_cache(self) -> None:
         self._merged = {}
+        self._merged.update(self._core)
         self._merged.update(self._defaults)
         self._merged.update(self._user)
         self._merged.update(self._project)
         self._merged.update(self._env)
         kd = self._merged.get(("sigil", "key_delimiters"))
-        self._key_delimiters = kd if kd is not None else "._"
+        self._key_delimiters = kd if kd is not None else BOOT_KEY_DELIMITERS
+        kj = self._merged.get(("sigil", "key_join_char"))
+        self._key_join_char = kj if kj is not None else BOOT_KEY_JOIN_CHAR
 
     def scoped_values(self) -> Mapping[str, MutableMapping[str, str]]:
         """Return all known preferences grouped by scope.
@@ -138,13 +168,26 @@ class Sigil:
         keys, each mapping to a flat dictionary of preference keys to values.
         """
         with self._lock:
+            core_flat = self._flatten(self._core)
             default_flat = self._flatten(self._defaults)
             user_flat = self._flatten(self._user)
             project_flat = self._flatten(self._project)
-            return {"default": default_flat, "user": user_flat, "project": project_flat}
+            return {
+                "core": core_flat,
+                "default": default_flat,
+                "user": user_flat,
+                "project": project_flat,
+            }
 
     def _flatten(self, data: Mapping[KeyPath, str]) -> MutableMapping[str, str]:
-        return {".".join(path): val for path, val in data.items()}
+        joiner = self._key_join_char
+        flat: MutableMapping[str, str] = {}
+        for path, val in data.items():
+            if len(path) == 1:
+                flat[path[0]] = val
+            else:
+                flat[f"{path[0]}{joiner}{joiner.join(path[1:])}"] = val
+        return flat
 
     def list_keys(self, scope: str) -> list[KeyPath]:
         """Return all preference keys defined in *scope* sorted alphabetically."""
@@ -158,6 +201,8 @@ class Sigil:
             return self._project
         if scope == "default":
             return self._defaults
+        if scope == "core":
+            return self._core
         raise UnknownScopeError(scope)
 
     def _meta_secret(self, key: KeyPath) -> bool:
@@ -276,6 +321,9 @@ class Sigil:
         return out
 
     def set_pref(self, key: str | KeyPath, value: Any, *, scope: str | None = None) -> None:
+        target_scope = scope or self._default_scope
+        if target_scope == "core":
+            raise ReadOnlyScopeError("Core defaults are read-only")
         path = parse_key(key, self._key_delimiters)
         dotted = ".".join(path)
         if dotted.startswith("secret.") or self._meta_secret(path):
@@ -284,7 +332,6 @@ class Sigil:
             self._secrets.set(dotted, str(value))
             events.emit("pref_changed", dotted, value, scope or self._default_scope)
             return
-        target_scope = scope or self._default_scope
         data, path_file = self._get_scope_storage(target_scope)
         with self._lock:
             if value is None:
