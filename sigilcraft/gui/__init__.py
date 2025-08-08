@@ -1,8 +1,6 @@
-"""Tk GUI and models for editing Sigil preferences."""
+"""Tk GUI for editing Sigil preferences."""
 
 from . import editor as _editor
-from .model import PrefModel
-from .tk_view import run
 
 _sigil_instance = None
 
@@ -17,4 +15,4 @@ _on_pref_changed = _editor._on_pref_changed
 _open_value_dialog = _editor._open_value_dialog
 _populate_tree = _editor._populate_tree
 
-__all__ = ["PrefModel", "run", "edit_preferences", "launch_gui"]
+__all__ = ["edit_preferences", "launch_gui"]
