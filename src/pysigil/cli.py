@@ -46,6 +46,11 @@ def build_parser(prog: str = "sigil") -> argparse.ArgumentParser:
     where_p.add_argument("key")
     where_p.add_argument("--app", required=True)
 
+    gui_p = sub.add_parser("gui")
+    gui_p.add_argument("--package")
+    gui_p.add_argument("--include-sigil", action="store_true")
+    gui_p.add_argument("--no-remember", action="store_true")
+
     return parser
 
 
@@ -56,6 +61,16 @@ def main(argv: list[str] | None = None) -> int:
         prog = "pysigil"
     parser = build_parser(prog)
     args = parser.parse_args(argv)
+    if args.cmd == "gui":
+        from . import gui as _gui
+
+        _gui.launch_gui(
+            package=args.package,
+            include_sigil=args.include_sigil,
+            remember_state=not args.no_remember,
+        )
+        return 0
+
     sigil = Sigil(args.app)
     if args.cmd == "get":
         val = sigil.get_pref(args.key)
