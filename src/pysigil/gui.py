@@ -213,20 +213,34 @@ def launch_gui(
     run_mainloop: bool = True,
     refresh_callback: Callable[[], None] | None = None,
     state_path: Path | None = None,
+    sigil: Sigil | None = None,
 ):
     """Launch the GUI.  When *run_mainloop* is False, return a headless helper."""
     packages = packages or ["pysigil"]
     state = gui_state.read_state(state_path)
-    pkg = (
-        package
-        or _detect_project_package()
-        or state.get("last_package")
-        or "pysigil"
-    )
+
+    if sigil is not None:
+        pkg = sigil.app_name
+        # Ensure provided Sigil instance becomes the active one.
+        global _sigil_instance, _current_package
+        _sigil_instance = sigil
+        _current_package = pkg
+        if pkg not in packages:
+            packages = [pkg, *packages]
+    else:
+        pkg = (
+            package
+            or _detect_project_package()
+            or state.get("last_package")
+            or "pysigil"
+        )
+        open_package(pkg, include_sigil)
+        if pkg not in packages:
+            packages = [pkg, *packages]
+
     tab = state.get("last_tab", "User")
     inc = include_sigil or state.get("include_sigil", False)
     state = {"last_package": pkg, "last_tab": tab, "include_sigil": inc}
-    open_package(pkg, inc)
 
     if not run_mainloop:
         return _HeadlessGUI(state, remember_state, state_path)
