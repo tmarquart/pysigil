@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Literal
+from typing import Literal
 
 try:
     import tkinter as tk
@@ -11,10 +12,10 @@ except Exception:  # pragma: no cover - fallback for headless tests
     simpledialog = None  # type: ignore
     ttk = None  # type: ignore
 
+from . import gui_state
 from .core import Sigil
 from .keys import KeyPath
 from .widgets import widget_for
-from . import gui_state
 
 # ---------------------------------------------------------------------------
 # Public API helpers expected by GUI
@@ -264,14 +265,6 @@ def launch_gui(
         notebook.add(frame, text=scope.title())
         trees[scope] = tree
         empty_labels[scope] = ttk.Label(frame, text="No settings in this scope yet.")
-
-    widgets = {
-        "notebook": notebook,
-        "trees": trees,
-        "empty_labels": empty_labels,
-        "pkg_var": pkg_var,
-        "sigil_var": sigil_var,
-    }
 
     def _refresh() -> None:
         for scope, tree in trees.items():
