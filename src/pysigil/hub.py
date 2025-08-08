@@ -151,7 +151,9 @@ def get_preferences(
 
         sigil = _lazy()
         # Pass the resolved Sigil instance so that the editor reflects the
-        # caller's package-specific defaults and metadata.
-        _launch(sigil=sigil)
+        # caller's package-specific defaults and metadata. Include any
+        # previously instantiated packages in the selection list.
+        pkgs = sorted({sigil.app_name, *_instances.keys(), "pysigil"})
+        _launch(sigil=sigil, packages=pkgs)
 
     return get_pref, set_pref, effective_scope_for, launch_gui

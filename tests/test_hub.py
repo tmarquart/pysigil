@@ -14,7 +14,7 @@ def test_get_preferences_launch_gui(tmp_path, monkeypatch):
 
     called: dict[str, object] = {}
 
-    def fake_launch(*, package=None, allow_default_write=True, sigil=None):
+    def fake_launch(*, sigil=None, **kwargs):
         called["sigil"] = sigil
 
     monkeypatch.setattr("pysigil.gui.launch_gui", fake_launch)
