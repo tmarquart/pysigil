@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from sigilcraft.core import Sigil
-from sigilcraft.hub import get_preferences
+from pysigil.core import Sigil
+from pysigil.hub import get_preferences
 
 
 def test_get_preferences_launch_gui(tmp_path, monkeypatch):
@@ -17,10 +17,10 @@ def test_get_preferences_launch_gui(tmp_path, monkeypatch):
     def fake_launch(*, package=None, allow_default_write=True, sigil=None):
         called["sigil"] = sigil
 
-    monkeypatch.setattr("sigilcraft.gui.launch_gui", fake_launch)
+    monkeypatch.setattr("pysigil.gui.launch_gui", fake_launch)
 
     get_pref, set_pref, launch_gui = get_preferences(
-        "sigilcraft", default_pref_directory=str(prefs_dir)
+        "pysigil", default_pref_directory=str(prefs_dir)
     )
 
     assert get_pref("color") == "red"
@@ -28,4 +28,4 @@ def test_get_preferences_launch_gui(tmp_path, monkeypatch):
     launch_gui()
 
     assert isinstance(called["sigil"], Sigil)
-    assert called["sigil"].app_name == "sigilcraft"
+    assert called["sigil"].app_name == "pysigil"

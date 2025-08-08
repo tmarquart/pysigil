@@ -11,7 +11,7 @@ from ..widgets import widget_for
 
 
 def _gui() -> object:
-    return import_module("sigilcraft.gui")
+    return import_module("pysigil.gui")
 
 
 def edit_preferences(

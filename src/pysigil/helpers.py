@@ -90,7 +90,7 @@ def _parse_json(path: Path) -> dict[str, dict]:
 def _parse_csv(path: Path) -> dict[str, dict]:
     """Parse CSV metadata following the spec."""
 
-    logger = logging.getLogger("sigil")
+    logger = logging.getLogger("pysigil")
 
     with path.open(encoding="utf-8") as fh:
         reader = csv.DictReader(fh)

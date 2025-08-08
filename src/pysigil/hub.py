@@ -8,8 +8,9 @@ from typing import Any, Callable, Protocol, runtime_checkable
 #from pyprojroot import here
 
 from .core import Sigil
+from .keys import parse_key
 
-__all__ = ["get_preferences"]
+__all__ = ["get_preferences", "parse_key"]
 
 _configs: dict[str, tuple[Path, Path | None]] = {}
 _instances: dict[str, Sigil] = {}

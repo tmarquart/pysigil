@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sigilcraft.core import Sigil
+from pysigil.core import Sigil
 
 
 class DummyProvider:

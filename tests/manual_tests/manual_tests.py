@@ -4,16 +4,16 @@ from __future__ import annotations
 
 from requests_toolbelt.adapters.appengine import monkeypatch
 
-from sigilcraft.backend.ini_backend import IniBackend
+from pysigil.backends.ini_backend import IniBackend
 
-from sigilcraft import cli, core
+from pysigil import cli, core
 
-from sigilcraft.backend.yaml_backend import YamlBackend
+from pysigil.backends.yaml_backend import YamlBackend
 import shutil
 import sys
 from pathlib import Path
 
-from sigilcraft.helpers import make_package_prefs
+from pysigil.helpers import make_package_prefs
 
 def manual_ini_backend_roundtrip():
     path = Path("artifacts/cfg.ini")

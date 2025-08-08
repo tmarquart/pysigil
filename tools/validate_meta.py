@@ -5,8 +5,8 @@ import sys
 from importlib import resources
 from pathlib import Path
 
-from sigilcraft.errors import SigilMetaError
-from sigilcraft.helpers import load_meta
+from pysigil.errors import SigilMetaError
+from pysigil.helpers import load_meta
 
 
 class WarnCounter(logging.Handler):
@@ -21,7 +21,7 @@ class WarnCounter(logging.Handler):
 
 def validate(package: str, rel_path: str) -> int:
     path = resources.files(package).joinpath(rel_path)
-    logger = logging.getLogger("sigil")
+    logger = logging.getLogger("pysigil")
     handler = WarnCounter()
     logger.addHandler(handler)
     try:

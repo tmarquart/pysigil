@@ -3,8 +3,8 @@ from pathlib import Path
 
 import pytest
 
-from sigilcraft.errors import SigilMetaError
-from sigilcraft.helpers import load_meta
+from pysigil.errors import SigilMetaError
+from pysigil.helpers import load_meta
 
 
 def test_csv_happy_path(tmp_path: Path):

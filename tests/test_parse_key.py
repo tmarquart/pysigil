@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from sigilcraft.keys import parse_key
+from pysigil.keys import parse_key
 
 
 def test_parse_key_valid():

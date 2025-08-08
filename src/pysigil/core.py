@@ -16,7 +16,7 @@ except ModuleNotFoundError:
 
 from . import events
 
-from .backend import get_backend_for_path
+from .backends import get_backend_for_path
 from .constants import KEY_JOIN_CHAR
 from .env import read_env
 from .errors import ReadOnlyScopeError, SigilWriteError, UnknownScopeError
@@ -29,7 +29,7 @@ from .secrets import (
     SecretProvider,
 )
 
-logger = logging.getLogger("sigil")
+logger = logging.getLogger("pysigil")
 
 
 _core_cache: MutableMapping[KeyPath, str] | None = None
@@ -40,7 +40,7 @@ def _load_core_defaults() -> MutableMapping[KeyPath, str]:
     if _core_cache is not None:
         return _core_cache
     try:
-        path = files("sigilcraft") / "core_defaults.ini"
+        path = files("pysigil.resources") / "core_defaults.ini"
         backend = get_backend_for_path(Path(path))
         _core_cache = backend.load(Path(path))
     except Exception as exc:  # pragma: no cover - missing or malformed file
