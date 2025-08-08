@@ -8,6 +8,7 @@ from pysigil import cli, core
 
 def test_cli_set_and_get(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(core, "user_config_dir", lambda app: str(tmp_path))
+    monkeypatch.chdir(tmp_path)
     assert cli.main(["set", "color", "blue", "--app", "myapp"]) == 0
     capsys.readouterr()
     assert cli.main(["get", "color", "--app", "myapp"]) == 0

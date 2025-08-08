@@ -14,7 +14,7 @@ try:
 except ModuleNotFoundError:
     from ._appdirs_stub import user_config_dir
 
-from . import events
+from . import events, metadata
 
 from .backends import get_backend_for_path
 from .constants import KEY_JOIN_CHAR
@@ -33,6 +33,14 @@ logger = logging.getLogger("pysigil")
 
 
 _core_cache: MutableMapping[KeyPath, str] | None = None
+
+
+PRECEDENCE_USER_WINS = ("env", "user", "project", "default", "core")
+PRECEDENCE_PROJECT_WINS = ("env", "project", "user", "default", "core")
+
+
+class LockedPreferenceError(RuntimeError):
+    """Raised when attempting to modify a locked preference."""
 
 
 def _load_core_defaults() -> MutableMapping[KeyPath, str]:
@@ -90,13 +98,9 @@ class Sigil:
         self._env_reader = env_reader
         self._lock = RLock()
         self._default_scope = "user"
-        self._meta = {}
         mpath = meta_path or self.user_path.parent / "defaults.meta.csv"
         try:
-            from .helpers import load_meta
-
-            if mpath.exists():
-                self._meta = load_meta(mpath)
+            metadata.load(mpath if mpath.exists() else None)
         except Exception as exc:  # pragma: no cover - malformed meta
             logger.error("Failed to load metadata: %s", exc)
         enc_path = self.default_path.with_suffix(".enc.json") if self.default_path else None
@@ -150,6 +154,19 @@ class Sigil:
         self._merged.update(self._project)
         self._merged.update(self._env)
 
+    def _order_for(self, keypath: KeyPath) -> tuple[str, ...]:
+        meta = metadata.get_meta_for(keypath)
+        return (
+            PRECEDENCE_USER_WINS
+            if meta.get("policy") == "user_over_project"
+            else PRECEDENCE_PROJECT_WINS
+        )
+
+    def _value_from_scope(self, scope: str, key: KeyPath) -> str | None:
+        if scope == "env":
+            return self._env.get(key)
+        return self._get_scope_dict(scope).get(key)
+
     def scoped_values(self) -> Mapping[str, MutableMapping[str, str]]:
         """Return all known preferences grouped by scope.
 
@@ -194,7 +211,7 @@ class Sigil:
         raise UnknownScopeError(scope)
 
     def _meta_secret(self, key: KeyPath) -> bool:
-        return bool(self._meta.get(".".join(key), {}).get("secret"))
+        return bool(metadata.get_meta_for(key).get("secret"))
 
     def get_pref(self, key: str | KeyPath, *, default: Any = None, cast: Callable[[str], Any] | None = None) -> Any:
         path = parse_key(key)
@@ -204,10 +221,12 @@ class Sigil:
             if val is not None:
                 return self._cast(val, cast)
         with self._lock:
-            value = self._merged.get(path)
-        if value is None:
-            return default
-        return self._cast(value, cast)
+            order = self._order_for(path)
+            for scope in order:
+                val = self._value_from_scope(scope, path)
+                if val is not None:
+                    return self._cast(val, cast)
+        return default
 
     def _cast(self, value: str, cast: Callable[[str], Any] | None) -> Any:
         if cast is not None:
@@ -297,22 +316,38 @@ class Sigil:
             if dotted.startswith("secret.") or self._meta_secret(path):
                 if not include_secrets:
                     continue
-                val = self.get_pref(path)
-                if val is None:
-                    continue
-            else:
-                val = self._merged[path]
+            val = self.get_pref(path)
+            if val is None:
+                continue
             env_key = base + KEY_JOIN_CHAR.join(path)
             if uppercase:
                 env_key = env_key.upper()
             out[env_key] = str(val)
         return out
 
+    def effective_scope_for(self, key: str | KeyPath) -> str:
+        kp = parse_key(key)
+        order = self._order_for(kp)
+        with self._lock:
+            for scope in order:
+                if self._value_from_scope(scope, kp) is not None:
+                    return scope
+        return "none"
+
     def set_pref(self, key: str | KeyPath, value: Any, *, scope: str | None = None) -> None:
         target_scope = scope or self._default_scope
         if target_scope == "core":
             raise ReadOnlyScopeError("Core defaults are read-only")
         path = parse_key(key)
+        meta = metadata.get_meta_for(path)
+        if (
+            target_scope == "user"
+            and meta.get("locked")
+            and meta.get("policy") != "user_over_project"
+        ):
+            raise LockedPreferenceError(
+                f"{KEY_JOIN_CHAR.join(path)} is project-controlled and locked."
+            )
         dotted = ".".join(path)
         event_key = KEY_JOIN_CHAR.join(path)
         if dotted.startswith("secret.") or self._meta_secret(path):

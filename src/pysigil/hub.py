@@ -8,7 +8,7 @@ from typing import Any, Callable, Protocol, runtime_checkable
 #from pyprojroot import here
 
 from .core import Sigil
-from .keys import parse_key
+from .keys import KeyPath, parse_key
 
 __all__ = ["get_preferences", "parse_key"]
 
@@ -142,6 +142,9 @@ def get_preferences(
     def set_pref(key: str, value: Any, *, scope: str = "user") -> Any:
         return _lazy().set_pref(key, value, scope=scope)
 
+    def effective_scope_for(key: str | KeyPath) -> str:
+        return _lazy().effective_scope_for(key)
+
     def launch_gui() -> None:
         """Launch a preferences GUI configured for this package."""
         from .gui import launch_gui as _launch
@@ -151,4 +154,4 @@ def get_preferences(
         # caller's package-specific defaults and metadata.
         _launch(sigil=sigil)
 
-    return get_pref, set_pref, launch_gui
+    return get_pref, set_pref, effective_scope_for, launch_gui
