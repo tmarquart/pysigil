@@ -314,11 +314,12 @@ class Sigil:
             raise ReadOnlyScopeError("Core defaults are read-only")
         path = parse_key(key)
         dotted = ".".join(path)
+        event_key = KEY_JOIN_CHAR.join(path)
         if dotted.startswith("secret.") or self._meta_secret(path):
             if not self._secrets.can_write():
                 raise SigilWriteError("Secrets backend is read-only or locked")
             self._secrets.set(dotted, str(value))
-            events.emit("pref_changed", dotted, value, scope or self._default_scope)
+            events.emit("pref_changed", event_key, value, scope or self._default_scope)
             return
         data, path_file = self._get_scope_storage(target_scope)
         with self._lock:
@@ -329,7 +330,7 @@ class Sigil:
             backend = get_backend_for_path(path_file)
             backend.save(path_file, data)
             self.invalidate_cache()
-        events.emit("pref_changed", dotted, value, target_scope)
+        events.emit("pref_changed", event_key, value, target_scope)
 
     def _get_scope_storage(self, scope: str) -> tuple[MutableMapping[KeyPath, str], Path]:
         if scope == "user":

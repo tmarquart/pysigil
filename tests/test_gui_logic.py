@@ -81,6 +81,15 @@ def test_add(monkeypatch, tmp_path):
     assert widgets["trees"]["user"].rows["color"][1] == "blue"
 
 
+def test_add_with_underscore(monkeypatch, tmp_path):
+    sig, widgets = setup_func(tmp_path)
+    monkeypatch.setattr(gui, "_open_value_dialog", lambda *a, **k: ("foo_bar", "baz"))
+    gui._on_add(widgets)
+    assert sig.get_pref("foo_bar") == "baz"
+    assert "foo_bar" in widgets["trees"]["user"].rows
+    assert "foo.bar" not in widgets["trees"]["user"].rows
+
+
 def test_edit(monkeypatch, tmp_path):
     sig, widgets = setup_func(tmp_path)
     sig.set_pref("color", "blue", scope="user")
