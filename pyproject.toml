@@ -27,6 +27,7 @@ secrets-crypto = ["keyring>=25", "cryptography>=42"]
 
 [project.scripts]
 sigil = "pysigil.cli:main"
+pysigil = "pysigil.cli:main"
 sigil-gui = "pysigil.gui:launch_gui"
 
 [tool.ruff]
