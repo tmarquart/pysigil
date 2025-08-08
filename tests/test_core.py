@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from sigilcraft.core import Sigil
+from pysigil.core import Sigil
 
 
 def test_defaults_and_env_override(monkeypatch):

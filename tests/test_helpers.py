@@ -5,7 +5,7 @@ import shutil
 import sys
 from pathlib import Path
 
-from sigilcraft.helpers import make_package_prefs
+from pysigil.helpers import make_package_prefs
 
 
 

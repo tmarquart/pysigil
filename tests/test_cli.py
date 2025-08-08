@@ -1,6 +1,6 @@
 
 
-from sigilcraft import cli, core
+from pysigil import cli, core
 
 
 def test_cli_set_and_get(tmp_path, monkeypatch, capsys):

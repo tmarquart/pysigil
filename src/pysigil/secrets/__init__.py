@@ -9,7 +9,7 @@ from typing import Protocol
 
 from ..errors import SigilSecretsError
 
-logger = logging.getLogger("sigil.secrets")
+logger = logging.getLogger("pysigil.secrets")
 
 
 class SecretProvider(Protocol):

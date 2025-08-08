@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from sigilcraft.errors import SigilSecretsError
-from sigilcraft.secrets import EncryptedFileProvider, EnvSecretProvider, KeyringProvider
+from pysigil.errors import SigilSecretsError
+from pysigil.secrets import EncryptedFileProvider, EnvSecretProvider, KeyringProvider
 
 
 def test_keyring_roundtrip(monkeypatch):
@@ -60,7 +60,7 @@ def test_secret_precedence_env_overrides_files(tmp_path, monkeypatch):
     user = tmp_path / "user.ini"
     user.write_text("[global]\nsecret.token=from_user\n")
     monkeypatch.setenv("SIGIL_SECRET_APP_SECRET_TOKEN", "from_env")
-    from sigilcraft.core import Sigil
+    from pysigil.core import Sigil
 
     s = Sigil("app", user_scope=user, project_scope=tmp_path / "p.ini")
     assert s.get_pref("secret.token") == "from_env"

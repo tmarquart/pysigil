@@ -1,8 +1,8 @@
-# Sigil MVP — Package-Author Integration Checklist
+# pysigil MVP — Package-Author Integration Checklist
 
 (Everything you need to do; everything you automatically get. Nothing more.)
 
-| # | Action you take in your package | Exact snippet / path | What Sigil gives you for free |
+| # | Action you take in your package | Exact snippet / path | What pysigil gives you for free |
 |---|--------------------------------|----------------------|--------------------------------|
 | 1 | Create a defaults file (INI only for MVP) | `mypkg/prefs/defaults.ini`<br><br>```ini
 [db]
@@ -10,15 +10,15 @@ host = localhost
 port = 5432
 ``` | Becomes the base layer of the preference chain. |
 | 2 | Declare that file in `pyproject.toml` | ```toml
-[tool.sigil]
+[tool.pysigil]
 defaults = "prefs/defaults.ini"
-``` | Sigil-Hub auto-discovers your package during import. |
-| 3 | (Optional but recommended) Expose helpers so callers never touch Sigil APIs | ```python
+``` | pysigil-Hub auto-discovers your package during import. |
+| 3 | (Optional but recommended) Expose helpers so callers never touch pysigil APIs | ```python
 # mypkg/__init__.py
-from sigil.hub import get_preferences as _gp
+from pysigil.hub import get_preferences as _gp
 get_pref, set_pref = _gp(__name__)  # __name__ == "mypkg"
 ``` | • One-line access:<br>`get_pref("db.host")`<br>• Handles env ▶ project ▶ user ▶ defaults without extra code. |
-| 4 | (Optional) ship metadata later | Add `prefs/defaults.meta.json` and set `meta = "prefs/defaults.meta.json"` under `[tool.sigil]` | When the GUI arrives, titles, tool-tips and “secret” flags will show automatically. No impact on MVP. |
+| 4 | (Optional) ship metadata later | Add `prefs/defaults.meta.json` and set `meta = "prefs/defaults.meta.json"` under `[tool.pysigil]` | When the GUI arrives, titles, tool-tips and “secret” flags will show automatically. No impact on MVP. |
 
 ## What you get immediately
 
@@ -36,6 +36,6 @@ sigil set --app mypkg key value
 
 Files auto-created as needed.
 
-Zero runtime deps: Sigil is pure std-lib + your INI file.
+Zero runtime deps: pysigil is pure std-lib + your INI file.
 
 That’s it. Add one defaults file, one `[tool.sigil]` line, (optionally) four helper lines — and your package instantly gains a robust, chain-aware configuration system.

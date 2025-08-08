@@ -1,14 +1,19 @@
-# Sigil
+# pysigil
 
 Preference management for small apps.
 
 ## Quick start
 
-Install Sigil in a virtual environment to make the `sigil` command available:
+Install pysigil in a virtual environment to make the `sigil` command available:
 
 ```bash
 python -m venv .venv && source .venv/bin/activate  # Windows: .venv\Scripts\Activate
 pip install -e .  # or `pip install .` for a normal install
+```
+
+```python
+from pysigil import get_preferences
+get_pref, set_pref, launch_gui = get_preferences()
 ```
 
 Once installed, try a few commands:
@@ -29,7 +34,7 @@ For package integration details see [docs/integration.md](docs/integration.md).
 
 ## Using the GUI
 
-Sigil ships with a simple graphical editor for viewing and editing
+pysigil ships with a simple graphical editor for viewing and editing
 preferences. After installation launch it with:
 
 ```bash

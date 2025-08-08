@@ -3,15 +3,21 @@ requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-where = ["."]
-include = ["sigilcraft*"]
+where = ["src"]
+include = ["pysigil*"]
 exclude = ["appdirs"]
 
+[tool.setuptools.package-dir]
+"" = "src"
+
 [project]
-name = "sigilcraft"
-version = "0.1.1"
-requires-python = ">=3.9"
+name = "pysigil"
+description = "Preferences & secrets manager with layered scopes and tuple-key internals"
+readme = "README.md"
+requires-python = ">=3.10"
+version = "0.2.0"
 dependencies = ["appdirs"]
+authors = [{ name = "Tim Marquart" }]
 
 [project.optional-dependencies]
 json5 = ["pyjson5>=1.6"]
@@ -20,8 +26,8 @@ secrets = ["keyring>=25"]
 secrets-crypto = ["keyring>=25", "cryptography>=42"]
 
 [project.scripts]
-sigil = "sigilcraft.cli:main"
-sigil-gui = "sigilcraft.gui:launch_gui"
+sigil = "pysigil.cli:main"
+sigil-gui = "pysigil.gui:launch_gui"
 
 [tool.ruff]
 line-length = 88
@@ -32,7 +38,7 @@ fix = true
 unsafe-fixes = false
 
 [tool.ruff.lint.isort]
-known-first-party = ["sigilcraft"]
+known-first-party = ["pysigil"]
 combine-as-imports = true
 
 [tool.ruff.format]

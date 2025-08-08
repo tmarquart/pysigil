@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from sigilcraft.core import Sigil
+from pysigil.core import Sigil
 
 
 def test_typed_getters_happy():

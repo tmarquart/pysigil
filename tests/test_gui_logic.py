@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from sigilcraft import events, gui
-from sigilcraft.core import Sigil
+from pysigil import events, gui
+from pysigil.core import Sigil
 
 
 class DummyTree:
