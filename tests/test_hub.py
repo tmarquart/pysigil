@@ -19,7 +19,7 @@ def test_get_preferences_launch_gui(tmp_path, monkeypatch):
 
     monkeypatch.setattr("pysigil.gui.launch_gui", fake_launch)
 
-    get_pref, set_pref, launch_gui = get_preferences(
+    get_pref, set_pref, effective_scope_for, launch_gui = get_preferences(
         "pysigil", default_pref_directory=str(prefs_dir)
     )
 

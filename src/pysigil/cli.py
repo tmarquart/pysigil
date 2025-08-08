@@ -42,6 +42,10 @@ def build_parser(prog: str = "sigil") -> argparse.ArgumentParser:
     export_p.add_argument("--prefix", default="SIGIL_")
     export_p.add_argument("--json", action="store_true")
 
+    where_p = sub.add_parser("where")
+    where_p.add_argument("key")
+    where_p.add_argument("--app", required=True)
+
     return parser
 
 
@@ -91,6 +95,37 @@ def main(argv: list[str] | None = None) -> int:
         elif args.scmd == "unlock":
             sigil._secrets.unlock()
             return 0
+    elif args.cmd == "where":
+        from .keys import parse_key
+        from . import metadata
+
+        kp = parse_key(args.key)
+        meta = metadata.get_meta_for(kp)
+        order = sigil._order_for(kp)
+        rows = []
+        eff_scope, eff_val = None, None
+        for scope in ("env", "project", "user", "default", "core"):
+            val = sigil._value_from_scope(scope, kp)
+            mark = ""
+            disp_scope = scope
+            if eff_val is None and val is not None and scope in order:
+                eff_scope, eff_val = scope, val
+                mark = "\u2190 effective"
+            val_display = "\u2014" if val is None else str(val)
+            rows.append((disp_scope, val_display, mark))
+        print(f"Key: {'.'.join(kp)}")
+        print(
+            f"Policy: {meta.get('policy')}  (locked: {str(meta.get('locked')).lower()})"
+        )
+        print()
+        for scope, val, mark in rows:
+            label = "defaults" if scope == "default" else scope
+            print(f"{label+':':<9}{val:<15}{mark}")
+        print()
+        print(f"Effective scope: {eff_scope if eff_scope else 'none'}")
+        if eff_val is not None:
+            print(f"Value: {eff_val}")
+        return 0
     return 1
 
 
