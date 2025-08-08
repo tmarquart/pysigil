@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 
 from .core import Sigil
 
 
-def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="sigil")
+def build_parser(prog: str = "sigil") -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog=prog)
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     get_p = sub.add_parser("get")
@@ -45,7 +46,11 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = build_parser()
+    argv = sys.argv[1:] if argv is None else argv
+    prog = os.path.basename(sys.argv[0]) or "sigil"
+    if prog == "__main__.py":
+        prog = "pysigil"
+    parser = build_parser(prog)
     args = parser.parse_args(argv)
     sigil = Sigil(args.app)
     if args.cmd == "get":

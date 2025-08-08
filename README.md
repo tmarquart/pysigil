@@ -4,11 +4,19 @@ Preference management for small apps.
 
 ## Quick start
 
-Install pysigil in a virtual environment to make the `sigil` command available:
+Install pysigil in a virtual environment to make the `sigil` and `pysigil` commands available:
 
 ```bash
 python -m venv .venv && source .venv/bin/activate  # Windows: .venv\Scripts\Activate
 pip install -e .  # or `pip install .` for a normal install
+```
+
+```bash
+sigil --help
+# or
+pysigil --help
+# or
+python -m pysigil --help
 ```
 
 ```python

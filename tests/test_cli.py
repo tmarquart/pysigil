@@ -1,5 +1,8 @@
 
 
+import subprocess
+import sys
+
 from pysigil import cli, core
 
 
@@ -52,3 +55,15 @@ def test_cli_secret_set_get(tmp_path, monkeypatch, capsys):
     assert cli.main(["secret", "get", "token", "--app", "myapp", "--reveal"]) == 0
     revealed = capsys.readouterr().out.strip()
     assert revealed == "abc"
+
+
+def test_cli_help_aliases():
+    sigil_help = cli.build_parser(prog="sigil").format_help()
+    pysigil_help = cli.build_parser(prog="pysigil").format_help()
+    assert sigil_help.replace("sigil", "CMD") == pysigil_help.replace("pysigil", "CMD")
+
+
+def test_module_entry_point_help():
+    proc = subprocess.run([sys.executable, "-m", "pysigil", "--help"], capture_output=True, text=True)
+    assert proc.returncode == 0
+    assert "usage: pysigil" in proc.stdout
