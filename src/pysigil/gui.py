@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+import logging
+import os
 from pathlib import Path
 from typing import Literal
 
@@ -12,10 +14,18 @@ except Exception:  # pragma: no cover - fallback for headless tests
     simpledialog = None  # type: ignore
     ttk = None  # type: ignore
 
-from . import gui_state, hub
+from . import events, gui_state, hub
 from .core import Sigil
 from .keys import KeyPath
 from .widgets import widget_for
+
+
+logger = logging.getLogger("pysigil.gui")
+if os.environ.get("SIGIL_GUI_DEBUG") and not logger.handlers:
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter("%(levelname)s:%(message)s"))
+    logger.addHandler(handler)
+    logger.setLevel(logging.DEBUG)
 
 # ---------------------------------------------------------------------------
 # Public API helpers expected by GUI
@@ -36,10 +46,13 @@ def open_package(package: str, include_sigil: bool) -> None:
     """
 
     global _sigil_instance, _current_package
+    logger.debug("opening package %s include_sigil=%s", package, include_sigil)
     try:
         hub.get_preferences(package)
         _sigil_instance = hub._instances.get(package)  # type: ignore[attr-defined]
-    except Exception:
+        logger.debug("loaded instance for %s via hub", package)
+    except Exception as exc:
+        logger.debug("hub resolution failed for %s: %s", package, exc)
         _sigil_instance = Sigil(package)
     _current_package = package
     # ``include_sigil`` is currently unused but kept for API compatibility.
@@ -70,9 +83,11 @@ def _current_scope(widgets: dict) -> str:
 
 def _populate_tree(tree, scope: str) -> None:
     if _sigil_instance is None:
+        logger.debug("no sigil instance; skipping populate for %s", scope)
         return
     tree.delete(*tree.get_children())
     values = _sigil_instance.scoped_values().get(scope, {})
+    logger.debug("populate %s with %d entries", scope, len(values))
     for key, value in sorted(values.items()):
         tree.insert("", "end", iid=key, values=(key, value))
 
@@ -146,6 +161,7 @@ def _on_delete(widgets: dict) -> None:
 
 
 def _on_pref_changed(widgets: dict, key: str, new_val: str | None, scope: str) -> None:
+    logger.debug("pref_changed %s=%s scope=%s", key, new_val, scope)
     tree = widgets["trees"].get(scope)
     if tree is None:
         return
@@ -293,7 +309,9 @@ def launch_gui(
         empty_labels[scope] = ttk.Label(frame, text="No settings in this scope yet.")
 
     def _refresh() -> None:
+        logger.debug("refreshing view")
         for scope, tree in trees.items():
+            logger.debug("refreshing scope %s", scope)
             _populate_tree(tree, scope)
             if not tree.get_children():
                 tree.pack_forget()
@@ -304,8 +322,23 @@ def launch_gui(
 
     _refresh()
 
+    widgets = {"notebook": notebook, "trees": trees}
+    button_bar = ttk.Frame(root)
+    button_bar.pack(fill="x", padx=4, pady=4)
+    ttk.Button(button_bar, text="Add", command=lambda: _on_add(widgets)).pack(
+        side="left", padx=2
+    )
+    ttk.Button(button_bar, text="Edit", command=lambda: _on_edit(widgets)).pack(
+        side="left", padx=2
+    )
+    ttk.Button(button_bar, text="Delete", command=lambda: _on_delete(widgets)).pack(
+        side="left", padx=2
+    )
+    events.on("pref_changed", lambda k, v, s: _on_pref_changed(widgets, k, v, s))
+
     def _on_pkg_change(event=None):
         new_pkg = pkg_var.get()
+        logger.debug("package switched to %s", new_pkg)
         state["last_package"] = new_pkg
         open_package(new_pkg, sigil_var.get())
         _refresh()
@@ -314,6 +347,7 @@ def launch_gui(
 
     def _on_tab_change(event=None):
         tab_name = notebook.tab(notebook.select(), "text")
+        logger.debug("tab changed to %s", tab_name)
         state["last_tab"] = tab_name
 
     notebook.bind("<<NotebookTabChanged>>", _on_tab_change)
