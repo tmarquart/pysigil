@@ -116,6 +116,13 @@ def get_preferences(
     """
 
     def _lazy() -> "Sigil":
+        # When a custom defaults directory or settings filename is provided we
+        # need to recreate any cached instance for *package* so that callers can
+        # override these paths in tests or specialised environments.
+        if default_pref_directory is not None or settings_filename != "settings.ini":
+            with _lock:
+                _instances.pop(package, None)
+
         if package not in _instances:
             with _lock:
                 if package not in _instances:

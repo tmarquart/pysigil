@@ -48,7 +48,12 @@ def open_package(package: str, include_sigil: bool) -> None:
     global _sigil_instance, _current_package
     logger.debug("opening package %s include_sigil=%s", package, include_sigil)
     try:
-        hub.get_preferences(package)
+        get_pref, *_ = hub.get_preferences(package)
+        # Force instantiation of the package-specific Sigil by performing a
+        # harmless lookup.  ``get_preferences`` creates the instance lazily, so
+        # without this call ``hub._instances`` would remain empty and the GUI
+        # would show no values for newly selected packages.
+        get_pref("__sigil_gui_init__", default=None)
         _sigil_instance = hub._instances.get(package)  # type: ignore[attr-defined]
         logger.debug("loaded instance for %s via hub", package)
     except Exception as exc:
