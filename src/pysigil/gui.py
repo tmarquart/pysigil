@@ -12,7 +12,7 @@ except Exception:  # pragma: no cover - fallback for headless tests
     simpledialog = None  # type: ignore
     ttk = None  # type: ignore
 
-from . import gui_state
+from . import gui_state, hub
 from .core import Sigil
 from .keys import KeyPath
 from .widgets import widget_for
@@ -26,9 +26,21 @@ _current_package: str | None = None
 
 
 def open_package(package: str, include_sigil: bool) -> None:
-    """Instantiate a Sigil object for *package* and set globals."""
+    """Instantiate a Sigil object for *package* and set globals.
+
+    The GUI allows switching between packages at runtime.  Previously this
+    created a bare :class:`Sigil` instance which omitted any package-specific
+    default or metadata paths.  Instead, resolve the package through the hub so
+    that the same configuration used by ``get_preferences`` is honoured.  If
+    resolution fails we fall back to a plain ``Sigil`` instance.
+    """
+
     global _sigil_instance, _current_package
-    _sigil_instance = Sigil(package)
+    try:
+        hub.get_preferences(package)
+        _sigil_instance = hub._instances.get(package)  # type: ignore[attr-defined]
+    except Exception:
+        _sigil_instance = Sigil(package)
     _current_package = package
     # ``include_sigil`` is currently unused but kept for API compatibility.
 
