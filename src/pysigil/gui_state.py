@@ -9,7 +9,8 @@ try:
 except ModuleNotFoundError:  # pragma: no cover
     from ._appdirs_stub import user_config_dir
 
-STATE_PATH = Path(user_config_dir("pysigil")) / "gui_state.json"
+# Store GUI state alongside preference files under the same base directory.
+STATE_PATH = Path(user_config_dir("sigil")) / "gui_state.json"
 
 
 def read_state(path: Path | None = None) -> dict:
