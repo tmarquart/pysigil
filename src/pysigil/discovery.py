@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from importlib.metadata import entry_points, Distribution
-from typing import Iterator, Tuple
+from collections.abc import Iterator
+from importlib.metadata import Distribution, entry_points
 
 from .provider_id import pep503_name
 
@@ -20,7 +20,7 @@ def _iter_entry_points():
                 yield ep
 
 
-def iter_providers() -> Iterator[Tuple[str, str, Distribution]]:
+def iter_providers() -> Iterator[tuple[str, str, Distribution]]:
     """Yield unique providers discovered via entry points.
 
     Each item is ``(provider_id, display_name, dist)``.  Duplicate provider IDs
@@ -29,7 +29,7 @@ def iter_providers() -> Iterator[Tuple[str, str, Distribution]]:
     seen: set[str] = set()
     for ep in _iter_entry_points():
         dist: Distribution = ep.dist  # type: ignore[attr-defined]
-        name = getattr(dist, "metadata", {}).get("Name") or getattr(dist, "name")
+        name = getattr(dist, "metadata", {}).get("Name") or dist.name
         if not name:
             continue
         provider_id = pep503_name(name)

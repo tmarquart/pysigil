@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from importlib.metadata import Distribution
 from pathlib import Path
-from typing import Dict
 
 from .backend_ini import read_sections
 
@@ -11,7 +10,7 @@ class DefaultsFormatError(Exception):
     pass
 
 
-def load_provider_defaults(provider_id: str, dist: Distribution) -> Dict[str, Dict[str, str]]:
+def load_provider_defaults(provider_id: str, dist: Distribution) -> dict[str, dict[str, str]]:
     """Load provider defaults from a distribution.
 
     Parameters
@@ -31,7 +30,7 @@ def load_provider_defaults(provider_id: str, dist: Distribution) -> Dict[str, Di
             raise DefaultsFormatError("provider section name mismatch")
     if expected_section not in data:
         raise DefaultsFormatError("missing provider section")
-    result: Dict[str, Dict[str, str]] = {expected_section: data[expected_section]}
+    result: dict[str, dict[str, str]] = {expected_section: data[expected_section]}
     if "pysigil" in data:
         result["pysigil"] = data["pysigil"]
     return result

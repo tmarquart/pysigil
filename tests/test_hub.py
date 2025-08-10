@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 from pysigil.core import Sigil
 from pysigil.hub import get_preferences
 

@@ -1,7 +1,5 @@
 from pathlib import Path
 
-from pathlib import Path
-
 import pytest
 
 from pysigil import api, backend_ini

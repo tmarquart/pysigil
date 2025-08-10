@@ -15,7 +15,7 @@ def test_find_project_root_success(tmp_path: Path):
 
 
 def test_find_project_root_failure(tmp_path: Path):
-    with pytest.raises(resolver.ProjectRootNotFound):
+    with pytest.raises(resolver.ProjectRootNotFoundError):
         resolver.find_project_root(tmp_path)
 
 

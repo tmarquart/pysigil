@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import configparser
 from pathlib import Path
-from typing import Dict
 
 
 class IniIOError(Exception):
@@ -10,9 +9,9 @@ class IniIOError(Exception):
 
 
 # Returns mapping: section -> mapping(key -> value)
-def read_sections(path: Path) -> Dict[str, Dict[str, str]]:
+def read_sections(path: Path) -> dict[str, dict[str, str]]:
     parser = configparser.ConfigParser(strict=False)
-    data: Dict[str, Dict[str, str]] = {}
+    data: dict[str, dict[str, str]] = {}
     if path.exists():
         try:
             parser.read(path)
@@ -23,7 +22,7 @@ def read_sections(path: Path) -> Dict[str, Dict[str, str]]:
     return data
 
 
-def write_sections(path: Path, data: Dict[str, Dict[str, str]]) -> None:
+def write_sections(path: Path, data: dict[str, dict[str, str]]) -> None:
     parser = configparser.ConfigParser()
     for section in sorted(data):
         parser.add_section(section)

@@ -1,4 +1,3 @@
-import pytest
 
 from pysigil.provider_id import pep503_name
 

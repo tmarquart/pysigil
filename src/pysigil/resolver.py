@@ -1,19 +1,17 @@
-from __future__ import annotations
-
 """Project root and settings file resolution utilities."""
 
 from pathlib import Path
-from typing import Optional
 
 DEFAULT_FILENAME = "settings.ini"
 
-class ProjectRootNotFound(RuntimeError):
-    """Raised when no pyproject.toml can be found in parent directories."""
+
+class ProjectRootNotFoundError(RuntimeError):
+    """Raised when no ``pyproject.toml`` can be found in parent directories."""
     pass
 
 
-def find_project_root(start: Optional[Path] = None) -> Path:
-    """Return absolute path to nearest ancestor containing pyproject.toml.
+def find_project_root(start: Path | None = None) -> Path:
+    """Return absolute path to nearest ancestor containing ``pyproject.toml``.
 
     Parameters
     ----------
@@ -22,7 +20,7 @@ def find_project_root(start: Optional[Path] = None) -> Path:
 
     Raises
     ------
-    ProjectRootNotFound
+    ProjectRootNotFoundError
         If no ``pyproject.toml`` is found when walking up to the filesystem
         root.
     """
@@ -30,14 +28,14 @@ def find_project_root(start: Optional[Path] = None) -> Path:
     for candidate in (start_path, *start_path.parents):
         if (candidate / "pyproject.toml").is_file():
             return candidate.resolve()
-    raise ProjectRootNotFound(
+    raise ProjectRootNotFoundError(
         "No pyproject.toml found; provide --project-file or run inside a project"
     )
 
 
 def project_settings_file(
-    explicit_file: Optional[Path] = None,
-    start: Optional[Path] = None,
+    explicit_file: Path | None = None,
+    start: Path | None = None,
     filename: str = DEFAULT_FILENAME,
 ) -> Path:
     """Resolve the project settings file path.

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 from .backend_ini import read_sections, write_sections
 from .core_defaults import CORE_DEFAULTS
@@ -23,7 +22,7 @@ def _find_distribution(provider_id: str):  # pragma: no cover - thin wrapper
     except Exception:  # pragma: no cover
         return None
     for dist in distributions():
-        name = getattr(dist, "metadata", {}).get("Name") or getattr(dist, "name")
+        name = getattr(dist, "metadata", {}).get("Name") or dist.name
         if name and pep503_name(name) == provider_id:
             return dist
     return None
@@ -45,9 +44,9 @@ def get_value(
     provider_id: str,
     dotted_key: str,
     *,
-    project_file: Optional[Path] = None,
-    app: Optional[str] = None,
-) -> Optional[str]:
+    project_file: Path | None = None,
+    app: str | None = None,
+) -> str | None:
     app_name = app or provider_id
     project_path = project_settings_file(project_file)
     user_path = _user_settings_path(app_name)
@@ -86,7 +85,7 @@ def set_project_value(
     dotted_key: str,
     value: str,
     *,
-    project_file: Optional[Path] = None,
+    project_file: Path | None = None,
 ) -> None:
     path = project_settings_file(project_file)
     data = read_sections(path)
@@ -100,7 +99,7 @@ def set_user_value(
     dotted_key: str,
     value: str,
     *,
-    app: Optional[str] = None,
+    app: str | None = None,
 ) -> None:
     app_name = app or provider_id
     path = _user_settings_path(app_name)
