@@ -2,12 +2,8 @@ from __future__ import annotations
 
 import sys
 import types
-from pathlib import Path
 
-import pytest
-
-from pysigil.errors import SigilSecretsError
-from pysigil.secrets import EncryptedFileProvider, EnvSecretProvider, KeyringProvider
+from pysigil.secrets import EnvSecretProvider, KeyringProvider
 
 
 def test_keyring_roundtrip(monkeypatch):

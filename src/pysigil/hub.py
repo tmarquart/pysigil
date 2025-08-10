@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import inspect
 import threading
+from collections.abc import Callable
 from pathlib import Path
 from threading import Lock
-from typing import Any, Callable, Protocol, runtime_checkable
-#from pyprojroot import here
+from typing import Any, Protocol, runtime_checkable
 
+#from pyprojroot import here
 from .core import Sigil
 from .keys import KeyPath, parse_key
 
@@ -44,7 +45,7 @@ class LaunchGui(Protocol):
 # ---------------------------------------------------------------------------
 
 _lock: threading.Lock = threading.Lock()
-_instances: dict[str | None, "Sigil"] = {}
+_instances: dict[str | None, Sigil] = {}
 
 
 def _find_project_root(start: Path) -> Path:
@@ -115,7 +116,7 @@ def get_preferences(
         Name of the defaults file inside *default_pref_directory*.  Default: 'settings.ini'.
     """
 
-    def _lazy() -> "Sigil":
+    def _lazy() -> Sigil:
         # When a custom defaults directory or settings filename is provided we
         # need to recreate any cached instance for *package* so that callers can
         # override these paths in tests or specialised environments.

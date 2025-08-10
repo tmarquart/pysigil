@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from collections.abc import Callable
 import logging
 import os
+from collections.abc import Callable
 from pathlib import Path
 from typing import Literal
 
@@ -18,7 +18,6 @@ from . import events, gui_state, hub
 from .core import Sigil
 from .keys import KeyPath
 from .widgets import widget_for
-
 
 logger = logging.getLogger("pysigil.gui")
 if os.environ.get("SIGIL_GUI_DEBUG") and not logger.handlers:

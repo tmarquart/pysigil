@@ -111,8 +111,8 @@ def main(argv: list[str] | None = None) -> int:
             sigil._secrets.unlock()
             return 0
     elif args.cmd == "where":
-        from .keys import parse_key
         from . import metadata
+        from .keys import parse_key
 
         kp = parse_key(args.key)
         meta = metadata.get_meta_for(kp)

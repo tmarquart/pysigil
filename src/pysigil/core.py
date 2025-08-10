@@ -15,7 +15,6 @@ except ModuleNotFoundError:
     from ._appdirs_stub import user_config_dir
 
 from . import events, metadata
-
 from .backends import get_backend_for_path
 from .constants import KEY_JOIN_CHAR
 from .env import read_env

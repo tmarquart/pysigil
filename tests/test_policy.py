@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from pysigil.core import Sigil, LockedPreferenceError
+from pysigil.core import LockedPreferenceError, Sigil
 from pysigil.keys import parse_key
 
 
