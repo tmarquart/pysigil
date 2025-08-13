@@ -1,17 +1,21 @@
-"""Project root and settings file resolution utilities."""
+"""Utilities for resolving configuration file locations and project roots."""
 
+from importlib import resources
 from pathlib import Path
 
+from appdirs import user_config_dir
+from pyprojroot import here
+
 DEFAULT_FILENAME = "settings.ini"
+DEFAULT_DEFAULTS_FILENAME = "defaults.ini"
 
 
 class ProjectRootNotFoundError(RuntimeError):
-    """Raised when no ``pyproject.toml`` can be found in parent directories."""
-    pass
+    """Raised when no project root can be located."""
 
 
 def find_project_root(start: Path | None = None) -> Path:
-    """Return absolute path to nearest ancestor containing ``pyproject.toml``.
+    """Locate the nearest project root using :func:`pyprojroot.here`.
 
     Parameters
     ----------
@@ -21,16 +25,15 @@ def find_project_root(start: Path | None = None) -> Path:
     Raises
     ------
     ProjectRootNotFoundError
-        If no ``pyproject.toml`` is found when walking up to the filesystem
-        root.
+        If no project root can be determined.
     """
-    start_path = Path.cwd() if start is None else Path(start)
-    for candidate in (start_path, *start_path.parents):
-        if (candidate / "pyproject.toml").is_file():
-            return candidate.resolve()
-    raise ProjectRootNotFoundError(
-        "No pyproject.toml found; provide --project-file or run inside a project"
-    )
+
+    try:
+        if start is None:
+            return Path(here()).resolve()
+        return Path(here(start_path=Path(start))).resolve()
+    except Exception as exc:  # pragma: no cover - defensive
+        raise ProjectRootNotFoundError("No project root found") from exc
 
 
 def project_settings_file(
@@ -38,16 +41,49 @@ def project_settings_file(
     start: Path | None = None,
     filename: str = DEFAULT_FILENAME,
 ) -> Path:
-    """Resolve the project settings file path.
+    """Resolve the project-level settings file path.
 
     If ``explicit_file`` is supplied, its absolute path is returned. Otherwise
-    ``find_project_root`` is used to locate the project root and
+    :func:`find_project_root` is used to locate the project root and
     ``<root>/.pysigil/<filename>`` is returned.  The ``.pysigil`` directory is
     created if necessary.
     """
+
     if explicit_file is not None:
         return Path(explicit_file).expanduser().resolve()
     root = find_project_root(start)
     cfg_dir = root / ".pysigil"
     cfg_dir.mkdir(parents=True, exist_ok=True)
     return (cfg_dir / filename).resolve()
+
+
+def user_settings_file(app_name: str, filename: str = DEFAULT_FILENAME) -> Path:
+    """Return the user-level settings file for ``app_name``.
+
+    The file lives under ``<user_config_dir>/sigil/<app_name>/<filename>`` and
+    parent directories are created as needed.
+    """
+
+    base = Path(user_config_dir("sigil")) / app_name
+    base.mkdir(parents=True, exist_ok=True)
+    return (base / filename).resolve()
+
+
+def package_defaults_file(
+    package: str, filename: str = DEFAULT_DEFAULTS_FILENAME
+) -> Path | None:
+    """Return path to a package's bundled defaults file if present.
+
+    The function looks for ``prefs/<filename>`` within the installed package and
+    returns ``None`` if no such resource exists.
+    """
+
+    try:
+        pkg_root = resources.files(package)
+    except ModuleNotFoundError:  # pragma: no cover - defensive
+        return None
+    candidate = pkg_root / "prefs" / filename
+    if candidate.exists():
+        return Path(candidate).resolve()
+    return None
+

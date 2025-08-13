@@ -14,10 +14,17 @@ from .errors import (
     SigilWriteError,
     UnknownScopeError,
 )
+
 from .gui import events
 from .io_config import user_config_dir
+
 from .merge_policy import CORE_DEFAULTS, KeyPath, parse_key, read_env
-from .resolver import ProjectRootNotFoundError, project_settings_file
+from .resolver import (
+    ProjectRootNotFoundError,
+    package_defaults_file,
+    project_settings_file,
+    user_settings_file,
+)
 from .secrets import (
     EncryptedFileProvider,
     EnvSecretProvider,
@@ -57,13 +64,17 @@ class Sigil:
         self.app_name = app_name
         self.settings_filename = settings_filename
 
-        self.user_path = (
-            Path(user_scope)
-            if user_scope
-            else Path(user_config_dir("sigil"), self.app_name)
-        )
-        if self.user_path.suffix == "" or self.user_path.name != self.settings_filename:
-            self.user_path = self.user_path / self.settings_filename
+        if user_scope is not None:
+            self.user_path = Path(user_scope)
+            if (
+                self.user_path.suffix == ""
+                or self.user_path.name != self.settings_filename
+            ):
+                self.user_path = self.user_path / self.settings_filename
+        else:
+            self.user_path = user_settings_file(
+                self.app_name, filename=self.settings_filename
+            )
 
         if project_scope is not None:
             self.project_path = Path(project_scope)
@@ -80,15 +91,22 @@ class Sigil:
             except ProjectRootNotFoundError:
                 self.project_path = Path.cwd() / self.settings_filename
 
-        self.default_path = Path(default_path) if default_path else None
-        if self.default_path is not None:
-            if self.default_path.suffix == "" or self.default_path.name != self.settings_filename:
+        if default_path is not None:
+            self.default_path = Path(default_path)
+            if (
+                self.default_path.suffix == ""
+                or self.default_path.name != self.settings_filename
+            ):
                 self.default_path = self.default_path / self.settings_filename
+        else:
+            self.default_path = package_defaults_file(
+                self.app_name, filename=self.settings_filename
+            )
 
         self._defaults: MutableMapping[KeyPath, str] = {}
         if defaults:
             for k, v in defaults.items():
-                self._defaults[parse_key(k)] = str(v)
+                self._defaults[(self.app_name, *parse_key(k))] = str(v)
         self._env_reader = env_reader
         self._lock = RLock()
         self._default_scope = "user"
@@ -127,14 +145,29 @@ class Sigil:
 
     def invalidate_cache(self) -> None:
         with self._lock:
-            self._env = dict(self._env_reader(self.app_name))
+            raw_env = self._env_reader(self.app_name)
+            self._env = {(self.app_name, *k): v for k, v in raw_env.items()}
+
             user_backend = _backend_for(self.user_path)
             project_backend = _backend_for(self.project_path)
-            self._user = user_backend.load(self.user_path)
-            self._project = project_backend.load(self.project_path)
+            self._user = {
+                k: v
+                for k, v in user_backend.load(self.user_path).items()
+                if self._is_ours(k)
+            }
+            self._project = {
+                k: v
+                for k, v in project_backend.load(self.project_path).items()
+                if self._is_ours(k)
+            }
             if self.default_path is not None:
                 default_backend = _backend_for(self.default_path)
-                self._defaults = default_backend.load(self.default_path)
+                file_defaults = {
+                    k: v
+                    for k, v in default_backend.load(self.default_path).items()
+                    if self._is_ours(k)
+                }
+                self._defaults.update(file_defaults)
             self._merge_cache()
 
     def _merge_cache(self) -> None:
@@ -144,6 +177,12 @@ class Sigil:
         self._merged.update(self._user)
         self._merged.update(self._project)
         self._merged.update(self._env)
+
+    def _is_ours(self, path: KeyPath) -> bool:
+        return len(path) > 0 and path[0] == self.app_name
+
+    def _strip_prefix(self, path: KeyPath) -> KeyPath:
+        return path[1:] if self._is_ours(path) else path
 
     def _order_for(self, keypath: KeyPath) -> tuple[str, ...]:
         return PRECEDENCE_PROJECT_WINS
@@ -174,6 +213,7 @@ class Sigil:
     def _flatten(self, data: Mapping[KeyPath, str]) -> MutableMapping[str, str]:
         flat: MutableMapping[str, str] = {}
         for path, val in data.items():
+            path = self._strip_prefix(path)
             if len(path) == 1:
                 flat[path[0]] = val
             else:
@@ -183,7 +223,9 @@ class Sigil:
     def list_keys(self, scope: str) -> list[KeyPath]:
         """Return all preference keys defined in *scope* sorted alphabetically."""
         data = self._get_scope_dict(scope)
-        return sorted(data)
+        return sorted(
+            self._strip_prefix(k) for k in data if self._is_ours(k)
+        )
 
     def _get_scope_dict(self, scope: str) -> MutableMapping[KeyPath, str]:
         if scope == "user":
@@ -197,16 +239,17 @@ class Sigil:
         raise UnknownScopeError(scope)
 
     def get_pref(self, key: str | KeyPath, *, default: Any = None, cast: Callable[[str], Any] | None = None) -> Any:
-        path = parse_key(key)
-        dotted = ".".join(path)
+        raw_path = parse_key(key)
+        dotted = ".".join(raw_path)
         if dotted.startswith("secret."):
             val = self._secrets.get(dotted)
             if val is not None:
                 return self._cast(val, cast)
+        full_path = (self.app_name, *raw_path)
         with self._lock:
-            order = self._order_for(path)
+            order = self._order_for(full_path)
             for scope in order:
-                val = self._value_from_scope(scope, path)
+                val = self._value_from_scope(scope, full_path)
                 if val is not None:
                     return self._cast(val, cast)
         return default
@@ -321,23 +364,26 @@ class Sigil:
         target_scope = scope or self._default_scope
         if target_scope == "core":
             raise ReadOnlyScopeError("Core defaults are read-only")
-        path = parse_key(key)
-        dotted = ".".join(path)
+        raw_path = parse_key(key)
+        dotted = ".".join(raw_path)
         if dotted.startswith("secret."):
             if not self._secrets.can_write():
                 raise SigilWriteError("Secrets backend is read-only or locked")
             self._secrets.set(dotted, str(value))
             return
+        full_path = (self.app_name, *raw_path)
         data, path_file = self._get_scope_storage(target_scope)
         with self._lock:
             if value is None:
-                data.pop(path, None)
+                data.pop(full_path, None)
             else:
-                data[path] = str(value)
+                data[full_path] = str(value)
             backend = _backend_for(path_file)
             backend.save(path_file, data)
             self.invalidate_cache()
-        events.emit("pref_changed", dotted, str(value) if value is not None else None, target_scope)
+        events.emit(
+            "pref_changed", dotted, str(value) if value is not None else None, target_scope
+        )
 
     def _get_scope_storage(self, scope: str) -> tuple[MutableMapping[KeyPath, str], Path]:
         if scope == "user":
