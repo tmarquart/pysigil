@@ -47,6 +47,7 @@ def get_value(
     project_file: Path | None = None,
     app: str | None = None,
 ) -> str | None:
+    provider_id = pep503_name(provider_id)
     app_name = app or provider_id
     project_path = project_settings_file(project_file)
     user_path = _user_settings_path(app_name)
@@ -87,6 +88,7 @@ def set_project_value(
     *,
     project_file: Path | None = None,
 ) -> None:
+    provider_id = pep503_name(provider_id)
     path = project_settings_file(project_file)
     data = read_sections(path)
     section = f"provider:{provider_id}"
@@ -101,6 +103,7 @@ def set_user_value(
     *,
     app: str | None = None,
 ) -> None:
+    provider_id = pep503_name(provider_id)
     app_name = app or provider_id
     path = _user_settings_path(app_name)
     data = read_sections(path)
