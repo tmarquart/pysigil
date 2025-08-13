@@ -36,3 +36,4 @@ def test_default_roundtrip_fallback(tmp_path: Path, monkeypatch) -> None:
     cfg = tmp_path / "prefs" / "settings.ini"
     assert cfg.exists()
     assert "alpha_beta = 42" in cfg.read_text()
+
