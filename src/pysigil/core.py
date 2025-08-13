@@ -389,7 +389,18 @@ class Sigil:
             return self._user, self.user_path
         if scope == "project":
             return self._project, self.project_path
-        if scope == "default" and self.default_path is not None:
+        if scope == "default":
+            if self.default_path is None:
+                # Lazily resolve a path for the default scope.  If the package
+                # cannot be located fall back to a ``prefs`` directory under
+                # the current working directory so that callers can still
+                # create defaults for arbitrary packages.
+                path = package_defaults_file(
+                    self.app_name, filename=self.settings_filename
+                )
+                if path is None:
+                    path = Path.cwd() / "prefs" / self.settings_filename
+                self.default_path = path
             return self._defaults, self.default_path
         raise UnknownScopeError(scope)
 

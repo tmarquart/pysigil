@@ -26,3 +26,14 @@ def test_default_roundtrip(tmp_path: Path) -> None:
     content = default_file.read_text()
     assert "[demo]" in content
     assert "foo_bar = baz" in content
+
+
+def test_default_roundtrip_fallback(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    s = Sigil("no_pkg")
+    s.set_pref("alpha.beta", "42", scope="default")
+    assert s.get_pref("alpha.beta") == 42
+    cfg = tmp_path / "prefs" / "settings.ini"
+    assert cfg.exists()
+    assert "alpha_beta = 42" in cfg.read_text()
+
