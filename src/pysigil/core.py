@@ -8,12 +8,10 @@ from pathlib import Path
 from threading import RLock
 from typing import Any
 
+from . import events
 from .errors import (
     ReadOnlyScopeError,
-    SigilError,
-    SigilLoadError,
-    SigilMetaError,
-    SigilSecretsError,
+    SigilError,  # noqa: F401 - re-exported for compatibility
     SigilWriteError,
     UnknownScopeError,
 )
@@ -339,6 +337,7 @@ class Sigil:
             backend = _backend_for(path_file)
             backend.save(path_file, data)
             self.invalidate_cache()
+        events.emit("pref_changed", dotted, str(value) if value is not None else None, target_scope)
 
     def _get_scope_storage(self, scope: str) -> tuple[MutableMapping[KeyPath, str], Path]:
         if scope == "user":

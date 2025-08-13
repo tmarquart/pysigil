@@ -16,7 +16,7 @@ except Exception:  # pragma: no cover - fallback for headless tests
 
 from . import events, gui_state, hub
 from .core import Sigil
-from .keys import KeyPath
+from .merge_policy import KeyPath
 from .widgets import widget_for
 
 logger = logging.getLogger("pysigil.gui")
@@ -32,6 +32,19 @@ if os.environ.get("SIGIL_GUI_DEBUG") and not logger.handlers:
 
 _sigil_instance: Sigil | None = None
 _current_package: str | None = None
+
+
+class SigilGUI:
+    """Legacy wrapper used in tests to ensure GUI can be instantiated."""
+
+    def __init__(self, sigil: Sigil) -> None:
+        if tk is None or ttk is None:  # pragma: no cover - tkinter missing
+            raise RuntimeError("tkinter is required for GUI mode")
+        self.sigil = sigil
+        try:
+            self.root = tk.Tk()
+        except Exception as exc:  # pragma: no cover - no display
+            raise RuntimeError(str(exc)) from exc
 
 
 def open_package(package: str, include_sigil: bool) -> None:
@@ -371,6 +384,7 @@ def launch_gui(
 
 
 __all__ = [
+    "SigilGUI",
     "open_package",
     "current_keys",
     "effective_scope_for",

@@ -42,6 +42,11 @@ def build_parser(prog: str = "sigil") -> argparse.ArgumentParser:
     export_p.add_argument("--prefix", default="SIGIL_")
     export_p.add_argument("--json", action="store_true")
 
+    gui_p = sub.add_parser("gui")
+    gui_p.add_argument("--app")
+    gui_p.add_argument("--include-sigil", action="store_true")
+    gui_p.add_argument("--no-remember", action="store_true")
+
     return parser
 
 
@@ -52,7 +57,8 @@ def main(argv: list[str] | None = None) -> int:
         prog = "pysigil"
     parser = build_parser(prog)
     args = parser.parse_args(argv)
-    sigil = Sigil(args.app)
+    if args.cmd != "gui":
+        sigil = Sigil(args.app)
     if args.cmd == "get":
         val = sigil.get_pref(args.key)
         if val is None:
@@ -91,6 +97,15 @@ def main(argv: list[str] | None = None) -> int:
         elif args.scmd == "unlock":
             sigil._secrets.unlock()
             return 0
+    elif args.cmd == "gui":
+        from .gui import launch_gui
+
+        launch_gui(
+            package=args.app,
+            include_sigil=args.include_sigil,
+            remember_state=not args.no_remember,
+        )
+        return 0
     return 1
 
 
