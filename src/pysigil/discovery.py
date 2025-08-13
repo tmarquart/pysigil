@@ -2,10 +2,16 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from importlib.metadata import Distribution, entry_points
-
-from .provider_id import pep503_name
+import re
 
 GROUPS = ("pysigil_providers", "pysigil.providers")
+
+_RE = re.compile(r"[-_.]+")
+
+
+def pep503_name(dist_name: str) -> str:
+    """Return the PEP 503 normalised project name."""
+    return _RE.sub("-", dist_name.strip().lower())
 
 
 def _iter_entry_points():

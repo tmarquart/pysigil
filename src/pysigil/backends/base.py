@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
-from ..keys import KeyPath
+from ..merge_policy import KeyPath
 
 
 class BaseBackend(ABC):

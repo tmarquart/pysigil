@@ -4,22 +4,21 @@ import json
 import logging
 from collections.abc import Callable, Mapping, MutableMapping, Sequence
 from contextlib import contextmanager
-from importlib.resources import files
 from pathlib import Path
 from threading import RLock
 from typing import Any
 
-try:
-    from appdirs import user_config_dir
-except ModuleNotFoundError:
-    from ._appdirs_stub import user_config_dir
-
-from . import events, metadata
-from .backends import get_backend_for_path
-from .constants import KEY_JOIN_CHAR
-from .env import read_env
-from .errors import ReadOnlyScopeError, SigilWriteError, UnknownScopeError
-from .keys import KeyPath, parse_key
+from .errors import (
+    ReadOnlyScopeError,
+    SigilError,
+    SigilLoadError,
+    SigilMetaError,
+    SigilSecretsError,
+    SigilWriteError,
+    UnknownScopeError,
+)
+from .io_config import user_config_dir
+from .merge_policy import CORE_DEFAULTS, KeyPath, parse_key, read_env
 from .resolver import ProjectRootNotFoundError, project_settings_file
 from .secrets import (
     EncryptedFileProvider,
@@ -29,32 +28,19 @@ from .secrets import (
     SecretProvider,
 )
 
+
+def _backend_for(path: Path):
+    from .backends import get_backend_for_path
+
+    return get_backend_for_path(path)
+
 logger = logging.getLogger("pysigil")
 
-
-_core_cache: MutableMapping[KeyPath, str] | None = None
+KEY_JOIN_CHAR = "_"
 
 
 PRECEDENCE_USER_WINS = ("env", "user", "project", "default", "core")
 PRECEDENCE_PROJECT_WINS = ("env", "project", "user", "default", "core")
-
-
-class LockedPreferenceError(RuntimeError):
-    """Raised when attempting to modify a locked preference."""
-
-
-def _load_core_defaults() -> MutableMapping[KeyPath, str]:
-    global _core_cache
-    if _core_cache is not None:
-        return _core_cache
-    try:
-        path = files("pysigil.resources") / "core_defaults.ini"
-        backend = get_backend_for_path(Path(path))
-        _core_cache = backend.load(Path(path))
-    except Exception as exc:  # pragma: no cover - missing or malformed file
-        logger.warning("Failed to load core defaults: %s", exc)
-        _core_cache = {}
-    return _core_cache
 
 
 class Sigil:
@@ -68,7 +54,6 @@ class Sigil:
         default_path: Path | None = None,
         env_reader: Callable[[str], Mapping[KeyPath, str]] = read_env,
         secrets: Sequence[SecretProvider] | None = None,
-        meta_path: Path | None = None,
         settings_filename='settings.ini'
     ) -> None:
         self.app_name = app_name
@@ -109,11 +94,6 @@ class Sigil:
         self._env_reader = env_reader
         self._lock = RLock()
         self._default_scope = "user"
-        mpath = meta_path or self.user_path.parent / "defaults.meta.csv"
-        try:
-            metadata.load(mpath if mpath.exists() else None)
-        except Exception as exc:  # pragma: no cover - malformed meta
-            logger.error("Failed to load metadata: %s", exc)
         enc_path = self.default_path.with_suffix(".enc.json") if self.default_path else None
         if secrets is None:
             providers = [
@@ -124,9 +104,11 @@ class Sigil:
             self._secrets = SecretChain(providers)
         else:
             self._secrets = SecretChain(secrets)
-        self._core = _load_core_defaults()
+        self._core: MutableMapping[KeyPath, str] = {}
+        for section, mapping in CORE_DEFAULTS.items():
+            for k, v in mapping.items():
+                self._core[parse_key(f"{section}.{k}")] = str(v)
         self.invalidate_cache()
-        # Patch helpers to access preferences at runtime (no-op currently)
 
     @property
     def default_scope(self) -> str:
@@ -148,12 +130,12 @@ class Sigil:
     def invalidate_cache(self) -> None:
         with self._lock:
             self._env = dict(self._env_reader(self.app_name))
-            user_backend = get_backend_for_path(self.user_path)
-            project_backend = get_backend_for_path(self.project_path)
+            user_backend = _backend_for(self.user_path)
+            project_backend = _backend_for(self.project_path)
             self._user = user_backend.load(self.user_path)
             self._project = project_backend.load(self.project_path)
             if self.default_path is not None:
-                default_backend = get_backend_for_path(self.default_path)
+                default_backend = _backend_for(self.default_path)
                 self._defaults = default_backend.load(self.default_path)
             self._merge_cache()
 
@@ -166,12 +148,7 @@ class Sigil:
         self._merged.update(self._env)
 
     def _order_for(self, keypath: KeyPath) -> tuple[str, ...]:
-        meta = metadata.get_meta_for(keypath)
-        return (
-            PRECEDENCE_USER_WINS
-            if meta.get("policy") == "user_over_project"
-            else PRECEDENCE_PROJECT_WINS
-        )
+        return PRECEDENCE_PROJECT_WINS
 
     def _value_from_scope(self, scope: str, key: KeyPath) -> str | None:
         if scope == "env":
@@ -221,13 +198,10 @@ class Sigil:
             return self._core
         raise UnknownScopeError(scope)
 
-    def _meta_secret(self, key: KeyPath) -> bool:
-        return bool(metadata.get_meta_for(key).get("secret"))
-
     def get_pref(self, key: str | KeyPath, *, default: Any = None, cast: Callable[[str], Any] | None = None) -> Any:
         path = parse_key(key)
         dotted = ".".join(path)
-        if dotted.startswith("secret.") or self._meta_secret(path):
+        if dotted.startswith("secret."):
             val = self._secrets.get(dotted)
             if val is not None:
                 return self._cast(val, cast)
@@ -324,7 +298,7 @@ class Sigil:
         out: dict[str, str] = {}
         for path in sorted(self._merged):
             dotted = ".".join(path)
-            if dotted.startswith("secret.") or self._meta_secret(path):
+            if dotted.startswith("secret."):
                 if not include_secrets:
                     continue
             val = self.get_pref(path)
@@ -350,22 +324,11 @@ class Sigil:
         if target_scope == "core":
             raise ReadOnlyScopeError("Core defaults are read-only")
         path = parse_key(key)
-        meta = metadata.get_meta_for(path)
-        if (
-            target_scope == "user"
-            and meta.get("locked")
-            and meta.get("policy") != "user_over_project"
-        ):
-            raise LockedPreferenceError(
-                f"{KEY_JOIN_CHAR.join(path)} is project-controlled and locked."
-            )
         dotted = ".".join(path)
-        event_key = KEY_JOIN_CHAR.join(path)
-        if dotted.startswith("secret.") or self._meta_secret(path):
+        if dotted.startswith("secret."):
             if not self._secrets.can_write():
                 raise SigilWriteError("Secrets backend is read-only or locked")
             self._secrets.set(dotted, str(value))
-            events.emit("pref_changed", event_key, value, scope or self._default_scope)
             return
         data, path_file = self._get_scope_storage(target_scope)
         with self._lock:
@@ -373,10 +336,9 @@ class Sigil:
                 data.pop(path, None)
             else:
                 data[path] = str(value)
-            backend = get_backend_for_path(path_file)
+            backend = _backend_for(path_file)
             backend.save(path_file, data)
             self.invalidate_cache()
-        events.emit("pref_changed", event_key, value, target_scope)
 
     def _get_scope_storage(self, scope: str) -> tuple[MutableMapping[KeyPath, str], Path]:
         if scope == "user":
