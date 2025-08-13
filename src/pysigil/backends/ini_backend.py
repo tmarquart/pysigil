@@ -4,8 +4,7 @@ import configparser
 from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
-from ..constants import KEY_JOIN_CHAR
-from ..keys import KeyPath, parse_key
+from ..merge_policy import KeyPath, parse_key
 from . import register_backend
 from .base import BaseBackend
 
@@ -36,7 +35,7 @@ class IniBackend(BaseBackend):
                 key_name = kp[0]
             else:
                 section = kp[0]
-                key_name = KEY_JOIN_CHAR.join(kp[1:])
+                key_name = "_".join(kp[1:])
             if not parser.has_section(section):
                 parser.add_section(section)
             parser.set(section, key_name, str(value))

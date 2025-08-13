@@ -5,7 +5,7 @@ from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
 from ..errors import SigilLoadError
-from ..keys import KeyPath
+from ..merge_policy import KeyPath
 from . import register_backend
 from .base import BaseBackend
 

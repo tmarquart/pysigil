@@ -1,9 +1,21 @@
 from __future__ import annotations
 
 import os
+import re
 from collections.abc import MutableMapping
 
-from .keys import KeyPath, parse_key
+KeyPath = tuple[str, ...]
+
+_SPLIT_RX = re.compile(r"[._]")
+
+
+def parse_key(raw: str | KeyPath) -> KeyPath:
+    if isinstance(raw, tuple):
+        return raw
+    parts = _SPLIT_RX.split(raw) if _SPLIT_RX.search(raw) else [raw]
+    if any(p == "" for p in parts):
+        raise ValueError(f"Malformed key '{raw}'")
+    return tuple(parts)
 
 
 def read_env(app_name: str) -> MutableMapping[KeyPath, str]:
@@ -14,3 +26,6 @@ def read_env(app_name: str) -> MutableMapping[KeyPath, str]:
             raw = key[len(prefix):].lower()
             result[parse_key(raw)] = value
     return result
+
+
+CORE_DEFAULTS = {"pysigil": {"policy": "project_over_user"}}
