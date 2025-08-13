@@ -72,10 +72,12 @@ def user_settings_file(app_name: str, filename: str = DEFAULT_FILENAME) -> Path:
 def package_defaults_file(
     package: str, filename: str = DEFAULT_DEFAULTS_FILENAME
 ) -> Path | None:
-    """Return path to a package's bundled defaults file if present.
+    """Return path to a package's bundled defaults file.
 
-    The function looks for ``prefs/<filename>`` within the installed package and
-    returns ``None`` if no such resource exists.
+    The path points to ``prefs/<filename>`` within the installed package.  If
+    the package itself cannot be located ``None`` is returned.  The defaults
+    file does not need to exist yet; callers may create it to enable writes to
+    the ``"default"`` scope.
     """
 
     try:
@@ -83,7 +85,5 @@ def package_defaults_file(
     except ModuleNotFoundError:  # pragma: no cover - defensive
         return None
     candidate = pkg_root / "prefs" / filename
-    if candidate.exists():
-        return Path(candidate).resolve()
-    return None
+    return Path(candidate).resolve()
 

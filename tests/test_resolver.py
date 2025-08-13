@@ -36,3 +36,13 @@ def test_package_defaults_file(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.syspath_prepend(tmp_path)
     path = package_defaults_file("pkg", filename="settings.ini")
     assert path == pkg / "prefs" / "settings.ini"
+
+
+def test_package_defaults_file_missing(tmp_path: Path, monkeypatch) -> None:
+    pkg = tmp_path / "pkg_missing"
+    pkg.mkdir()
+    (pkg / "__init__.py").write_text("")
+    monkeypatch.syspath_prepend(tmp_path)
+    path = package_defaults_file("pkg_missing", filename="settings.ini")
+    assert path == pkg / "prefs" / "settings.ini"
+    assert not path.exists()
