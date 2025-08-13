@@ -14,10 +14,7 @@ from .errors import (
     SigilWriteError,
     UnknownScopeError,
 )
-
 from .gui import events
-from .io_config import user_config_dir
-
 from .merge_policy import CORE_DEFAULTS, KeyPath, parse_key, read_env
 from .resolver import (
     ProjectRootNotFoundError,
@@ -365,11 +362,10 @@ class Sigil:
         if target_scope == "core":
             raise ReadOnlyScopeError("Core defaults are read-only")
         raw_path = parse_key(key)
-        dotted = ".".join(raw_path)
-        if dotted.startswith("secret."):
+        if raw_path and raw_path[0] == "secret":
             if not self._secrets.can_write():
                 raise SigilWriteError("Secrets backend is read-only or locked")
-            self._secrets.set(dotted, str(value))
+            self._secrets.set(".".join(raw_path), str(value))
             return
         full_path = (self.app_name, *raw_path)
         data, path_file = self._get_scope_storage(target_scope)
@@ -382,7 +378,10 @@ class Sigil:
             backend.save(path_file, data)
             self.invalidate_cache()
         events.emit(
-            "pref_changed", dotted, str(value) if value is not None else None, target_scope
+            "pref_changed",
+            KEY_JOIN_CHAR.join(raw_path),
+            str(value) if value is not None else None,
+            target_scope,
         )
 
     def _get_scope_storage(self, scope: str) -> tuple[MutableMapping[KeyPath, str], Path]:

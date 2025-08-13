@@ -186,7 +186,8 @@ def _on_delete(widgets: dict) -> None:
 def _on_pref_changed(widgets: dict, key: str, new_val: str | None, scope: str) -> None:
     logger.debug("pref_changed %s=%s scope=%s", key, new_val, scope)
     tree = widgets["trees"].get(scope)
-    if tree is None:
+    empty = widgets.get("empty_labels", {}).get(scope)
+    if tree is None or empty is None:
         return
     if new_val is None:
         if tree.exists(key):
@@ -196,6 +197,12 @@ def _on_pref_changed(widgets: dict, key: str, new_val: str | None, scope: str) -
             tree.item(key, values=(key, new_val))
         else:
             tree.insert("", "end", iid=key, values=(key, new_val))
+    if tree.get_children():
+        empty.pack_forget()
+        tree.pack(fill="both", expand=True)
+    else:
+        tree.pack_forget()
+        empty.pack(fill="both", expand=True)
 
 
 # ---------------------------------------------------------------------------
@@ -345,7 +352,7 @@ def launch_gui(
 
     _refresh()
 
-    widgets = {"notebook": notebook, "trees": trees}
+    widgets = {"notebook": notebook, "trees": trees, "empty_labels": empty_labels}
     button_bar = ttk.Frame(root)
     button_bar.pack(fill="x", padx=4, pady=4)
     ttk.Button(button_bar, text="Add", command=lambda: _on_add(widgets)).pack(
