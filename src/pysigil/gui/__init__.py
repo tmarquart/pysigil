@@ -4,7 +4,7 @@ import logging
 import os
 from collections.abc import Callable
 from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 try:
     import tkinter as tk
@@ -14,10 +14,12 @@ except Exception:  # pragma: no cover - fallback for headless tests
     simpledialog = None  # type: ignore
     ttk = None  # type: ignore
 
-from . import events, gui_state, hub
-from .core import Sigil
-from .merge_policy import KeyPath
+from ..merge_policy import KeyPath
+from . import events, gui_state
 from .widgets import widget_for
+
+if TYPE_CHECKING:
+    from ..core import Sigil
 
 logger = logging.getLogger("pysigil.gui")
 if os.environ.get("SIGIL_GUI_DEBUG") and not logger.handlers:
@@ -60,6 +62,8 @@ def open_package(package: str, include_sigil: bool) -> None:
     global _sigil_instance, _current_package
     logger.debug("opening package %s include_sigil=%s", package, include_sigil)
     try:
+        from . import hub
+
         get_pref, *_ = hub.get_preferences(package)
         # Force instantiation of the package-specific Sigil by performing a
         # harmless lookup.  ``get_preferences`` creates the instance lazily, so
@@ -70,6 +74,8 @@ def open_package(package: str, include_sigil: bool) -> None:
         logger.debug("loaded instance for %s via hub", package)
     except Exception as exc:
         logger.debug("hub resolution failed for %s: %s", package, exc)
+        from ..core import Sigil
+
         _sigil_instance = Sigil(package)
     _current_package = package
     # ``include_sigil`` is currently unused but kept for API compatibility.

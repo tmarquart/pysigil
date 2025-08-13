@@ -20,8 +20,8 @@ python -m pysigil --help
 ```
 
 ```python
-from pysigil import get_preferences
-get_pref, set_pref, launch_gui = get_preferences()
+from pysigil.gui.hub import get_preferences
+get_pref, set_pref, sigil = get_preferences("pysigil")
 ```
 
 Once installed, try a few commands:
@@ -47,4 +47,11 @@ preferences. After installation launch it with:
 
 ```bash
 sigil-gui
+```
+
+Or launch it programmatically:
+
+```python
+from pysigil.gui import launch_gui
+launch_gui()
 ```
