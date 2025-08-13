@@ -7,6 +7,13 @@ Sigil ships with a small Tk based GUI for editing user preferences. Install with
 sigil-gui --app myapp
 ```
 
+Alternatively, launch it from Python:
+
+```
+from pysigil.gui import launch_gui
+launch_gui(package="myapp")
+```
+
 This opens a window showing all user-level preferences defined for *myapp*.
 
 ## Debug logging

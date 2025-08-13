@@ -5,6 +5,7 @@ import os
 import sys
 
 from .core import Sigil
+from .gui import launch_gui
 
 
 def build_parser(prog: str = "sigil") -> argparse.ArgumentParser:
@@ -98,8 +99,6 @@ def main(argv: list[str] | None = None) -> int:
             sigil._secrets.unlock()
             return 0
     elif args.cmd == "gui":
-        from .gui import launch_gui
-
         launch_gui(
             package=args.app,
             include_sigil=args.include_sigil,

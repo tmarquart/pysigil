@@ -8,13 +8,13 @@ from pathlib import Path
 from threading import RLock
 from typing import Any
 
-from . import events
 from .errors import (
     ReadOnlyScopeError,
     SigilError,  # noqa: F401 - re-exported for compatibility
     SigilWriteError,
     UnknownScopeError,
 )
+from .gui import events
 from .io_config import user_config_dir
 from .merge_policy import CORE_DEFAULTS, KeyPath, parse_key, read_env
 from .resolver import ProjectRootNotFoundError, project_settings_file
