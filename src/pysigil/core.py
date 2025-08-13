@@ -20,6 +20,7 @@ from .constants import KEY_JOIN_CHAR
 from .env import read_env
 from .errors import ReadOnlyScopeError, SigilWriteError, UnknownScopeError
 from .keys import KeyPath, parse_key
+from .resolver import ProjectRootNotFoundError, project_settings_file
 from .secrets import (
     EncryptedFileProvider,
     EnvSecretProvider,
@@ -81,9 +82,20 @@ class Sigil:
         if self.user_path.suffix == "" or self.user_path.name != self.settings_filename:
             self.user_path = self.user_path / self.settings_filename
 
-        self.project_path = Path(project_scope) if project_scope else Path.cwd()
-        if self.project_path.suffix == "" or self.project_path.name != self.settings_filename:
-            self.project_path = self.project_path / self.settings_filename
+        if project_scope is not None:
+            self.project_path = Path(project_scope)
+            if (
+                self.project_path.suffix == ""
+                or self.project_path.name != self.settings_filename
+            ):
+                self.project_path = self.project_path / self.settings_filename
+        else:
+            try:
+                self.project_path = project_settings_file(
+                    filename=self.settings_filename
+                )
+            except ProjectRootNotFoundError:
+                self.project_path = Path.cwd() / self.settings_filename
 
         self.default_path = Path(default_path) if default_path else None
         if self.default_path is not None:
