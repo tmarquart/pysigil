@@ -3,8 +3,18 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+from pathlib import Path
 
+from .authoring import (
+    DefaultsValidationError,
+    import_package_from,
+    link as dev_link,
+    patch_pyproject_package_data,
+    unlink as dev_unlink,
+    validate_defaults_file,
+)
 from .core import Sigil
+from .discovery import pep503_name
 from .gui import launch_gui
 
 
@@ -48,7 +58,37 @@ def build_parser(prog: str = "sigil") -> argparse.ArgumentParser:
     gui_p.add_argument("--include-sigil", action="store_true")
     gui_p.add_argument("--no-remember", action="store_true")
 
+    auth_p = sub.add_parser("author")
+    auth_sub = auth_p.add_subparsers(dest="acmd", required=True)
+
+    reg_p = auth_sub.add_parser("register")
+    reg_p.add_argument("--provider", required=True)
+    reg_p.add_argument("--defaults", required=True)
+    reg_p.add_argument("--add-package-data", action="store_true")
+    reg_p.add_argument("--pyproject")
+    reg_p.add_argument("--no-dev-link", action="store_true")
+    reg_p.add_argument("--yes", action="store_true")
+
+    link_p = auth_sub.add_parser("link-defaults")
+    link_p.add_argument("provider_id")
+    link_p.add_argument("path")
+
+    unlink_p = auth_sub.add_parser("unlink-defaults")
+    unlink_p.add_argument("provider_id")
+
+    val_p = auth_sub.add_parser("validate")
+    val_p.add_argument("provider_id")
+    val_p.add_argument("path")
+
     return parser
+
+
+def _find_pyproject(start: Path) -> Path | None:
+    for parent in [start, *start.parents]:
+        candidate = parent / "pyproject.toml"
+        if candidate.is_file():
+            return candidate
+    return None
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -58,7 +98,7 @@ def main(argv: list[str] | None = None) -> int:
         prog = "pysigil"
     parser = build_parser(prog)
     args = parser.parse_args(argv)
-    if args.cmd != "gui":
+    if args.cmd not in {"gui", "author"}:
         sigil = Sigil(args.app)
     if args.cmd == "get":
         val = sigil.get_pref(args.key)
@@ -105,6 +145,46 @@ def main(argv: list[str] | None = None) -> int:
             remember_state=not args.no_remember,
         )
         return 0
+    elif args.cmd == "author":
+        if args.acmd == "register":
+            provider = pep503_name(args.provider)
+            ini_path = Path(args.defaults)
+            try:
+                validate_defaults_file(ini_path, provider)
+            except DefaultsValidationError as exc:
+                print(str(exc), file=sys.stderr)
+                return 1
+            if not args.no_dev_link:
+                dev_link(provider, ini_path)
+            if args.add_package_data:
+                if args.pyproject:
+                    pyproject = Path(args.pyproject)
+                else:
+                    pyproject = _find_pyproject(ini_path)
+                if pyproject is not None:
+                    patch_pyproject_package_data(
+                        pyproject, import_package_from(ini_path)
+                    )
+            return 0
+        elif args.acmd == "link-defaults":
+            provider = pep503_name(args.provider_id)
+            try:
+                dev_link(provider, Path(args.path))
+            except Exception:
+                return 1
+            return 0
+        elif args.acmd == "unlink-defaults":
+            provider = pep503_name(args.provider_id)
+            ok = dev_unlink(provider)
+            return 0 if ok else 1
+        elif args.acmd == "validate":
+            provider = pep503_name(args.provider_id)
+            try:
+                validate_defaults_file(Path(args.path), provider)
+            except DefaultsValidationError as exc:
+                print(str(exc), file=sys.stderr)
+                return 1
+            return 0
     return 1
 
 
