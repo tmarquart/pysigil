@@ -16,7 +16,7 @@ description = "Preferences & secrets manager with layered scopes and tuple-key i
 readme = "README.md"
 requires-python = ">=3.10"
 version = "0.2.0"
-dependencies = ["appdirs", "tomlkit"]
+dependencies = ["appdirs", "tomlkit", "click"]
 authors = [{ name = "Tim Marquart" }]
 
 [project.optional-dependencies]
@@ -26,9 +26,8 @@ secrets = ["keyring>=25"]
 secrets-crypto = ["keyring>=25", "cryptography>=42"]
 
 [project.scripts]
-sigil = "pysigil.cli:main"
-pysigil = "pysigil.cli:main"
-sigil-gui = "pysigil.gui.author:main"
+sigil = "pysigil.cli:cli"
+pysigil = "pysigil.cli:cli"
 
 [tool.ruff]
 line-length = 88

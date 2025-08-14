@@ -4,7 +4,7 @@ Sigil ships with a small Tk based GUI for editing user preferences. Install with
 `pip install sigil[gui]` and run:
 
 ```
-sigil-gui --app myapp
+sigil gui --app myapp
 ```
 
 Alternatively, launch it from Python:

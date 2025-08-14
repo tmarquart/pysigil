@@ -52,7 +52,7 @@ sigil author unlink-defaults my-package
 Launch the GUI wizard:
 
 ```bash
-sigil-gui
+sigil setup
 ```
 
 Steps:
