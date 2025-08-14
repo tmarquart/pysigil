@@ -7,7 +7,6 @@ from appdirs import user_config_dir
 from pyprojroot import here
 
 DEFAULT_FILENAME = "settings.ini"
-DEFAULT_DEFAULTS_FILENAME = "defaults.ini"
 
 
 class ProjectRootNotFoundError(RuntimeError):
@@ -45,7 +44,7 @@ def project_settings_file(
 
     If ``explicit_file`` is supplied, its absolute path is returned. Otherwise
     :func:`find_project_root` is used to locate the project root and
-    ``<root>/.pysigil/<filename>`` is returned.  The ``.pysigil`` directory is
+    ``<root>/.sigil/<filename>`` is returned.  The ``.sigil`` directory is
     created if necessary.
     """
 
@@ -70,20 +69,19 @@ def user_settings_file(app_name: str, filename: str = DEFAULT_FILENAME) -> Path:
 
 
 def package_defaults_file(
-    package: str, filename: str = DEFAULT_DEFAULTS_FILENAME
+    package: str, filename: str = DEFAULT_FILENAME
 ) -> Path | None:
     """Return path to a package's bundled defaults file.
 
-    The path points to ``prefs/<filename>`` within the installed package.  If
-    the package itself cannot be located ``None`` is returned.  The defaults
-    file does not need to exist yet; callers may create it to enable writes to
-    the ``"default"`` scope.
+    The path points to ``.sigil/<filename>`` within the installed package.  If
+    the package itself cannot be located ``None`` is returned.  The resulting
+    file is considered read-only and should not be modified at runtime.
     """
 
     try:
         pkg_root = resources.files(package)
     except ModuleNotFoundError:  # pragma: no cover - defensive
         return None
-    candidate = pkg_root / "prefs" / filename
+    candidate = pkg_root / ".sigil" / filename
     return Path(candidate).resolve()
 

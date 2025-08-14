@@ -24,18 +24,18 @@ def test_project_settings_file(tmp_path: Path) -> None:
     sub = tmp_path / "src"
     sub.mkdir()
     path = project_settings_file(start=sub)
-    assert path == tmp_path / ".pysigil" / "settings.ini"
+    assert path == tmp_path / ".sigil" / "settings.ini"
     assert path.parent.is_dir()
 
 
 def test_package_defaults_file(tmp_path: Path, monkeypatch) -> None:
     pkg = tmp_path / "pkg"
-    (pkg / "prefs").mkdir(parents=True)
-    (pkg / "prefs" / "settings.ini").write_text("[pkg]\nfoo=bar\n")
+    (pkg / ".sigil").mkdir(parents=True)
+    (pkg / ".sigil" / "settings.ini").write_text("[pkg]\nfoo=bar\n")
     (pkg / "__init__.py").write_text("")
     monkeypatch.syspath_prepend(tmp_path)
     path = package_defaults_file("pkg", filename="settings.ini")
-    assert path == pkg / "prefs" / "settings.ini"
+    assert path == pkg / ".sigil" / "settings.ini"
 
 
 def test_package_defaults_file_missing(tmp_path: Path, monkeypatch) -> None:
@@ -44,5 +44,5 @@ def test_package_defaults_file_missing(tmp_path: Path, monkeypatch) -> None:
     (pkg / "__init__.py").write_text("")
     monkeypatch.syspath_prepend(tmp_path)
     path = package_defaults_file("pkg_missing", filename="settings.ini")
-    assert path == pkg / "prefs" / "settings.ini"
+    assert path == pkg / ".sigil" / "settings.ini"
     assert not path.exists()

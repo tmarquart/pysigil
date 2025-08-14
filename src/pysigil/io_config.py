@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import configparser
-from importlib.metadata import Distribution
+from importlib import resources
 from pathlib import Path
 
 try:
@@ -45,18 +45,29 @@ class DefaultsFormatError(Exception):
     pass
 
 
-def load_provider_defaults(provider_id: str, dist: Distribution) -> dict[str, dict[str, str]]:
-    cfg_path = Path(dist.locate_file("pysigil/defaults.ini"))
+def load_provider_defaults(
+    provider_id: str, package: str
+) -> dict[str, dict[str, str]]:
+    """Load bundled defaults for a provider from ``package``.
+
+    Defaults are stored in ``.sigil/settings.ini`` within the package and use
+    the same structure as project-level settings.  The returned mapping contains
+    the section matching ``provider_id`` and optionally a ``"pysigil"`` section.
+    The file is considered read-only; if it does not exist an empty mapping is
+    returned.
+    """
+
+    try:
+        cfg_res = resources.files(package) / ".sigil" / "settings.ini"
+    except ModuleNotFoundError:
+        return {}
+    cfg_path = Path(cfg_res)
     if not cfg_path.is_file():
         return {}
     data = read_sections(cfg_path)
-    expected_section = f"provider:{provider_id}"
-    for section in data:
-        if section.startswith("provider:") and section != expected_section:
-            raise DefaultsFormatError("provider section name mismatch")
-    if expected_section not in data:
+    if provider_id not in data:
         raise DefaultsFormatError("missing provider section")
-    result: dict[str, dict[str, str]] = {expected_section: data[expected_section]}
+    result: dict[str, dict[str, str]] = {provider_id: data[provider_id]}
     if "pysigil" in data:
         result["pysigil"] = data["pysigil"]
     return result
