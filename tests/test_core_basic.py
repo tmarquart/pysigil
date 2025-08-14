@@ -1,6 +1,9 @@
 from pathlib import Path
 
+import pytest
+
 from pysigil import Sigil
+from pysigil.errors import ReadOnlyScopeError
 
 
 def test_roundtrip(tmp_path: Path) -> None:
@@ -10,30 +13,15 @@ def test_roundtrip(tmp_path: Path) -> None:
     content = (tmp_path / "settings.ini").read_text()
     assert "[demo]" in content
     assert "foo_bar = baz" in content
-
-
-def test_default_roundtrip(tmp_path: Path) -> None:
+def test_package_defaults_read_only(tmp_path: Path, monkeypatch) -> None:
+    pkg = tmp_path / "pkgdefaults"
+    (pkg / ".sigil").mkdir(parents=True)
+    (pkg / ".sigil" / "settings.ini").write_text("[pkgdefaults]\nfoo = 7\n")
+    (pkg / "__init__.py").write_text("")
+    monkeypatch.syspath_prepend(tmp_path)
     user_dir = tmp_path / "user"
-    default_file = tmp_path / "defaults.ini"
-    s = Sigil(
-        "demo",
-        user_scope=user_dir,
-        default_path=default_file,
-        settings_filename="defaults.ini",
-    )
-    s.set_pref("foo.bar", "baz", scope="default")
-    assert s.get_pref("foo.bar") == "baz"
-    content = default_file.read_text()
-    assert "[demo]" in content
-    assert "foo_bar = baz" in content
-
-
-def test_default_roundtrip_fallback(tmp_path: Path, monkeypatch) -> None:
-    monkeypatch.chdir(tmp_path)
-    s = Sigil("no_pkg")
-    s.set_pref("alpha.beta", "42", scope="default")
-    assert s.get_pref("alpha.beta") == 42
-    cfg = tmp_path / "prefs" / "settings.ini"
-    assert cfg.exists()
-    assert "alpha_beta = 42" in cfg.read_text()
+    s = Sigil("pkgdefaults", user_scope=user_dir)
+    assert s.get_pref("foo") == 7
+    with pytest.raises(ReadOnlyScopeError):
+        s.set_pref("foo", "8", scope="default")
 

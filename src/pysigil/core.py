@@ -134,9 +134,9 @@ class Sigil:
         Only ``"user"``, ``"project"`` and ``"default"`` scopes are supported.
         ``"default"`` requires ``default_path`` to be configured.
         """
-        if scope == "default" and self.default_path is None:
-            raise UnknownScopeError(scope)
-        if scope not in {"user", "project", "default"}:
+        if scope == "default":
+            raise ReadOnlyScopeError("Default scope is read-only")
+        if scope not in {"user", "project"}:
             raise UnknownScopeError(scope)
         self._default_scope = scope
 
@@ -361,6 +361,8 @@ class Sigil:
         target_scope = scope or self._default_scope
         if target_scope == "core":
             raise ReadOnlyScopeError("Core defaults are read-only")
+        if target_scope == "default":
+            raise ReadOnlyScopeError("Default scope is read-only")
         raw_path = parse_key(key)
         if raw_path and raw_path[0] == "secret":
             if not self._secrets.can_write():
@@ -389,19 +391,6 @@ class Sigil:
             return self._user, self.user_path
         if scope == "project":
             return self._project, self.project_path
-        if scope == "default":
-            if self.default_path is None:
-                # Lazily resolve a path for the default scope.  If the package
-                # cannot be located fall back to a ``prefs`` directory under
-                # the current working directory so that callers can still
-                # create defaults for arbitrary packages.
-                path = package_defaults_file(
-                    self.app_name, filename=self.settings_filename
-                )
-                if path is None:
-                    path = Path.cwd() / "prefs" / self.settings_filename
-                self.default_path = path
-            return self._defaults, self.default_path
         raise UnknownScopeError(scope)
 
     @contextmanager
