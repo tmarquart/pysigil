@@ -46,7 +46,13 @@ pysigil ships with a simple graphical editor for viewing and editing
 preferences. After installation launch it with:
 
 ```bash
-sigil-gui
+sigil gui
+```
+
+Package authors can register development defaults via:
+
+```bash
+sigil setup
 ```
 
 Or launch it programmatically:
