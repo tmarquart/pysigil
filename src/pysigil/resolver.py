@@ -1,10 +1,13 @@
 """Utilities for resolving configuration file locations and project roots."""
 
 from importlib import resources
+from importlib.metadata import PackageNotFoundError, distribution
 from pathlib import Path
 
 from appdirs import user_config_dir
 from pyprojroot import here
+
+from .authoring import load_links
 
 DEFAULT_FILENAME = "settings.ini"
 
@@ -84,4 +87,39 @@ def package_defaults_file(
         return None
     candidate = pkg_root / ".sigil" / filename
     return Path(candidate).resolve()
+
+
+def _installed_defaults(provider_id: str, filename: str = DEFAULT_FILENAME) -> Path | None:
+    """Locate bundled defaults for an installed distribution."""
+
+    try:
+        dist = distribution(provider_id)
+    except PackageNotFoundError:
+        return None
+    files = dist.files or []
+    for file in files:
+        if len(file.parts) >= 2 and file.parts[-2] == ".sigil" and file.name == filename:
+            return Path(dist.locate_file(file)).resolve()
+    return None
+
+
+def resolve_defaults(provider_id: str, filename: str = DEFAULT_FILENAME) -> tuple[Path | None, str]:
+    """Resolve defaults for ``provider_id`` according to precedence rules.
+
+    Returns ``(path, source)`` where ``source`` is one of ``"installed"``,
+    ``"dev-link"`` or ``"none"``.
+    """
+
+    path = _installed_defaults(provider_id, filename)
+    if path is not None and path.is_file():
+        return path, "installed"
+    links = load_links()
+    link_path = links.get(provider_id)
+    if link_path and link_path.is_file():
+        return link_path, "dev-link"
+    # Fallback to importable package for legacy/dev usage
+    pkg_path = package_defaults_file(provider_id, filename)
+    if pkg_path is not None and pkg_path.is_file():
+        return pkg_path, "installed"
+    return None, "none"
 

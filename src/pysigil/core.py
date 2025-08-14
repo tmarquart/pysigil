@@ -18,8 +18,8 @@ from .gui import events
 from .merge_policy import CORE_DEFAULTS, KeyPath, parse_key, read_env
 from .resolver import (
     ProjectRootNotFoundError,
-    package_defaults_file,
     project_settings_file,
+    resolve_defaults,
     user_settings_file,
 )
 from .secrets import (
@@ -96,7 +96,7 @@ class Sigil:
             ):
                 self.default_path = self.default_path / self.settings_filename
         else:
-            self.default_path = package_defaults_file(
+            self.default_path, _ = resolve_defaults(
                 self.app_name, filename=self.settings_filename
             )
 

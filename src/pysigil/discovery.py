@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import re
 from collections.abc import Iterator
 from importlib.metadata import Distribution, entry_points
-import re
 
 GROUPS = ("pysigil_providers", "pysigil.providers")
 
