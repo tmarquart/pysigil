@@ -52,7 +52,7 @@ def project_settings_file(
     if explicit_file is not None:
         return Path(explicit_file).expanduser().resolve()
     root = find_project_root(start)
-    cfg_dir = root / ".pysigil"
+    cfg_dir = root / ".sigil"
     cfg_dir.mkdir(parents=True, exist_ok=True)
     return (cfg_dir / filename).resolve()
 
