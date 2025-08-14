@@ -7,8 +7,10 @@ from pathlib import Path
 
 from .authoring import (
     DefaultsValidationError,
+    DevLinkError,
     import_package_from,
     link as dev_link,
+    list_links as dev_list,
     patch_pyproject_package_data,
     unlink as dev_unlink,
     validate_defaults_file,
@@ -79,6 +81,9 @@ def build_parser(prog: str = "sigil") -> argparse.ArgumentParser:
     val_p = auth_sub.add_parser("validate")
     val_p.add_argument("provider_id")
     val_p.add_argument("path")
+
+    list_p = auth_sub.add_parser("list")
+    list_p.add_argument("--existing-only", action="store_true")
 
     return parser
 
@@ -155,7 +160,11 @@ def main(argv: list[str] | None = None) -> int:
                 print(str(exc), file=sys.stderr)
                 return 1
             if not args.no_dev_link:
-                dev_link(provider, ini_path)
+                try:
+                    dev_link(provider, ini_path)
+                except DevLinkError as exc:
+                    print(str(exc), file=sys.stderr)
+                    return 1
             if args.add_package_data:
                 if args.pyproject:
                     pyproject = Path(args.pyproject)
@@ -170,7 +179,7 @@ def main(argv: list[str] | None = None) -> int:
             provider = pep503_name(args.provider_id)
             try:
                 dev_link(provider, Path(args.path))
-            except Exception:
+            except (DefaultsValidationError, DevLinkError):
                 return 1
             return 0
         elif args.acmd == "unlink-defaults":
@@ -184,6 +193,15 @@ def main(argv: list[str] | None = None) -> int:
             except DefaultsValidationError as exc:
                 print(str(exc), file=sys.stderr)
                 return 1
+            return 0
+        elif args.acmd == "list":
+            entries = dev_list(must_exist_on_disk=args.existing_only)
+            if not entries:
+                print("No dev links found")
+                return 0
+            for pid, path in sorted(entries.items()):
+                status = "(ok)" if path.exists() else "(missing)"
+                print(f"{pid}: {path} {status}")
             return 0
     return 1
 

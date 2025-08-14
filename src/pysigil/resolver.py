@@ -7,7 +7,7 @@ from pathlib import Path
 from appdirs import user_config_dir
 from pyprojroot import here
 
-from .authoring import load_links
+from .authoring import get as get_dev_link
 
 DEFAULT_FILENAME = "settings.ini"
 
@@ -113,10 +113,9 @@ def resolve_defaults(provider_id: str, filename: str = DEFAULT_FILENAME) -> tupl
     path = _installed_defaults(provider_id, filename)
     if path is not None and path.is_file():
         return path, "installed"
-    links = load_links()
-    link_path = links.get(provider_id)
-    if link_path and link_path.is_file():
-        return link_path, "dev-link"
+    dl = get_dev_link(provider_id)
+    if dl and dl.defaults_path.is_file():
+        return dl.defaults_path, "dev-link"
     # Fallback to importable package for legacy/dev usage
     pkg_path = package_defaults_file(provider_id, filename)
     if pkg_path is not None and pkg_path.is_file():

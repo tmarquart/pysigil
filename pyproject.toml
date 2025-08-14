@@ -28,7 +28,7 @@ secrets-crypto = ["keyring>=25", "cryptography>=42"]
 [project.scripts]
 sigil = "pysigil.cli:main"
 pysigil = "pysigil.cli:main"
-sigil-gui = "pysigil.gui:launch_gui"
+sigil-gui = "pysigil.gui.author:main"
 
 [tool.ruff]
 line-length = 88

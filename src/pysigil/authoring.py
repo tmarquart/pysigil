@@ -1,78 +1,100 @@
 from __future__ import annotations
 
 import configparser
-import json
 import re
 import shutil
+from dataclasses import dataclass
 from pathlib import Path
 
 import tomlkit
-
 from appdirs import user_config_dir
 
 # ---------------------------------------------------------------------------
 # Dev links registry
 # ---------------------------------------------------------------------------
 
-_DEV_LINKS_FILE = Path(user_config_dir("sigil")) / "dev-links.json"
+
+class DevLinkError(Exception):
+    """Raised when development link operations fail."""
 
 
-def _ensure_parent() -> None:
-    _DEV_LINKS_FILE.parent.mkdir(parents=True, exist_ok=True)
+@dataclass
+class DevLink:
+    provider_id: str
+    defaults_path: Path
+    link_path: Path
 
 
-def load_links() -> dict[str, Path]:
-    """Load the development defaults links registry."""
-
-    if not _DEV_LINKS_FILE.is_file():
-        return {}
-    try:
-        data = json.loads(_DEV_LINKS_FILE.read_text())
-    except Exception:
-        return {}
-    if data.get("version") != 1:
-        return {}
-    result: dict[str, Path] = {}
-    links = data.get("links", {})
-    if isinstance(links, dict):
-        for key, value in links.items():
-            p = Path(value)
-            if p.is_file():
-                result[str(key)] = p
-    return result
+_PEP503_RE = re.compile(r"[-_.]+")
 
 
-def save_links(links: dict[str, Path]) -> None:
-    """Persist ``links`` to disk."""
-
-    _ensure_parent()
-    serialised = {k: str(v) for k, v in links.items()}
-    data = {"version": 1, "links": serialised}
-    _DEV_LINKS_FILE.write_text(json.dumps(data, indent=2))
+def normalize_provider_id(name: str) -> str:
+    """PEP 503 normalize ``name``."""
+    return _PEP503_RE.sub("-", name).lower()
 
 
-def link(provider_id: str, path: Path) -> None:
-    """Add or update a development link for ``provider_id``."""
-
-    path = Path(path).expanduser().resolve()
-    if not path.is_absolute():
-        raise ValueError("path must be absolute")
-    if not path.is_file():
-        raise FileNotFoundError(path)
-    links = load_links()
-    links[provider_id] = path
-    save_links(links)
+def _dev_dir() -> Path:
+    return Path(user_config_dir("sigil")) / "dev"
 
 
-def unlink(provider_id: str) -> bool:
-    """Remove a development link.  Returns ``True`` if removed."""
+def link(provider: str, defaults_path: Path, *, validate: bool = True) -> DevLink:
+    pid = normalize_provider_id(provider)
+    defaults_path = Path(defaults_path).expanduser().resolve()
+    if not defaults_path.is_file():
+        raise DevLinkError(f"Defaults file not found: {defaults_path}")
+    if defaults_path.name != "settings.ini" or defaults_path.parent.name != ".sigil":
+        raise DevLinkError("Defaults file must be inside a '.sigil' directory")
+    if validate:
+        validate_defaults_file(defaults_path, pid)
+    dir_ = _dev_dir()
+    dir_.mkdir(parents=True, exist_ok=True)
+    link_path = dir_ / f"{pid}.ini"
+    cfg = configparser.ConfigParser()
+    cfg["link"] = {"defaults": str(defaults_path)}
+    with link_path.open("w") as f:
+        cfg.write(f)
+    return DevLink(pid, defaults_path, link_path)
 
-    links = load_links()
-    if provider_id in links:
-        del links[provider_id]
-        save_links(links)
+
+def unlink(provider: str) -> bool:
+    pid = normalize_provider_id(provider)
+    link_path = _dev_dir() / f"{pid}.ini"
+    if link_path.exists():
+        link_path.unlink()
         return True
     return False
+
+
+def get(provider: str) -> DevLink | None:
+    pid = normalize_provider_id(provider)
+    link_path = _dev_dir() / f"{pid}.ini"
+    if not link_path.is_file():
+        return None
+    cfg = configparser.ConfigParser()
+    try:
+        cfg.read(link_path)
+    except Exception:
+        return None
+    defaults = cfg.get("link", "defaults", fallback=None)
+    if not defaults:
+        return None
+    return DevLink(pid, Path(defaults), link_path)
+
+
+def list_links(must_exist_on_disk: bool = False) -> dict[str, Path]:
+    dir_ = _dev_dir()
+    if not dir_.is_dir():
+        return {}
+    result: dict[str, Path] = {}
+    for file in dir_.glob("*.ini"):
+        dl = get(file.stem)
+        if dl is None:
+            continue
+        if must_exist_on_disk and not dl.defaults_path.exists():
+            continue
+        result[dl.provider_id] = dl.defaults_path
+    return result
+
 
 # ---------------------------------------------------------------------------
 # Defaults validation
