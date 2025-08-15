@@ -10,11 +10,9 @@ import click
 from .authoring import (
     DevLinkError,
     DefaultsValidationError,
-    import_package_from,
     link as dev_link,
     list_links as dev_list,
     normalize_provider_id,
-    patch_pyproject_package_data,
     unlink as dev_unlink,
     validate_defaults_file,
 )

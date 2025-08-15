@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import configparser
 import re
-import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
-import tomlkit
 from appdirs import user_config_dir
+try:  # pragma: no cover - fallback when setuptools is missing
+    from setuptools import PackageFinder  # type: ignore
+except Exception:  # pragma: no cover - defensive
+    PackageFinder = None  # type: ignore[assignment]
 
 # ---------------------------------------------------------------------------
 # Dev links registry
@@ -140,31 +142,16 @@ def validate_defaults_file(path: Path, provider_id: str) -> None:
 
 
 def import_package_from(ini_path: Path) -> str:
-    """Infer the import package name from ``ini_path``.
-
-    The defaults file is expected at ``<pkg>/.sigil/settings.ini``; the package
-    name is derived from the parent directory of ``.sigil``.
-    """
+    """Infer the import package name from ``ini_path``."""
 
     ini_path = Path(ini_path).resolve()
+    if PackageFinder is not None:
+        for ancestor in ini_path.parents:
+            for base in [ancestor / "src", ancestor]:
+                if not base.is_dir():
+                    continue
+                for pkg in PackageFinder.find(where=[str(base)]):
+                    pkg_dir = base / Path(pkg.replace(".", "/"))
+                    if pkg_dir / ".sigil" / "settings.ini" == ini_path:
+                        return pkg
     return ini_path.parent.parent.name
-
-
-def patch_pyproject_package_data(pyproject: Path, import_package: str) -> None:
-    """Ensure ``.sigil/settings.ini`` is included as package data."""
-
-    pyproject = Path(pyproject).resolve()
-    if not pyproject.is_file():
-        return
-    text = pyproject.read_text()
-    data = tomlkit.parse(text)
-    tool = data.setdefault("tool", tomlkit.table())
-    setuptools = tool.setdefault("setuptools", tomlkit.table())
-    pkg_data = setuptools.setdefault("package-data", tomlkit.table())
-    entry = pkg_data.setdefault(import_package, tomlkit.array())
-    if ".sigil/settings.ini" not in [str(x) for x in entry]:
-        entry.append(".sigil/settings.ini")
-    backup = pyproject.with_suffix(pyproject.suffix + ".sigil.bak")
-    if not backup.exists():
-        shutil.copy2(pyproject, backup)
-    pyproject.write_text(tomlkit.dumps(data))
