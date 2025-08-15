@@ -151,9 +151,42 @@ def _candidate_module_names(dist_name: str) -> list[str]:
     return [c for c in cands if c]
 
 
+try:  # pragma: no cover - fallback when setuptools is missing
+    from setuptools import PackageFinder  # type: ignore
+except Exception:  # pragma: no cover - defensive
+    PackageFinder = None  # type: ignore[assignment]
+
+
+def _setuptools_pkg_map(root: Path) -> dict[str, Path]:
+    """Return mapping of package name to directory using ``setuptools``."""
+
+    if PackageFinder is None:  # pragma: no cover - setuptools not installed
+        return {}
+
+    mapping: dict[str, Path] = {}
+    for base in [root / "src", root]:
+        if not base.is_dir():
+            continue
+        for pkg in PackageFinder.find(where=[str(base)]):
+            mapping[pkg] = base / Path(pkg.replace(".", "/"))
+    return mapping
+
+
 def find_package_dir(root: Path, dist_name: str | None) -> Path | None:
     """Deterministically locate a package directory under ``root``."""
 
+    root = Path(root).resolve()
+    pkg_map = _setuptools_pkg_map(root)
+    if pkg_map:
+        if dist_name:
+            for cand in _candidate_module_names(dist_name):
+                if cand in pkg_map:
+                    return pkg_map[cand]
+        if len(pkg_map) == 1:
+            return next(iter(pkg_map.values()))
+        return None
+
+    # Fallback heuristic when setuptools isn't available
     def _probe(parent: Path, names: list[str]) -> Path | None:
         for n in names:
             cand = parent / n
