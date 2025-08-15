@@ -235,7 +235,7 @@ def ensure_defaults_file(package_dir: Path, provider_id: str) -> Path:
     ini = sigil_dir / "settings.ini"
     if not ini.exists():
         template = (
-            f"[provider:{provider_id}]\n"
+            f"[{provider_id}]\n"
             "# Add your package defaults here.\n"
             "# key = value\n"
         )

@@ -3,15 +3,17 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from ..core import Sigil
+from ..discovery import pep503_name
 
 _instances: dict[str, Sigil] = {}
 
 
 def get_preferences(package: str) -> tuple[Callable[..., object], Callable[..., object], Sigil]:
-    sig = _instances.get(package)
+    provider = pep503_name(package)
+    sig = _instances.get(provider)
     if sig is None:
-        sig = Sigil(package)
-        _instances[package] = sig
+        sig = Sigil(provider)
+        _instances[provider] = sig
     return sig.get_pref, sig.set_pref, sig
 
 

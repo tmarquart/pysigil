@@ -79,4 +79,4 @@ def test_ensure_defaults_file(tmp_path: Path) -> None:
     (pkg / "__init__.py").touch()
     ini = ensure_defaults_file(pkg, "prov")
     text = ini.read_text(encoding="utf-8")
-    assert "[provider:prov]" in text
+    assert "[prov]" in text
