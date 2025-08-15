@@ -113,9 +113,9 @@ _KEY_RE = re.compile(r"^[a-z0-9]+(\.[a-z0-9_]+)*$")
 def validate_defaults_file(path: Path, provider_id: str) -> None:
     """Validate ``path`` for ``provider_id``.
 
-    The file must contain a ``[provider:<provider_id>]`` section and all keys in
-    that section must be dotted names using lowercase letters, digits and
-    underscores after the first segment.
+    The file must contain a ``[<provider_id>]`` section and all keys in that
+    section must be dotted names using lowercase letters, digits and underscores
+    after the first segment.
     """
 
     path = Path(path).expanduser().resolve()
@@ -128,7 +128,7 @@ def validate_defaults_file(path: Path, provider_id: str) -> None:
     except Exception as exc:  # pragma: no cover - defensive
         raise DefaultsValidationError(str(exc)) from exc
 
-    section = f"provider:{provider_id}"
+    section = provider_id
     if section not in parser:
         raise DefaultsValidationError("missing provider section")
     for key in parser[section]:
