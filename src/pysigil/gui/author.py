@@ -12,6 +12,68 @@ from ..authoring import DevLinkError, _dev_dir, link, normalize_provider_id
 APP_TITLE = "Sigil – Register Package Defaults"
 
 
+def _find_package_dir(chosen: Path) -> Path | None:
+    """Locate the package directory from ``chosen``.
+
+    Accepts either a directory that directly contains ``__init__.py`` or a
+    repository root with a ``src`` layout containing exactly one package.
+    Returns the resolved package directory or ``None`` if ambiguous.
+    """
+
+    chosen = chosen.resolve()
+
+    if (chosen / "__init__.py").exists():
+        return chosen
+
+    src = chosen / "src"
+    if src.is_dir():
+        candidates = [p for p in src.iterdir() if p.is_dir() and (p / "__init__.py").exists()]
+        if len(candidates) == 1:
+            return candidates[0]
+
+    return None
+
+
+def _pep503_default_provider(package_dir: Path) -> str:
+    """Best-effort provider id using pyproject ``project.name`` or dir name."""
+
+    cur = package_dir
+    while cur and cur != cur.parent:
+        ppt = cur / "pyproject.toml"
+        if ppt.exists():
+            try:  # pragma: no cover - best effort
+                import tomllib
+
+                data = tomllib.loads(ppt.read_text(encoding="utf-8"))
+                name = data.get("project", {}).get("name")
+                if name:
+                    return normalize_provider_id(name)
+            except Exception:  # pragma: no cover - defensive
+                pass
+        cur = cur.parent
+
+    return normalize_provider_id(package_dir.name)
+
+
+def _ensure_defaults_file(package_dir: Path, provider_id: str) -> Path:
+    """Ensure ``.sigil/settings.ini`` exists in ``package_dir``.
+
+    If missing, create a minimal template. Returns the path to ``settings.ini``.
+    """
+
+    sigil_dir = package_dir / ".sigil"
+    sigil_dir.mkdir(exist_ok=True)
+    ini = sigil_dir / "settings.ini"
+    if not ini.exists():
+        template = (
+            f"[provider:{provider_id}]\n"
+            "# Add your package defaults here.\n"
+            "# key = value\n"
+        )
+        ini.write_text(template, encoding="utf-8")
+    return ini
+
+
 class RegisterApp(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
@@ -22,7 +84,7 @@ class RegisterApp(tk.Tk):
         self.defaults_path: tk.StringVar = tk.StringVar(value="")
         self.provider_id: tk.StringVar = tk.StringVar(value="")
         self.message_var: tk.StringVar = tk.StringVar(
-            value="Pick your .sigil/settings.ini and confirm the provider id."
+            value="Pick your package folder (contains __init__.py). Provider ID is pre-filled; edit if needed."
         )
 
         self._build()
@@ -35,7 +97,7 @@ class RegisterApp(tk.Tk):
 
         row1 = ttk.Frame(frm)
         row1.pack(fill=tk.X, **pad)
-        ttk.Label(row1, text="1) Defaults file (.sigil/settings.ini):").pack(anchor=tk.W)
+        ttk.Label(row1, text="1) Package folder (contains __init__.py):").pack(anchor=tk.W)
 
         pick = ttk.Frame(row1)
         pick.pack(fill=tk.X)
@@ -62,36 +124,58 @@ class RegisterApp(tk.Tk):
         ttk.Label(status, textvariable=self.message_var).pack(anchor=tk.W, padx=10, pady=6)
 
     def on_browse(self) -> None:
-        fn = filedialog.askopenfilename(
-            title="Select .sigil/settings.ini",
-            filetypes=[("INI files", "*.ini"), ("All files", "*.*")],
+        folder = filedialog.askdirectory(
+            title="Select your package folder (e.g., mypkg/ or src/mypkg/)",
+            mustexist=True,
         )
-        if not fn:
+        if not folder:
             return
-        p = Path(fn)
-        self.defaults_path.set(str(p))
-        try:
-            pkg_dir = p.parent.parent.name
-            self.provider_id.set(normalize_provider_id(pkg_dir))
-        except Exception:
-            self.provider_id.set(normalize_provider_id(p.stem))
+
+        chosen = Path(folder)
+        pkg = _find_package_dir(chosen)
+        if not pkg:
+            messagebox.showerror(
+                "Pick your package folder",
+                "Please choose the **package folder** that contains __init__.py\n"
+                "Examples:\n"
+                "- mypkg/\n"
+                "- src/mypkg/\n\n"
+                "Tip: If you picked the repo root, I can auto-detect only when there is exactly one package under src/.",
+            )
+            return
+
+        self.defaults_path.set(str(pkg))
+        self.provider_id.set(_pep503_default_provider(pkg))
+        self.message_var.set(f"Package folder: {pkg}")
 
     def on_register(self) -> None:
-        defaults = Path(self.defaults_path.get().strip())
+        pkg_dir_raw = self.defaults_path.get().strip()
         provider = self.provider_id.get().strip()
 
-        if not defaults:
-            messagebox.showerror("Missing file", "Please choose your .sigil/settings.ini file.")
+        if not pkg_dir_raw:
+            messagebox.showerror("Missing folder", "Please choose your **package folder**.")
             return
         if not provider:
-            messagebox.showerror("Missing provider id", "Please enter a provider id.")
+            messagebox.showerror("Missing provider id", "Please confirm or edit the provider id.")
             return
 
+        pkg_dir = Path(pkg_dir_raw)
+        pkg = _find_package_dir(pkg_dir)
+        if not pkg:
+            messagebox.showerror(
+                "Invalid folder",
+                "That folder doesn’t look like a package. Pick the folder that contains __init__.py.",
+            )
+            return
+
+        provider_norm = normalize_provider_id(provider)
         try:
-            dl = link(provider, defaults, validate=True)
+            settings_path = _ensure_defaults_file(pkg, provider_norm)
+            dl = link(provider_norm, settings_path, validate=True)
             self.message_var.set(f"Linked {dl.provider_id} -> {dl.defaults_path}")
             messagebox.showinfo(
-                "Success", f"Registered defaults for {dl.provider_id}.\n\n{dl.defaults_path}"
+                "Success",
+                f"Created/verified {settings_path}\n\nRegistered dev link for {dl.provider_id}.",
             )
         except DevLinkError as e:
             self.message_var.set(str(e))
