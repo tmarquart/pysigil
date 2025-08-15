@@ -8,70 +8,18 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
 from ..authoring import DevLinkError, _dev_dir, link, normalize_provider_id
+from ..resolver import (
+    ProjectRootNotFoundError,
+    default_provider_id,
+    ensure_defaults_file,
+    find_package_dir,
+    find_project_root,
+    read_dist_name_from_pyproject,
+)
 
 APP_TITLE = "Sigil – Register Package Defaults"
 
 
-def _find_package_dir(chosen: Path) -> Path | None:
-    """Locate the package directory from ``chosen``.
-
-    Accepts either a directory that directly contains ``__init__.py`` or a
-    repository root with a ``src`` layout containing exactly one package.
-    Returns the resolved package directory or ``None`` if ambiguous.
-    """
-
-    chosen = chosen.resolve()
-
-    if (chosen / "__init__.py").exists():
-        return chosen
-
-    src = chosen / "src"
-    if src.is_dir():
-        candidates = [p for p in src.iterdir() if p.is_dir() and (p / "__init__.py").exists()]
-        if len(candidates) == 1:
-            return candidates[0]
-
-    return None
-
-
-def _pep503_default_provider(package_dir: Path) -> str:
-    """Best-effort provider id using pyproject ``project.name`` or dir name."""
-
-    cur = package_dir
-    while cur and cur != cur.parent:
-        ppt = cur / "pyproject.toml"
-        if ppt.exists():
-            try:  # pragma: no cover - best effort
-                import tomllib
-
-                data = tomllib.loads(ppt.read_text(encoding="utf-8"))
-                name = data.get("project", {}).get("name")
-                if name:
-                    return normalize_provider_id(name)
-            except Exception:  # pragma: no cover - defensive
-                pass
-        cur = cur.parent
-
-    return normalize_provider_id(package_dir.name)
-
-
-def _ensure_defaults_file(package_dir: Path, provider_id: str) -> Path:
-    """Ensure ``.sigil/settings.ini`` exists in ``package_dir``.
-
-    If missing, create a minimal template. Returns the path to ``settings.ini``.
-    """
-
-    sigil_dir = package_dir / ".sigil"
-    sigil_dir.mkdir(exist_ok=True)
-    ini = sigil_dir / "settings.ini"
-    if not ini.exists():
-        template = (
-            f"[provider:{provider_id}]\n"
-            "# Add your package defaults here.\n"
-            "# key = value\n"
-        )
-        ini.write_text(template, encoding="utf-8")
-    return ini
 
 
 class RegisterApp(tk.Tk):
@@ -88,6 +36,7 @@ class RegisterApp(tk.Tk):
         )
 
         self._build()
+        self._try_autodetect()
 
     def _build(self) -> None:
         pad = {"padx": 12, "pady": 8}
@@ -127,12 +76,16 @@ class RegisterApp(tk.Tk):
         folder = filedialog.askdirectory(
             title="Select your package folder (e.g., mypkg/ or src/mypkg/)",
             mustexist=True,
+            initialdir=os.getcwd(),
         )
         if not folder:
             return
 
         chosen = Path(folder)
-        pkg = _find_package_dir(chosen)
+        if (chosen / "__init__.py").exists():
+            pkg = chosen
+        else:
+            pkg = find_package_dir(chosen, None)
         if not pkg:
             messagebox.showerror(
                 "Pick your package folder",
@@ -145,8 +98,26 @@ class RegisterApp(tk.Tk):
             return
 
         self.defaults_path.set(str(pkg))
-        self.provider_id.set(_pep503_default_provider(pkg))
+        try:
+            root = find_project_root(pkg)
+        except ProjectRootNotFoundError:
+            root = pkg
+        dist_name = read_dist_name_from_pyproject(root)
+        self.provider_id.set(default_provider_id(pkg, dist_name))
         self.message_var.set(f"Package folder: {pkg}")
+
+    def _try_autodetect(self) -> None:
+        cwd = Path(os.getcwd())
+        try:
+            root = find_project_root(cwd)
+        except ProjectRootNotFoundError:
+            root = cwd
+        dist_name = read_dist_name_from_pyproject(root)
+        pkg = find_package_dir(root, dist_name)
+        if pkg:
+            self.defaults_path.set(str(pkg))
+            self.provider_id.set(default_provider_id(pkg, dist_name))
+            self.message_var.set(f"Detected package folder: {pkg}")
 
     def on_register(self) -> None:
         pkg_dir_raw = self.defaults_path.get().strip()
@@ -160,8 +131,11 @@ class RegisterApp(tk.Tk):
             return
 
         pkg_dir = Path(pkg_dir_raw)
-        pkg = _find_package_dir(pkg_dir)
-        if not pkg:
+        if (pkg_dir / "__init__.py").exists():
+            pkg = pkg_dir
+        else:
+            pkg = find_package_dir(pkg_dir, None)
+        if not pkg or not (pkg / "__init__.py").exists():
             messagebox.showerror(
                 "Invalid folder",
                 "That folder doesn’t look like a package. Pick the folder that contains __init__.py.",
@@ -170,7 +144,7 @@ class RegisterApp(tk.Tk):
 
         provider_norm = normalize_provider_id(provider)
         try:
-            settings_path = _ensure_defaults_file(pkg, provider_norm)
+            settings_path = ensure_defaults_file(pkg, provider_norm)
             dl = link(provider_norm, settings_path, validate=True)
             self.message_var.set(f"Linked {dl.provider_id} -> {dl.defaults_path}")
             messagebox.showinfo(

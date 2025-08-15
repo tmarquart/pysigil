@@ -19,6 +19,25 @@ We use your **PEP 503 normalized** distribution name as the provider id (lowerca
 * `My_Package.Name` → `my-package-name`
 * `awesome.pkg` → `awesome-pkg`
 
+## Automatic detection
+
+Sigil can auto-detect your package from the current directory using
+`pyprojroot` and your `pyproject.toml`.
+
+```bash
+# From your repo root
+sigil author register --auto
+
+# Explicit package folder
+sigil author register --package-dir ./src/mypkg
+
+# Legacy explicit defaults path
+sigil author register --provider my-pkg --defaults ./src/mypkg/.sigil/settings.ini
+```
+
+The GUI pre-fills both fields when it can detect the package unambiguously and
+creates `.sigil/settings.ini` if it's missing.
+
 ## Option A — CLI (Click)
 
 Register a dev link:

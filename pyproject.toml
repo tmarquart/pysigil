@@ -16,7 +16,12 @@ description = "Preferences & secrets manager with layered scopes and tuple-key i
 readme = "README.md"
 requires-python = ">=3.10"
 version = "0.2.0"
-dependencies = ["appdirs", "tomlkit", "click"]
+dependencies = [
+  "appdirs",
+  "tomlkit",
+  "click>=8.1",
+  "pyprojroot>=0.3.0",
+]
 authors = [{ name = "Tim Marquart" }]
 
 [project.optional-dependencies]

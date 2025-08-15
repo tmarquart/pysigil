@@ -8,11 +8,12 @@ from pathlib import Path
 import click
 
 from .authoring import (
-    DefaultsValidationError,
     DevLinkError,
+    DefaultsValidationError,
     import_package_from,
     link as dev_link,
     list_links as dev_list,
+    normalize_provider_id,
     patch_pyproject_package_data,
     unlink as dev_unlink,
     validate_defaults_file,
@@ -20,14 +21,14 @@ from .authoring import (
 from .core import Sigil
 from .discovery import pep503_name
 from .gui import launch_gui
-
-
-def _find_pyproject(start: Path) -> Path | None:
-    for parent in [start, *start.parents]:
-        candidate = parent / "pyproject.toml"
-        if candidate.is_file():
-            return candidate
-    return None
+from .resolver import (
+    ProjectRootNotFoundError,
+    default_provider_id,
+    ensure_defaults_file,
+    find_package_dir,
+    find_project_root,
+    read_dist_name_from_pyproject,
+)
 
 
 @click.group()
@@ -150,43 +151,85 @@ def author() -> None:
     """Package author helpers."""
 
 
-@author.command()
-@click.option("--provider", required=True)
-@click.option("--defaults", required=True, type=click.Path(path_type=Path))
-@click.option("--add-package-data", is_flag=True)
-@click.option("--pyproject", type=click.Path(path_type=Path))
-@click.option("--no-dev-link", is_flag=True)
-@click.option("--yes", is_flag=True, help="Unused")
+@author.command("register")
+@click.option("--package-dir", type=click.Path(path_type=Path), help="Package directory")
+@click.option("--defaults", type=click.Path(path_type=Path), help="Path to settings.ini")
+@click.option("--provider", help="Override provider id")
+@click.option("--auto", is_flag=True, help="Auto-detect from current directory")
+@click.option("--no-validate", is_flag=True, help="Skip defaults validation")
 def register(
-    provider: str,
-    defaults: Path,
-    add_package_data: bool,
-    pyproject: Path | None,
-    no_dev_link: bool,
-    yes: bool,
+    package_dir: Path | None,
+    defaults: Path | None,
+    provider: str | None,
+    auto: bool,
+    no_validate: bool,
 ) -> None:
-    provider = pep503_name(provider)
-    ini_path = Path(defaults)
-    try:
-        validate_defaults_file(ini_path, provider)
-    except DefaultsValidationError as exc:
-        click.echo(str(exc), err=True)
-        raise click.exceptions.Exit(1) from None
-    if not no_dev_link:
+    """Register package defaults for development."""
+
+    if auto:
         try:
-            dev_link(provider, ini_path)
+            root = find_project_root()
+        except ProjectRootNotFoundError:
+            root = Path.cwd()
+        dist_name = read_dist_name_from_pyproject(root)
+        pkg = find_package_dir(root, dist_name)
+        if not pkg:
+            click.echo("Could not auto-detect package directory", err=True)
+            raise click.exceptions.Exit(2)
+        provider_id = default_provider_id(pkg, dist_name)
+        settings_path = ensure_defaults_file(pkg, provider_id)
+        try:
+            dev_link(provider_id, settings_path, validate=not no_validate)
         except DevLinkError as exc:
             click.echo(str(exc), err=True)
-            raise click.exceptions.Exit(1) from None
-    if add_package_data:
-        if pyproject is not None:
-            pyproject_path = pyproject
+            raise click.exceptions.Exit(2) from None
+        click.echo(f"Linked {provider_id} -> {settings_path}")
+        return
+
+    if bool(package_dir) == bool(defaults):
+        click.echo("Use exactly one of --package-dir or --defaults", err=True)
+        raise click.exceptions.Exit(2)
+
+    if package_dir:
+        chosen = package_dir
+        if (chosen / "__init__.py").exists():
+            pkg = chosen
         else:
-            pyproject_path = _find_pyproject(ini_path)
-        if pyproject_path is not None:
-            patch_pyproject_package_data(
-                pyproject_path, import_package_from(ini_path)
-            )
+            pkg = find_package_dir(chosen, None)
+        if not pkg:
+            click.echo("That folder doesn't look like a package", err=True)
+            raise click.exceptions.Exit(2)
+        try:
+            root = find_project_root(pkg)
+        except ProjectRootNotFoundError:
+            root = pkg
+        dist_name = read_dist_name_from_pyproject(root)
+        provider_id = (
+            normalize_provider_id(provider)
+            if provider
+            else default_provider_id(pkg, dist_name)
+        )
+        settings_path = ensure_defaults_file(pkg, provider_id)
+        try:
+            dev_link(provider_id, settings_path, validate=not no_validate)
+        except DevLinkError as exc:
+            click.echo(str(exc), err=True)
+            raise click.exceptions.Exit(2) from None
+        click.echo(f"Linked {provider_id} -> {settings_path}")
+        return
+
+    # defaults path branch
+    assert defaults is not None
+    if not provider:
+        click.echo("--provider is required when using --defaults", err=True)
+        raise click.exceptions.Exit(2)
+    provider_id = normalize_provider_id(provider)
+    try:
+        dev_link(provider_id, defaults, validate=not no_validate)
+    except DevLinkError as exc:
+        click.echo(str(exc), err=True)
+        raise click.exceptions.Exit(2) from None
+    click.echo(f"Linked {provider_id} -> {defaults}")
 
 
 @author.command("link-defaults")
