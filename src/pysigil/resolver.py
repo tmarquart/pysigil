@@ -3,11 +3,16 @@
 from importlib import resources
 from importlib.metadata import PackageNotFoundError, distribution
 from pathlib import Path
+import re
 
 from appdirs import user_config_dir
 from pyprojroot import here
+try:  # pragma: no cover - Python <3.11
+    import tomllib  # type: ignore
+except Exception:  # pragma: no cover - fallback
+    import tomli as tomllib  # type: ignore
 
-from .authoring import get as get_dev_link
+from .authoring import get as get_dev_link, normalize_provider_id
 
 DEFAULT_FILENAME = "settings.ini"
 
@@ -17,26 +22,25 @@ class ProjectRootNotFoundError(RuntimeError):
 
 
 def find_project_root(start: Path | None = None) -> Path:
-    """Locate the nearest project root using :func:`pyprojroot.here`.
+    """Locate the nearest project root.
 
-    Parameters
-    ----------
-    start:
-        Starting directory.  If ``None`` the current working directory is used.
-
-    Raises
-    ------
-    ProjectRootNotFoundError
-        If no project root can be determined.
+    Discovery prefers :func:`pyprojroot.here` but falls back to scanning for a
+    ``pyproject.toml`` or ``.git`` directory.  If no root is found a
+    :class:`ProjectRootNotFoundError` is raised.
     """
 
+    start_path = (Path.cwd() if start is None else Path(start)).resolve()
     try:
-        if start is None:
-            return Path(here()).resolve()
-        return Path(here(start_path=Path(start))).resolve()
-    except Exception as exc:  # pragma: no cover - defensive
-        raise ProjectRootNotFoundError("No project root found") from exc
-
+        return Path(here(start_path=start_path)).resolve()
+    except Exception:
+        cur = start_path
+        while True:
+            if (cur / "pyproject.toml").exists() or (cur / ".git").exists():
+                return cur
+            if cur.parent == cur:
+                break
+            cur = cur.parent
+    raise ProjectRootNotFoundError("No project root found")
 
 def project_settings_file(
     explicit_file: Path | None = None,
@@ -121,4 +125,87 @@ def resolve_defaults(provider_id: str, filename: str = DEFAULT_FILENAME) -> tupl
     if pkg_path is not None and pkg_path.is_file():
         return pkg_path, "installed"
     return None, "none"
+
+
+def read_dist_name_from_pyproject(root: Path) -> str | None:
+    """Return ``project.name`` from ``pyproject.toml`` if present."""
+
+    ppt = root / "pyproject.toml"
+    if not ppt.exists():
+        return None
+    try:  # pragma: no cover - best effort
+        data = tomllib.loads(ppt.read_text(encoding="utf-8"))
+        name = data.get("project", {}).get("name")
+        return name if isinstance(name, str) and name.strip() else None
+    except Exception:  # pragma: no cover - defensive
+        return None
+
+
+def _candidate_module_names(dist_name: str) -> list[str]:
+    base = dist_name.lower()
+    cands = set()
+    cands.add(base.replace("-", "_").replace(".", "_"))
+    cands.add(base.replace("-", "").replace(".", ""))
+    parts = [p for p in re.split(r"[-.]+", base) if p]
+    cands.update(parts)
+    return [c for c in cands if c]
+
+
+def find_package_dir(root: Path, dist_name: str | None) -> Path | None:
+    """Deterministically locate a package directory under ``root``."""
+
+    def _probe(parent: Path, names: list[str]) -> Path | None:
+        for n in names:
+            cand = parent / n
+            if (cand / "__init__.py").exists():
+                return cand
+        return None
+
+    if dist_name:
+        names = _candidate_module_names(dist_name)
+        src = root / "src"
+        if src.is_dir():
+            p = _probe(src, names)
+            if p:
+                return p
+        p = _probe(root, names)
+        if p:
+            return p
+
+    def _one_pkg(parent: Path) -> Path | None:
+        pkgs = [p for p in parent.iterdir() if p.is_dir() and (p / "__init__.py").exists()]
+        return pkgs[0] if len(pkgs) == 1 else None
+
+    src = root / "src"
+    maybe = _one_pkg(src) if src.is_dir() else None
+    if maybe:
+        return maybe
+    maybe = _one_pkg(root)
+    if maybe:
+        return maybe
+    return None
+
+
+def default_provider_id(package_dir: Path, dist_name: str | None) -> str:
+    """Return default provider id using ``dist_name`` or ``package_dir.name``."""
+
+    if dist_name:
+        return normalize_provider_id(dist_name)
+    return normalize_provider_id(package_dir.name)
+
+
+def ensure_defaults_file(package_dir: Path, provider_id: str) -> Path:
+    """Ensure ``.sigil/settings.ini`` exists under ``package_dir``."""
+
+    sigil_dir = package_dir / ".sigil"
+    sigil_dir.mkdir(exist_ok=True)
+    ini = sigil_dir / "settings.ini"
+    if not ini.exists():
+        template = (
+            f"[provider:{provider_id}]\n"
+            "# Add your package defaults here.\n"
+            "# key = value\n"
+        )
+        ini.write_text(template, encoding="utf-8")
+    return ini
 
