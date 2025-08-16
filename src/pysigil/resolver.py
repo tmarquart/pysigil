@@ -7,6 +7,7 @@ from pathlib import Path
 
 from appdirs import user_config_dir
 from pyprojroot import here
+import sys, os
 
 try:  # pragma: no cover - Python <3.11
     import tomllib  # type: ignore
@@ -21,6 +22,13 @@ DEFAULT_FILENAME = "settings.ini"
 class ProjectRootNotFoundError(RuntimeError):
     """Raised when no project root can be located."""
 
+def debug_where_am_i(tag=""):
+
+    print(f"[{tag}] cwd         =", Path.cwd())
+    print(f"[{tag}] __file__    =", Path(__file__).resolve())
+    print(f"[{tag}] sys.argv[0] =", Path(sys.argv[0]).resolve() if sys.argv else None)
+    print(f"[{tag}] sys.executable =", sys.executable)
+    print(f"[{tag}] PYTHONPATH  =", os.getenv("PYTHONPATH"))
 
 def find_project_root(start: Path | None = None) -> Path:
     """Locate the nearest project root.
@@ -30,18 +38,10 @@ def find_project_root(start: Path | None = None) -> Path:
     :class:`ProjectRootNotFoundError` is raised.
     """
 
-    start_path = (Path.cwd() if start is None else Path(start)).resolve()
     try:
-        return Path(here(start_path=start_path)).resolve()
+        return Path(here()).resolve()
     except Exception:
-        cur = start_path
-        while True:
-            if (cur / "pyproject.toml").exists() or (cur / ".git").exists():
-                return cur
-            if cur.parent == cur:
-                break
-            cur = cur.parent
-    raise ProjectRootNotFoundError("No project root found")
+        raise ProjectRootNotFoundError("No project root found")
 
 def project_settings_file(
     explicit_file: Path | None = None,
