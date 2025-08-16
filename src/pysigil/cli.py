@@ -117,6 +117,15 @@ def config_gitignore(init: bool, auto: bool) -> None:
         click.echo(str(path))
 
 
+@config.command("gui")
+def config_gui() -> None:  # pragma: no cover - GUI interactions
+    """Launch the config GUI."""
+
+    from .gui import launch_config_gui
+
+    launch_config_gui()
+
+
 # ---------------------------------------------------------------------------
 # Basic commands
 # ---------------------------------------------------------------------------

@@ -49,6 +49,13 @@ preferences. After installation launch it with:
 sigil gui
 ```
 
+To initialise or inspect the user configuration directory from a small
+helper interface, run:
+
+```bash
+sigil config gui
+```
+
 Package authors can register development defaults via:
 
 ```bash
