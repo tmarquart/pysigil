@@ -56,6 +56,12 @@ helper interface, run:
 sigil config gui
 ```
 
+
+Click **Initialize User Custom** to create a per-host `user-custom` section.
+A confirmation dialog appears and the user configuration folder opens so you
+can edit the newly created file.
+
+
 Package authors can register development defaults via:
 
 ```bash
