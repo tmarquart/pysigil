@@ -99,7 +99,7 @@ class Sigil:
                 self.default_path.suffix == ""
                 or self.default_path.name != self.settings_filename
             ):
-                self.default_path = self.default_path / self.settings_filename
+                self.default_path = self.default_path / ".sigil" / self.settings_filename
             self._default_source = "explicit"
             self._defaults_writable = True
         else:
