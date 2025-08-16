@@ -66,7 +66,7 @@ def config_init(provider: str, scope: str, auto: bool) -> None:
 @click.option("--scope", type=click.Choice(["user", "project"]), default="user")
 @click.option("--auto", is_flag=True, help="Auto-detect project root")
 def config_open(provider: str, scope: str, auto: bool) -> None:  # pragma: no cover - best effort
-    path = cfg_open_scope(scope, auto=auto)
+    path = cfg_open_scope(provider, scope, auto=auto)
     try:
         click.launch(str(path))
     except Exception:

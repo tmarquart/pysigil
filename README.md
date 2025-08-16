@@ -32,7 +32,7 @@ sigil get ui.color --app demo
 sigil export --app demo
 ```
 
-The CLI stores data under your user config directory (e.g. `~/.config/demo`),
+The CLI stores data under your user config directory (e.g. `~/.config/sigil/demo/settings.ini`),
 so you can run these commands right from the source tree without creating a
 separate project. See `tests/manual_tests/README.md` for more examples.
 

@@ -12,13 +12,16 @@ def launch() -> None:  # pragma: no cover - GUI interactions
     ttk.Label(root, text=f"Host: {host_id()}").pack(padx=10, pady=10)
 
     def do_open() -> None:
-        path = open_scope("user")
+        path = open_scope("user-custom", "user")
         try:
             import click
 
             click.launch(str(path))
         except Exception:
-            pass
+            try:
+                messagebox.showerror("Sigil Config", f"Could not open {path}")
+            except Exception:
+                pass
 
     def do_init() -> None:
         path = init_config("user-custom", "user")
