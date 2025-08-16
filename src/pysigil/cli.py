@@ -9,8 +9,8 @@ from pathlib import Path
 import click
 
 from .authoring import (
-    DevLinkError,
     DefaultsValidationError,
+    DevLinkError,
     link as dev_link,
     list_links as dev_list,
     normalize_provider_id,
