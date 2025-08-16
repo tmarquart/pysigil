@@ -100,10 +100,12 @@ class Sigil:
                 or self.default_path.name != self.settings_filename
             ):
                 self.default_path = self.default_path / self.settings_filename
+            self._default_source = "explicit"
         else:
-            self.default_path, _ = resolve_defaults(
+            self.default_path, self._default_source = resolve_defaults(
                 self.app_name, filename=self.settings_filename
             )
+        self._defaults_writable = self._default_source == "dev-link"
 
         self._defaults: MutableMapping[KeyPath, str] = {}
         if defaults:
@@ -137,11 +139,12 @@ class Sigil:
         """Set the default scope for writes.
 
         Only ``"user"``, ``"project"`` and ``"default"`` scopes are supported.
-        ``"default"`` requires ``default_path`` to be configured.
+        The ``"default"`` scope is writable only when defaults were loaded via a
+        development link.
         """
-        if scope == "default":
+        if scope == "default" and not self._defaults_writable:
             raise ReadOnlyScopeError("Default scope is read-only")
-        if scope not in {"user", "project"}:
+        if scope not in {"user", "project", "default"}:
             raise UnknownScopeError(scope)
         self._default_scope = scope
 
@@ -378,7 +381,7 @@ class Sigil:
         target_scope = scope or self._default_scope
         if target_scope == "core":
             raise ReadOnlyScopeError("Core defaults are read-only")
-        if target_scope == "default":
+        if target_scope == "default" and not self._defaults_writable:
             raise ReadOnlyScopeError("Default scope is read-only")
         raw_path = parse_key(key)
         if raw_path and raw_path[0] == "secret":
@@ -408,6 +411,8 @@ class Sigil:
             return self._user, self.user_path
         if scope == "project":
             return self._project, self.project_path
+        if scope == "default" and self._defaults_writable and self.default_path is not None:
+            return self._defaults, self.default_path
         raise UnknownScopeError(scope)
 
     @contextmanager

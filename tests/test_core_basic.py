@@ -25,3 +25,21 @@ def test_package_defaults_read_only(tmp_path: Path, monkeypatch) -> None:
     with pytest.raises(ReadOnlyScopeError):
         s.set_pref("foo", "8", scope="default")
 
+
+def test_dev_link_defaults_writable(tmp_path: Path, monkeypatch) -> None:
+    pkg = tmp_path / "pkgdefaults"
+    (pkg / ".sigil").mkdir(parents=True)
+    settings = pkg / ".sigil" / "settings.ini"
+    settings.write_text("[pkgdefaults]\nfoo = 7\n")
+    (pkg / "__init__.py").write_text("")
+    monkeypatch.syspath_prepend(tmp_path)
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
+    from pysigil.authoring import link
+
+    link("pkgdefaults", settings)
+    user_dir = tmp_path / "user"
+    s = Sigil("pkgdefaults", user_scope=user_dir)
+    s.set_pref("foo", "8", scope="default")
+    assert s.get_pref("foo") == 8
+    assert "foo = 8" in settings.read_text()
+
