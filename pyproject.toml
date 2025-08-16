@@ -18,7 +18,7 @@ name = "pysigil"
 description = "Preferences & secrets manager with layered scopes and tuple-key internals"
 readme = "README.md"
 requires-python = ">=3.10"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
   "appdirs",
   "tomlkit",
