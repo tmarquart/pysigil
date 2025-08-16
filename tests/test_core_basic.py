@@ -49,7 +49,9 @@ def test_explicit_default_path_writable(tmp_path: Path) -> None:
     s = Sigil("demo", user_scope=tmp_path / "user.ini", default_path=default_dir)
     s.set_pref("foo", "bar", scope="default")
     assert s.get_pref("foo") == "bar"
+
     settings_file = default_dir / ".sigil" / "settings.ini"
+
     assert "foo = bar" in settings_file.read_text()
     s2 = Sigil("demo", user_scope=tmp_path / "user2.ini", default_path=default_dir)
     assert s2.get_pref("foo") == "bar"
