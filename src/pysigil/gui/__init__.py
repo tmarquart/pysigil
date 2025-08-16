@@ -17,6 +17,7 @@ except Exception:  # pragma: no cover - fallback for headless tests
 from ..merge_policy import KeyPath
 from . import events, gui_state
 from .widgets import widget_for
+from .config_gui import launch as launch_config_gui
 
 if TYPE_CHECKING:
     from ..core import Sigil
