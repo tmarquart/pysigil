@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import os
 import sys
+import tkinter as tk
 import webbrowser
 from pathlib import Path
-import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
 from ..authoring import DevLinkError, _dev_dir, link, normalize_provider_id

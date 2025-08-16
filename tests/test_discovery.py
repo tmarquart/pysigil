@@ -1,5 +1,6 @@
-import pysigil.discovery as discovery
 import pytest
+
+import pysigil.discovery as discovery
 
 
 @pytest.mark.parametrize(

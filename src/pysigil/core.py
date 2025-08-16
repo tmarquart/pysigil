@@ -8,6 +8,7 @@ from pathlib import Path
 from threading import RLock
 from typing import Any
 
+from .discovery import pep503_name
 from .errors import (
     ReadOnlyScopeError,
     SigilError,  # noqa: F401 - re-exported for compatibility
@@ -16,7 +17,6 @@ from .errors import (
 )
 from .gui import events
 from .merge_policy import CORE_DEFAULTS, KeyPath, parse_key, read_env
-from .discovery import pep503_name
 from .resolver import (
     ProjectRootNotFoundError,
     project_settings_file,

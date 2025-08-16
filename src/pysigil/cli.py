@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import configparser
 import json
 import os
 import sys
@@ -8,13 +9,20 @@ from pathlib import Path
 import click
 
 from .authoring import (
-    DevLinkError,
     DefaultsValidationError,
+    DevLinkError,
     link as dev_link,
     list_links as dev_list,
     normalize_provider_id,
     unlink as dev_unlink,
     validate_defaults_file,
+)
+from .config import (
+    ensure_gitignore as cfg_ensure_gitignore,
+    host_file as cfg_host_file,
+    init_config as cfg_init_config,
+    load as cfg_load,
+    open_scope as cfg_open_scope,
 )
 from .core import Sigil
 from .discovery import pep503_name
@@ -32,6 +40,81 @@ from .resolver import (
 @click.group()
 def cli() -> None:
     """Sigil command line interface."""
+
+
+# ---------------------------------------------------------------------------
+# Config commands
+# ---------------------------------------------------------------------------
+
+
+@cli.group()
+def config() -> None:
+    """Manage Sigil configuration files."""
+
+
+@config.command("init")
+@click.option("--provider", required=True)
+@click.option("--scope", type=click.Choice(["user", "project"]), default="user")
+@click.option("--auto", is_flag=True, help="Auto-detect project root")
+def config_init(provider: str, scope: str, auto: bool) -> None:
+    path = cfg_init_config(provider, scope, auto=auto)
+    click.echo(str(path))
+
+
+@config.command("open")
+@click.option("--provider", required=True)
+@click.option("--scope", type=click.Choice(["user", "project"]), default="user")
+@click.option("--auto", is_flag=True, help="Auto-detect project root")
+def config_open(provider: str, scope: str, auto: bool) -> None:  # pragma: no cover - best effort
+    path = cfg_open_scope(scope, auto=auto)
+    try:
+        click.launch(str(path))
+    except Exception:
+        pass
+    click.echo(str(path))
+
+
+@config.command("host")
+@click.option("--provider", required=True)
+@click.option("--scope", type=click.Choice(["user", "project"]), default="user")
+@click.option("--auto", is_flag=True, help="Auto-detect project root")
+def config_host(provider: str, scope: str, auto: bool) -> None:  # pragma: no cover - best effort
+    try:
+        path = cfg_host_file(provider, scope, auto=auto)
+    except ValueError as exc:
+        raise click.UsageError(str(exc)) from None
+    try:
+        click.launch(str(path))
+    except Exception:
+        pass
+    click.echo(str(path))
+
+
+@config.command("show")
+@click.option("--provider", required=True)
+@click.option("--as", "format", type=click.Choice(["ini", "json"]), default="ini")
+@click.option("--auto", is_flag=True, help="Auto-detect project root")
+def config_show(provider: str, format: str, auto: bool) -> None:
+    data = cfg_load(provider, auto=auto)
+    if format == "json":
+        click.echo(json.dumps(data))
+        return
+    parser = configparser.ConfigParser()
+    parser[normalize_provider_id(provider)] = {k: str(v) for k, v in data.items()}
+    from io import StringIO
+
+    buf = StringIO()
+    parser.write(buf)
+    click.echo(buf.getvalue().strip())
+
+
+@config.command("gitignore")
+@click.option("--init", is_flag=True, help="Add ignore rule")
+@click.option("--auto", is_flag=True, help="Auto-detect project root")
+def config_gitignore(init: bool, auto: bool) -> None:
+    if init:
+        path = cfg_ensure_gitignore(auto=auto)
+        click.echo(str(path))
 
 
 # ---------------------------------------------------------------------------

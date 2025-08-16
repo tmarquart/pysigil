@@ -16,6 +16,7 @@ except Exception:  # pragma: no cover - fallback for headless tests
 
 from ..merge_policy import KeyPath
 from . import events, gui_state
+from .config_gui import launch as launch_config_gui
 from .widgets import widget_for
 
 if TYPE_CHECKING:
@@ -403,6 +404,7 @@ __all__ = [
     "current_keys",
     "effective_scope_for",
     "launch_gui",
+    "launch_config_gui",
     "_open_value_dialog",
     "_populate_tree",
     "_on_add",

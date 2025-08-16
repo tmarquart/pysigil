@@ -1,12 +1,13 @@
 """Utilities for resolving configuration file locations and project roots."""
 
+import re
 from importlib import resources
 from importlib.metadata import PackageNotFoundError, distribution
 from pathlib import Path
-import re
 
 from appdirs import user_config_dir
 from pyprojroot import here
+
 try:  # pragma: no cover - Python <3.11
     import tomllib  # type: ignore
 except Exception:  # pragma: no cover - fallback
