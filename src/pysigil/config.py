@@ -146,3 +146,23 @@ def ensure_gitignore(*, auto: bool = False) -> Path:
         lines.append(rule)
         gi.write_text("\n".join(lines) + "\n")
     return gi
+
+
+def available_providers(*, auto: bool = True) -> list[str]:
+    """Return provider IDs present in user or project config directories."""
+
+    providers: set[str] = set()
+    user_base = Path(user_config_dir("sigil"))
+    if user_base.exists():
+        for p in user_base.iterdir():
+            if p.is_dir():
+                providers.add(normalize_provider_id(p.name))
+    root = _project_dir(auto)
+    if root is not None:
+        proj_base = root / ".sigil"
+        if proj_base.exists():
+            for p in proj_base.iterdir():
+                if p.is_dir():
+                    providers.add(normalize_provider_id(p.name))
+    return sorted(providers)
+
