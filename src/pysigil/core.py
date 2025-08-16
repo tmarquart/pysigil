@@ -16,6 +16,7 @@ from .errors import (
 )
 from .gui import events
 from .merge_policy import CORE_DEFAULTS, KeyPath, parse_key, read_env
+from .discovery import pep503_name
 from .resolver import (
     ProjectRootNotFoundError,
     project_settings_file,
@@ -58,7 +59,11 @@ class Sigil:
         secrets: Sequence[SecretProvider] | None = None,
         settings_filename='settings.ini'
     ) -> None:
-        self.app_name = app_name
+        # Normalise the application name so that underscores and hyphens are
+        # treated equivalently across all scopes.  This mirrors the
+        # normalisation used for provider discovery (PEP 503) and ensures that
+        # configuration files using either convention are correctly recognised.
+        self.app_name = pep503_name(app_name)
         self.settings_filename = settings_filename
 
         if user_scope is not None:
@@ -112,7 +117,7 @@ class Sigil:
             providers = [
                 KeyringProvider(),
                 EncryptedFileProvider(enc_path, prompt=False, required=False),
-                EnvSecretProvider(app_name),
+                EnvSecretProvider(self.app_name),
             ]
             self._secrets = SecretChain(providers)
         else:
@@ -147,24 +152,22 @@ class Sigil:
 
             user_backend = _backend_for(self.user_path)
             project_backend = _backend_for(self.project_path)
-            self._user = {
-                k: v
-                for k, v in user_backend.load(self.user_path).items()
-                if self._is_ours(k)
-            }
-            self._project = {
-                k: v
-                for k, v in project_backend.load(self.project_path).items()
-                if self._is_ours(k)
-            }
+            self._user = {}
+            for k, v in user_backend.load(self.user_path).items():
+                nk = self._normalize_key(k)
+                if nk:
+                    self._user[nk] = v
+            self._project = {}
+            for k, v in project_backend.load(self.project_path).items():
+                nk = self._normalize_key(k)
+                if nk:
+                    self._project[nk] = v
             if self.default_path is not None:
                 default_backend = _backend_for(self.default_path)
-                file_defaults = {
-                    k: v
-                    for k, v in default_backend.load(self.default_path).items()
-                    if self._is_ours(k)
-                }
-                self._defaults.update(file_defaults)
+                for k, v in default_backend.load(self.default_path).items():
+                    nk = self._normalize_key(k)
+                    if nk:
+                        self._defaults[nk] = v
             self._merge_cache()
 
     def _merge_cache(self) -> None:
@@ -175,8 +178,22 @@ class Sigil:
         self._merged.update(self._project)
         self._merged.update(self._env)
 
+    def _normalize_key(self, path: KeyPath) -> KeyPath | None:
+        """Return *path* with normalised prefix if it belongs to us.
+
+        Configuration files may use either ``-`` or ``_`` in the provider
+        section name.  This helper converts the first path element to the
+        canonical :attr:`app_name` and returns ``None`` for unrelated keys.
+        """
+
+        if len(path) == 0:
+            return None
+        if pep503_name(path[0]) != self.app_name:
+            return None
+        return (self.app_name, *path[1:])
+
     def _is_ours(self, path: KeyPath) -> bool:
-        return len(path) > 0 and path[0] == self.app_name
+        return self._normalize_key(path) is not None
 
     def _strip_prefix(self, path: KeyPath) -> KeyPath:
         return path[1:] if self._is_ours(path) else path

@@ -19,7 +19,8 @@ def parse_key(raw: str | KeyPath) -> KeyPath:
 
 
 def read_env(app_name: str) -> MutableMapping[KeyPath, str]:
-    prefix = f"SIGIL_{app_name.upper()}_"
+    sanitized = app_name.upper().replace("-", "_")
+    prefix = f"SIGIL_{sanitized}_"
     result: MutableMapping[KeyPath, str] = {}
     for key, value in os.environ.items():
         if key.startswith(prefix):
