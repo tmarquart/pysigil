@@ -4,12 +4,6 @@ import configparser
 from importlib import resources
 from pathlib import Path
 
-try:
-    from appdirs import user_config_dir  # type: ignore
-except ModuleNotFoundError:  # pragma: no cover - fallback
-    def user_config_dir(appname: str) -> str:
-        return str(Path.home() / ".config" / appname)
-
 
 class IniIOError(Exception):
     """Raised when an INI file cannot be read or written."""

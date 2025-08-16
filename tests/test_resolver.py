@@ -46,3 +46,27 @@ def test_package_defaults_file_missing(tmp_path: Path, monkeypatch) -> None:
     path = package_defaults_file("pkg_missing", filename="settings.ini")
     assert path == pkg / ".sigil" / "settings.ini"
     assert not path.exists()
+
+def test_resolve_defaults_precedence(monkeypatch, tmp_path: Path) -> None:
+    import types
+    from pysigil import resolver
+
+    installed = tmp_path / "installed.ini"
+    dev = tmp_path / "dev.ini"
+    installed.write_text("")
+    dev.write_text("")
+
+    monkeypatch.setattr(resolver, "_installed_defaults", lambda pid, fn: installed)
+    monkeypatch.setattr(resolver, "get_dev_link", lambda pid: types.SimpleNamespace(defaults_path=dev))
+
+    path, source = resolver.resolve_defaults("prov")
+    assert path == installed and source == "installed"
+
+    installed.unlink()
+    path, source = resolver.resolve_defaults("prov")
+    assert path == dev and source == "dev-link"
+
+    dev.unlink()
+    monkeypatch.setattr(resolver, "get_dev_link", lambda pid: None)
+    path, source = resolver.resolve_defaults("prov")
+    assert path is None and source == "none"

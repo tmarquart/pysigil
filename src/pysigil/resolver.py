@@ -1,13 +1,10 @@
 """Utilities for resolving configuration file locations and project roots."""
 
 import re
+import sys, os
 from importlib import resources
 from importlib.metadata import PackageNotFoundError, distribution
 from pathlib import Path
-
-from appdirs import user_config_dir
-from pyprojroot import here
-import sys, os
 
 try:  # pragma: no cover - Python <3.11
     import tomllib  # type: ignore
@@ -15,33 +12,10 @@ except Exception:  # pragma: no cover - fallback
     import tomli as tomllib  # type: ignore
 
 from .authoring import get as get_dev_link, normalize_provider_id
+from .paths import project_config_dir, user_config_dir
 
 DEFAULT_FILENAME = "settings.ini"
 
-
-class ProjectRootNotFoundError(RuntimeError):
-    """Raised when no project root can be located."""
-
-def debug_where_am_i(tag=""):
-
-    print(f"[{tag}] cwd         =", Path.cwd())
-    print(f"[{tag}] __file__    =", Path(__file__).resolve())
-    print(f"[{tag}] sys.argv[0] =", Path(sys.argv[0]).resolve() if sys.argv else None)
-    print(f"[{tag}] sys.executable =", sys.executable)
-    print(f"[{tag}] PYTHONPATH  =", os.getenv("PYTHONPATH"))
-
-def find_project_root(start: Path | None = None) -> Path:
-    """Locate the nearest project root.
-
-    Discovery prefers :func:`pyprojroot.here` but falls back to scanning for a
-    ``pyproject.toml`` or ``.git`` directory.  If no root is found a
-    :class:`ProjectRootNotFoundError` is raised.
-    """
-
-    try:
-        return Path(here()).resolve()
-    except Exception:
-        raise ProjectRootNotFoundError("No project root found")
 
 def project_settings_file(
     explicit_file: Path | None = None,
@@ -50,19 +24,16 @@ def project_settings_file(
 ) -> Path:
     """Resolve the project-level settings file path.
 
-    If ``explicit_file`` is supplied, its absolute path is returned. Otherwise
-    :func:`find_project_root` is used to locate the project root and
-    ``<root>/.sigil/<filename>`` is returned.  The ``.sigil`` directory is
-    created if necessary.
+    If ``explicit_file`` is supplied, its absolute path is returned.
+    Otherwise ``<root>/.sigil/<filename>`` under the detected project root is
+    returned. The ``.sigil`` directory is created if necessary.
     """
 
     if explicit_file is not None:
         return Path(explicit_file).expanduser().resolve()
-    root = find_project_root(start)
-    cfg_dir = root / ".sigil"
+    cfg_dir = project_config_dir(start)
     cfg_dir.mkdir(parents=True, exist_ok=True)
     return (cfg_dir / filename).resolve()
-
 
 def user_settings_file(app_name: str, filename: str = DEFAULT_FILENAME) -> Path:
     """Return the user-level settings file for ``app_name``.
