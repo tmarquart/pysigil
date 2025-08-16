@@ -5,10 +5,10 @@ import socket
 from pathlib import Path
 from typing import Any
 
-from appdirs import user_config_dir
+from .paths import user_config_dir
 
 from .authoring import normalize_provider_id
-from .resolver import ProjectRootNotFoundError, find_project_root
+from .root import ProjectRootNotFoundError, find_project_root
 
 # ---------------------------------------------------------------------------
 # Host and provider helpers

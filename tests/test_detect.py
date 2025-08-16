@@ -6,9 +6,9 @@ from pysigil.resolver import (
     default_provider_id,
     ensure_defaults_file,
     find_package_dir,
-    find_project_root,
     read_dist_name_from_pyproject,
 )
+from pysigil.root import find_project_root
 
 
 def write_pyproject(root: Path, name: str | None = None) -> None:

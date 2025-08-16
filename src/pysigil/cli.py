@@ -28,12 +28,22 @@ from .core import Sigil
 from .discovery import pep503_name
 from .gui import launch_gui
 from .resolver import (
-    ProjectRootNotFoundError,
     default_provider_id,
     ensure_defaults_file,
     find_package_dir,
-    find_project_root,
     read_dist_name_from_pyproject,
+)
+from .root import ProjectRootNotFoundError, find_project_root
+from .paths import (
+    user_config_dir,
+    user_data_dir,
+    user_cache_dir,
+    project_root as paths_project_root,
+    project_config_dir,
+    project_data_dir,
+    project_cache_dir,
+    default_config_dir,
+    default_data_dir,
 )
 
 
@@ -45,6 +55,27 @@ def cli() -> None:
 # ---------------------------------------------------------------------------
 # Config commands
 # ---------------------------------------------------------------------------
+
+@cli.command("paths")
+@click.option("--start", type=click.Path(path_type=Path), default=None)
+@click.option("--json", "as_json", is_flag=True)
+def show_paths(start: Path | None, as_json: bool) -> None:
+    data = {
+        "user_config": user_config_dir(),
+        "user_data": user_data_dir(),
+        "user_cache": user_cache_dir(),
+        "project_root": paths_project_root(start=start),
+        "project_config": project_config_dir(start=start),
+        "project_data": project_data_dir(start=start),
+        "project_cache": project_cache_dir(start=start),
+        "default_config": default_config_dir(),
+        "default_data": default_data_dir(),
+    }
+    if as_json:
+        click.echo(json.dumps({k: str(v) for k, v in data.items()}))
+    else:
+        for k, v in data.items():
+            click.echo(f"{k}: {v}")
 
 
 @cli.group()

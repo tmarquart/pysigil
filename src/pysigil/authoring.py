@@ -5,7 +5,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from appdirs import user_config_dir
+from .paths import user_config_dir
 
 try:  # pragma: no cover - fallback when setuptools is missing
     from setuptools import PackageFinder  # type: ignore

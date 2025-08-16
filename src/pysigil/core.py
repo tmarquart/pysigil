@@ -17,8 +17,8 @@ from .errors import (
 )
 from .gui import events
 from .merge_policy import CORE_DEFAULTS, KeyPath, parse_key, read_env
+from .root import ProjectRootNotFoundError
 from .resolver import (
-    ProjectRootNotFoundError,
     project_settings_file,
     resolve_defaults,
     user_settings_file,

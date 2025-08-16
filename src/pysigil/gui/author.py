@@ -9,13 +9,12 @@ from tkinter import filedialog, messagebox, ttk
 
 from ..authoring import DevLinkError, _dev_dir, link, normalize_provider_id
 from ..resolver import (
-    ProjectRootNotFoundError,
     default_provider_id,
     ensure_defaults_file,
     find_package_dir,
-    find_project_root,
     read_dist_name_from_pyproject,
 )
+from ..root import ProjectRootNotFoundError, find_project_root
 
 APP_TITLE = "Sigil – Register Package Defaults"
 

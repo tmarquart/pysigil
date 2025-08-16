@@ -5,7 +5,6 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["pysigil*"]
-exclude = ["appdirs"]
 
 [tool.setuptools.package-dir]
 "" = "src"
@@ -20,7 +19,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 version = "0.3.0"
 dependencies = [
-  "appdirs",
+  "platformdirs>=4.0",
   "tomlkit",
   "click>=8.1",
   "pyprojroot>=0.3.0",
