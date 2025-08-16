@@ -106,7 +106,7 @@ class EnvSecretProvider:
     """Read-only provider using environment variables."""
 
     def __init__(self, app_name: str) -> None:
-        self._prefix = f"SIGIL_SECRET_{app_name.upper()}_"
+        self._prefix = f"SIGIL_SECRET_{app_name.upper().replace('-', '_')}_"
 
     def available(self) -> bool:  # pragma: no cover - trivial
         return True
