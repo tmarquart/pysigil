@@ -101,11 +101,12 @@ class Sigil:
             ):
                 self.default_path = self.default_path / self.settings_filename
             self._default_source = "explicit"
+            self._defaults_writable = True
         else:
             self.default_path, self._default_source = resolve_defaults(
                 self.app_name, filename=self.settings_filename
             )
-        self._defaults_writable = self._default_source == "dev-link"
+            self._defaults_writable = self._default_source == "dev-link"
 
         self._defaults: MutableMapping[KeyPath, str] = {}
         if defaults:
