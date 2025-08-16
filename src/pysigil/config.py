@@ -24,8 +24,8 @@ def host_id() -> str:
 # File discovery
 # ---------------------------------------------------------------------------
 
-def user_files(host: str) -> list[Path]:
-    base = Path(user_config_dir("sigil"))
+def user_files(provider_id: str, host: str) -> list[Path]:
+    base = Path(user_config_dir("sigil")) / provider_id
     files = [base / "settings.ini", base / f"settings-local-{host}.ini"]
     return [f for f in files if f.exists()]
 
@@ -39,11 +39,11 @@ def _project_dir(auto: bool) -> Path | None:
     return Path.cwd()
 
 
-def project_files(host: str, *, auto: bool = True) -> list[Path]:
+def project_files(provider_id: str, host: str, *, auto: bool = True) -> list[Path]:
     root = _project_dir(auto)
     if root is None:
         return []
-    base = root / ".sigil"
+    base = root / ".sigil" / provider_id
     files = [base / "settings.ini", base / f"settings-local-{host}.ini"]
     return [f for f in files if f.exists()]
 
@@ -68,9 +68,9 @@ def load(provider_id: str, *, auto: bool = True) -> dict[str, Any]:
     pid = normalize_provider_id(provider_id)
     h = host_id()
     acc: dict[str, Any] = {}
-    for f in user_files(h):
+    for f in user_files(pid, h):
         acc = merge_ini_section(acc, f, section=pid)
-    for f in project_files(h, auto=auto):
+    for f in project_files(pid, h, auto=auto):
         acc = merge_ini_section(acc, f, section=pid)
     return acc
 
@@ -79,14 +79,15 @@ def load(provider_id: str, *, auto: bool = True) -> dict[str, Any]:
 # Writing helpers used by CLI and GUI
 # ---------------------------------------------------------------------------
 
-def _scope_dir(scope: str, *, auto: bool) -> Path:
+def _scope_dir(scope: str, provider_id: str, *, auto: bool) -> Path:
+    pid = normalize_provider_id(provider_id)
     if scope == "user":
-        base = Path(user_config_dir("sigil"))
+        base = Path(user_config_dir("sigil")) / pid
     else:
         root = _project_dir(auto)
         if root is None:
             raise ProjectRootNotFoundError("No project root found")
-        base = root / ".sigil"
+        base = root / ".sigil" / pid
     base.mkdir(parents=True, exist_ok=True)
     return base
 
@@ -110,7 +111,7 @@ def _seed_section(path: Path, section: str, comment: str) -> None:
 def init_config(provider_id: str, scope: str, *, auto: bool = False) -> Path:
     pid = normalize_provider_id(provider_id)
     h = host_id()
-    base = _scope_dir(scope, auto=auto)
+    base = _scope_dir(scope, pid, auto=auto)
     if pid == "user-custom":
         path = base / f"settings-local-{h}.ini"
         comment = "# per-machine user-custom settings\n"
@@ -121,8 +122,8 @@ def init_config(provider_id: str, scope: str, *, auto: bool = False) -> Path:
     return path
 
 
-def open_scope(scope: str, *, auto: bool = False) -> Path:
-    return _scope_dir(scope, auto=auto)
+def open_scope(provider_id: str, scope: str, *, auto: bool = False) -> Path:
+    return _scope_dir(scope, provider_id, auto=auto)
 
 
 def host_file(provider_id: str, scope: str, *, auto: bool = False) -> Path:
@@ -137,7 +138,7 @@ def ensure_gitignore(*, auto: bool = False) -> Path:
     if root is None:
         raise ProjectRootNotFoundError("No project root found")
     gi = root / ".gitignore"
-    rule = ".sigil/settings-local*"
+    rule = ".sigil/*/settings-local*"
     lines: list[str] = []
     if gi.exists():
         lines = gi.read_text().splitlines()
@@ -145,3 +146,23 @@ def ensure_gitignore(*, auto: bool = False) -> Path:
         lines.append(rule)
         gi.write_text("\n".join(lines) + "\n")
     return gi
+
+
+def available_providers(*, auto: bool = True) -> list[str]:
+    """Return provider IDs present in user or project config directories."""
+
+    providers: set[str] = set()
+    user_base = Path(user_config_dir("sigil"))
+    if user_base.exists():
+        for p in user_base.iterdir():
+            if p.is_dir():
+                providers.add(normalize_provider_id(p.name))
+    root = _project_dir(auto)
+    if root is not None:
+        proj_base = root / ".sigil"
+        if proj_base.exists():
+            for p in proj_base.iterdir():
+                if p.is_dir():
+                    providers.add(normalize_provider_id(p.name))
+    return sorted(providers)
+

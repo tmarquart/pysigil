@@ -32,7 +32,7 @@ sigil get ui.color --app demo
 sigil export --app demo
 ```
 
-The CLI stores data under your user config directory (e.g. `~/.config/demo`),
+The CLI stores data under your user config directory (e.g. `~/.config/sigil/demo/settings.ini`),
 so you can run these commands right from the source tree without creating a
 separate project. See `tests/manual_tests/README.md` for more examples.
 
@@ -48,6 +48,21 @@ preferences. After installation launch it with:
 ```bash
 sigil gui
 ```
+
+Any providers with existing configuration directories (e.g.
+`~/.config/sigil/user-custom`) are automatically listed in the package
+selector.
+
+To initialise or inspect the user configuration directory from a small
+helper interface, run:
+
+```bash
+sigil config gui
+```
+
+Click **Initialize User Custom** to create a per-host `user-custom` section.
+A confirmation dialog appears and the folder opens (e.g.
+`~/.config/sigil/user-custom`) so you can edit the newly created file.
 
 Package authors can register development defaults via:
 

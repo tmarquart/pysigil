@@ -14,6 +14,7 @@ except Exception:  # pragma: no cover - fallback for headless tests
     simpledialog = None  # type: ignore
     ttk = None  # type: ignore
 
+from ..config import available_providers
 from ..merge_policy import KeyPath
 from . import events, gui_state
 from .config_gui import launch as launch_config_gui
@@ -213,10 +214,13 @@ def _on_pref_changed(widgets: dict, key: str, new_val: str | None, scope: str) -
 class _HeadlessGUI:
     """Simple stand-in object used for tests when no real Tk GUI is needed."""
 
-    def __init__(self, state: dict, remember: bool, state_path: Path | None) -> None:
+    def __init__(
+        self, state: dict, remember: bool, state_path: Path | None, packages: list[str]
+    ) -> None:
         self._state = state
         self._remember = remember
         self._state_path = state_path
+        self.packages = packages
         self.package = state["last_package"]
         self.tab = state["last_tab"]
         self.include_sigil = state["include_sigil"]
@@ -275,7 +279,10 @@ def launch_gui(
     sigil: Sigil | None = None,
 ):
     """Launch the GUI.  When *run_mainloop* is False, return a headless helper."""
-    packages = packages or ["pysigil"]
+    packages = packages or []
+    packages = list(dict.fromkeys([*packages, *available_providers()]))
+    if "pysigil" not in packages:
+        packages.append("pysigil")
     state = gui_state.read_state(state_path)
 
     if sigil is not None:
@@ -284,8 +291,6 @@ def launch_gui(
         global _sigil_instance, _current_package
         _sigil_instance = sigil
         _current_package = pkg
-        if pkg not in packages:
-            packages = [pkg, *packages]
     else:
         pkg = (
             package
@@ -295,15 +300,14 @@ def launch_gui(
         )
         open_package(pkg, include_sigil)
         pkg = _current_package or pkg
-        if pkg not in packages:
-            packages = [pkg, *packages]
+    packages = [pkg, *[p for p in packages if p != pkg]]
 
     tab = state.get("last_tab", "User")
     inc = include_sigil or state.get("include_sigil", False)
     state = {"last_package": pkg, "last_tab": tab, "include_sigil": inc}
 
     if not run_mainloop:
-        return _HeadlessGUI(state, remember_state, state_path)
+        return _HeadlessGUI(state, remember_state, state_path, packages)
 
     if tk is None or ttk is None:  # pragma: no cover - no tkinter available
         raise RuntimeError("tkinter is required for GUI mode")
