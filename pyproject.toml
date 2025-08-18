@@ -21,7 +21,6 @@ version = "0.3.0"
 dependencies = [
   "platformdirs>=4.0",
   "tomlkit",
-  "click>=8.1",
 ]
 authors = [{ name = "Tim Marquart" }]
 
@@ -32,8 +31,8 @@ secrets = ["keyring>=25"]
 secrets-crypto = ["keyring>=25", "cryptography>=42"]
 
 [project.scripts]
-sigil = "pysigil.cli:cli"
-pysigil = "pysigil.cli:cli"
+sigil = "pysigil.cli:main"
+pysigil = "pysigil.cli:main"
 
 [tool.ruff]
 line-length = 88

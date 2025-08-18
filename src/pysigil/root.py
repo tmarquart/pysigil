@@ -1,14 +1,14 @@
 # pysigil/root.py
 from __future__ import annotations
 
+import re
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Sequence
-import re
 
 __all__ = [
     "ProjectRootNotFoundError",
-    "ProjectRootNotFoundWithSuggestions",
+    "ProjectRootNotFoundWithSuggestionsError",
     "Candidate",
     "find_project_root",
     "suggest_candidates",
@@ -28,7 +28,7 @@ class Candidate:
     score: int
     hits: tuple[str, ...]  # marker names contributing to the score
 
-class ProjectRootNotFoundWithSuggestions(ProjectRootNotFoundError):
+class ProjectRootNotFoundWithSuggestionsError(ProjectRootNotFoundError):
     """
     Raised when no strong root is found; includes ranked candidates.
     Catch this to present choices and (optionally) place a sentinel.
@@ -37,6 +37,9 @@ class ProjectRootNotFoundWithSuggestions(ProjectRootNotFoundError):
         super().__init__(f"No project root found from {start}")
         self.start = start
         self.candidates = candidates
+
+# Backwards compatibility
+ProjectRootNotFoundWithSuggestions = ProjectRootNotFoundWithSuggestionsError
 
 # =========================================================
 # Hard-coded strong tiers (auto-detect)
@@ -206,7 +209,7 @@ def suggest_candidates(
             break
 
     cands: list[Candidate] = []
-    for cur, i in dist_index.items():
+    for cur, _i in dist_index.items():
         cand = _score_dir(cur)
         if cand:
             cands.append(cand)
@@ -226,8 +229,9 @@ def find_project_root(
       Pass A:  .sigil-root  →  Tier1 (py packaging + VCS)  →  Tier2 (py tools)
       Pass B:  Tier3 (other ecosystems)  →  IDE dirs (guarded)
 
-    If nothing matches and `strict=True`, raises ProjectRootNotFoundWithSuggestions
-    containing ranked fallback candidates (weak 'massive net').
+    If nothing matches and `strict=True`, raises
+    ProjectRootNotFoundWithSuggestionsError containing ranked fallback
+    candidates (weak 'massive net').
     If `strict=False`, returns the resolved starting directory.
     """
     start_path = (Path.cwd() if start is None else Path(start)).resolve(strict=False)
@@ -250,5 +254,7 @@ def find_project_root(
 
     # Nothing strong found → suggest candidates or fallback
     if strict:
-        raise ProjectRootNotFoundWithSuggestions(start_path, suggest_candidates(start_path))
+        raise ProjectRootNotFoundWithSuggestionsError(
+            start_path, suggest_candidates(start_path)
+        )
     return start_path

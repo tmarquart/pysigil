@@ -2,11 +2,10 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-
-from click.testing import CliRunner
+from types import SimpleNamespace
 
 from pysigil import config as cfg
-from pysigil.cli import cli
+from pysigil.cli import main as cli_main
 
 
 def _fake_user_dir(tmp_path: Path) -> Path:
@@ -44,17 +43,22 @@ def test_precedence(monkeypatch, tmp_path: Path) -> None:
     assert data == {"a": "4"}
 
 
-def test_write_policy(monkeypatch, tmp_path: Path) -> None:
+def _run_cli(args: list[str], capsys) -> SimpleNamespace:
+    code = cli_main(args)
+    out = capsys.readouterr().out
+    return SimpleNamespace(exit_code=code, output=out)
+
+
+def test_write_policy(monkeypatch, tmp_path: Path, capsys) -> None:
     user_dir, _ = _patch_env(monkeypatch, tmp_path)
-    runner = CliRunner()
-    res = runner.invoke(cli, ["config", "init", "--provider", "user-custom", "--scope", "user"])
+    res = _run_cli(["config", "init", "--provider", "user-custom", "--scope", "user"], capsys)
     assert res.exit_code == 0
     assert (user_dir / "user-custom" / "settings-local-host.ini").exists()
     assert not (user_dir / "user-custom" / "settings.ini").exists()
-    res = runner.invoke(cli, ["config", "init", "--provider", "mypkg", "--scope", "user"])
+    res = _run_cli(["config", "init", "--provider", "mypkg", "--scope", "user"], capsys)
     assert res.exit_code == 0
     assert (user_dir / "mypkg" / "settings.ini").exists()
-    res = runner.invoke(cli, ["config", "host", "--provider", "mypkg"])
+    res = _run_cli(["config", "host", "--provider", "mypkg"], capsys)
     assert res.exit_code != 0
 
 
@@ -71,30 +75,22 @@ def test_host_filtering(monkeypatch, tmp_path: Path) -> None:
     assert data == {"x": "1", "y": "3"}
 
 
-def test_gitignore_idempotent(monkeypatch, tmp_path: Path) -> None:
+def test_gitignore_idempotent(monkeypatch, tmp_path: Path, capsys) -> None:
     _, project_root = _patch_env(monkeypatch, tmp_path)
-    runner = CliRunner()
-    runner.invoke(cli, ["config", "gitignore", "--init", "--auto"])
-    runner.invoke(cli, ["config", "gitignore", "--init", "--auto"])
+    _run_cli(["config", "gitignore", "--init", "--auto"], capsys)
+    _run_cli(["config", "gitignore", "--init", "--auto"], capsys)
     content = (project_root / ".gitignore").read_text().splitlines()
     assert content == [".sigil/*/settings-local*"]
 
 
-def test_cli_roundtrip(monkeypatch, tmp_path: Path) -> None:
+def test_cli_roundtrip(monkeypatch, tmp_path: Path, capsys) -> None:
     user_dir, project_root = _patch_env(monkeypatch, tmp_path)
-    runner = CliRunner()
-    runner.invoke(cli, ["config", "init", "--provider", "pkg", "--scope", "user"])
-    runner.invoke(
-        cli,
-        ["config", "init", "--provider", "pkg", "--scope", "project", "--auto"],
-    )
+    _run_cli(["config", "init", "--provider", "pkg", "--scope", "user"], capsys)
+    _run_cli(["config", "init", "--provider", "pkg", "--scope", "project", "--auto"], capsys)
     (user_dir / "pkg" / "settings.ini").write_text("[pkg]\nkey=user\n")
     proj_dir = project_root / ".sigil" / "pkg"
     (proj_dir / "settings.ini").write_text("[pkg]\nkey=project\n")
-    res = runner.invoke(
-        cli,
-        ["config", "show", "--provider", "pkg", "--as", "json", "--auto"],
-    )
+    res = _run_cli(["config", "show", "--provider", "pkg", "--as", "json", "--auto"], capsys)
     assert res.exit_code == 0
     assert json.loads(res.output) == {"key": "project"}
 
