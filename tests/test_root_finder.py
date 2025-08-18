@@ -1,13 +1,13 @@
-import os
 from pathlib import Path
+
 import pytest
 
 from pysigil.root import (
+    Candidate,
+    ProjectRootNotFoundError,
+    ProjectRootNotFoundWithSuggestionsError,
     find_project_root,
     suggest_candidates,
-    ProjectRootNotFoundWithSuggestions,
-    ProjectRootNotFoundError,
-    Candidate,
 )
 
 # ---------- helpers ----------
@@ -146,7 +146,7 @@ def test_ide_guard_rejects_empty_ide_dir(tmp_path: Path):
     start = proj / "k"
     mkdir(start, ".")
     # Should not auto-select; should raise with suggestions
-    with pytest.raises(ProjectRootNotFoundWithSuggestions) as e:
+    with pytest.raises(ProjectRootNotFoundWithSuggestionsError) as e:
         find_project_root(start=start)
     # suggestions should include our dir because .vscode is a weak hint
     cands = e.value.candidates
@@ -172,7 +172,7 @@ def test_no_markers_raises_with_suggestions(tmp_path: Path):
     mkdir(leaf, ".")
     mkfile(tmp_path / "a", "README.md", "# readme")
     mkfile(tmp_path, "Dockerfile", "FROM scratch")
-    with pytest.raises(ProjectRootNotFoundWithSuggestions) as e:
+    with pytest.raises(ProjectRootNotFoundWithSuggestionsError) as e:
         find_project_root(start=leaf)
     cands = e.value.candidates
     assert isinstance(cands, list) and len(cands) > 0
@@ -237,7 +237,7 @@ def test_candidate_model_fields(tmp_path: Path):
 def test_error_types_and_message(tmp_path: Path):
     leaf = tmp_path / "leaf"
     mkdir(leaf, ".")
-    with pytest.raises(ProjectRootNotFoundWithSuggestions) as e:
+    with pytest.raises(ProjectRootNotFoundWithSuggestionsError) as e:
         find_project_root(start=leaf)
     err = e.value
     assert isinstance(err, ProjectRootNotFoundError)

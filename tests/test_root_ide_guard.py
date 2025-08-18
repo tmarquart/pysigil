@@ -1,6 +1,12 @@
 from pathlib import Path
+
 import pytest
-from pysigil.root import find_project_root, ProjectRootNotFoundWithSuggestions
+
+from pysigil.root import (
+    ProjectRootNotFoundWithSuggestionsError,
+    find_project_root,
+)
+
 
 def mkfile(base: Path, rel: str, content: str = "x") -> Path:
     p = base / rel
@@ -33,5 +39,5 @@ def test_ide_guard_prefers_python_if_present(tmp_path: Path):
 def test_empty_vscode_and_no_co_signals_gives_suggestions(tmp_path: Path):
     proj = tmp_path / "empty"
     mkdir(proj, ".vscode")
-    with pytest.raises(ProjectRootNotFoundWithSuggestions):
+    with pytest.raises(ProjectRootNotFoundWithSuggestionsError):
         find_project_root(start=proj / "child")
