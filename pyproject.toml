@@ -22,7 +22,6 @@ dependencies = [
   "platformdirs>=4.0",
   "tomlkit",
   "click>=8.1",
-  "pyprojroot>=0.3.0",
 ]
 authors = [{ name = "Tim Marquart" }]
 
