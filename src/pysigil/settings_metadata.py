@@ -11,7 +11,7 @@ intended to be a stable, extendable base for future GUI work.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field as dataclass_field
 import re
 from typing import Any, Dict, Iterable, Literal, Mapping, Protocol
 
@@ -80,12 +80,12 @@ class NumberAdapter:
         return float(raw)
 
     def serialize(self, value: Any) -> str:
-        if not isinstance(value, (int, float)):
+        if not isinstance(value, int | float):
             raise TypeError("expected number")
         return str(value)
 
     def validate(self, value: Any, spec: "FieldSpec") -> None:
-        if value is not None and not isinstance(value, (int, float)):
+        if value is not None and not isinstance(value, int | float):
             raise TypeError("expected number")
 
 
@@ -163,7 +163,7 @@ class ProviderSpec:
     schema_version: str
     title: str | None = None
     description: str | None = None
-    fields: Iterable[FieldSpec] = field(default_factory=tuple)
+    fields: Iterable[FieldSpec] = dataclass_field(default_factory=tuple)
 
     def __post_init__(self) -> None:
         if not _PEP503_RE.fullmatch(self.provider_id):
