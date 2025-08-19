@@ -1,11 +1,11 @@
 from pathlib import Path
 
-from pysigil.provider_registry import (
+from pysigil.settings_metadata import (
+    FieldSpec,
     add_field_spec,
     load_provider_spec,
     register_provider,
 )
-from pysigil.settings_metadata import FieldSpec
 
 
 def test_register_and_add_field(tmp_path):
