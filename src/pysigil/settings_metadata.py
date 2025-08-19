@@ -12,8 +12,14 @@ intended to be a stable, extendable base for future GUI work.
 from __future__ import annotations
 
 from dataclasses import dataclass, field as dataclass_field
+from pathlib import Path
 import re
 from typing import Any, Dict, Iterable, Literal, Mapping, Protocol
+
+from .config import host_id
+from .io_config import read_sections, write_sections
+from .paths import user_config_dir
+from .root import ProjectRootNotFoundError, find_project_root
 
 
 ####################
@@ -238,6 +244,144 @@ class SigilBackend(Protocol):
         ...
 
 
+class IniFileBackend:
+    """Store provider settings in INI files on the filesystem.
+
+    The backend mirrors the layout used by the existing command line tools::
+
+        ~/.config/sigil/<provider>/settings.ini
+        ~/.config/sigil/<provider>/settings-local-<host>.ini
+        <project>/.sigil/<provider>/settings.ini
+        <project>/.sigil/<provider>/settings-local-<host>.ini
+
+    Parameters
+    ----------
+    user_dir:
+        Base directory for user-level configuration.  Defaults to the current
+        user's configuration directory for ``sigil``.
+    project_dir:
+        Base directory for project-level configuration.  If not supplied an
+        attempt is made to locate the current project root.  When no project
+        root can be found, project configuration is ignored.
+    host:
+        Hostname used for local overrides.  When omitted the normalized current
+        host name is used.
+    """
+
+    def __init__(
+        self,
+        *,
+        user_dir: Path | None = None,
+        project_dir: Path | None = None,
+        host: str | None = None,
+    ) -> None:
+        self.user_dir = Path(user_dir) if user_dir else Path(user_config_dir("sigil"))
+        if project_dir is None:
+            try:
+                root = find_project_root()
+            except ProjectRootNotFoundError:
+                root = None
+            self.project_dir = root / ".sigil" if root is not None else None
+        else:
+            self.project_dir = Path(project_dir)
+        self.host = host or host_id()
+
+    # ------------------------------------------------------------------
+    # helpers
+    # ------------------------------------------------------------------
+    def _scope_path(self, provider_id: str, scope: str, target_kind: str) -> Path:
+        if scope == "user":
+            base = self.user_dir / provider_id
+        elif scope == "project":
+            if self.project_dir is None:
+                raise ProjectRootNotFoundError("No project directory configured")
+            base = self.project_dir / provider_id
+        else:  # pragma: no cover - defensive
+            raise ValueError(f"unknown scope {scope!r}")
+        base.mkdir(parents=True, exist_ok=True)
+        return base / target_kind
+
+    def _iter_read_paths(self, provider_id: str) -> list[tuple[str, Path]]:
+        files = [
+            ("user", self.user_dir / provider_id / "settings.ini"),
+            ("user-local", self.user_dir / provider_id / f"settings-local-{self.host}.ini"),
+        ]
+        if self.project_dir is not None:
+            files.extend(
+                [
+                    ("project", self.project_dir / provider_id / "settings.ini"),
+                    (
+                        "project-local",
+                        self.project_dir / provider_id / f"settings-local-{self.host}.ini",
+                    ),
+                ]
+            )
+        return files
+
+    # ------------------------------------------------------------------
+    # SigilBackend API
+    # ------------------------------------------------------------------
+    def read_merged(self, provider_id: str) -> tuple[Mapping[str, str], Mapping[str, str]]:
+        raw: Dict[str, str] = {}
+        source: Dict[str, str] = {}
+        for scope, path in self._iter_read_paths(provider_id):
+            data = read_sections(path).get(provider_id, {})
+            for k, v in data.items():
+                raw[k] = v
+                source[k] = scope
+        return raw, source
+
+    def write_key(
+        self,
+        provider_id: str,
+        key: str,
+        raw_value: str,
+        *,
+        scope: str,
+        target_kind: str,
+    ) -> None:
+        path = self._scope_path(provider_id, scope, target_kind)
+        data = read_sections(path)
+        section = data.setdefault(provider_id, {})
+        section[key] = raw_value
+        write_sections(path, data)
+
+    def remove_key(
+        self,
+        provider_id: str,
+        key: str,
+        *,
+        scope: str,
+        target_kind: str,
+    ) -> None:
+        path = self._scope_path(provider_id, scope, target_kind)
+        data = read_sections(path)
+        section = data.get(provider_id, {})
+        if key in section:
+            del section[key]
+        if section:
+            data[provider_id] = section
+        elif provider_id in data:
+            del data[provider_id]
+        write_sections(path, data)
+
+    def ensure_section(
+        self,
+        provider_id: str,
+        *,
+        scope: str,
+        target_kind: str,
+    ) -> None:
+        path = self._scope_path(provider_id, scope, target_kind)
+        data = read_sections(path)
+        data.setdefault(provider_id, {})
+        write_sections(path, data)
+
+    def write_target_for(self, provider_id: str) -> str:
+        if provider_id == "user-custom":
+            return f"settings-local-{self.host}.ini"
+        return "settings.ini"
+
 class ProviderManager:
     """Orchestrates access to provider settings through a backend."""
 
@@ -300,6 +444,7 @@ __all__ = [
     "FieldSpec",
     "FieldValue",
     "IntegerAdapter",
+    "IniFileBackend",
     "NumberAdapter",
     "ProviderManager",
     "ProviderSpec",
