@@ -1,6 +1,12 @@
 import pytest
 
-from pysigil.settings_metadata import FieldSpec, ProviderManager, ProviderSpec
+from pysigil.settings_metadata import (
+    FieldSpec,
+    IniFileBackend,
+    ProviderManager,
+    ProviderSpec,
+)
+from pysigil.io_config import read_sections, write_sections
 
 
 def test_fieldspec_validates_unknown_type():
@@ -51,5 +57,33 @@ def test_provider_manager_roundtrip():
 
     mgr.init("user")
     assert backend.sections == [("demo", "user", "settings.ini")]
+
+
+def test_ini_file_backend(tmp_path):
+    user_dir = tmp_path / "user"
+    project_dir = tmp_path / "proj"
+    backend = IniFileBackend(user_dir=user_dir, project_dir=project_dir, host="host")
+
+    write_sections(user_dir / "demo" / "settings.ini", {"demo": {"alpha": "u"}})
+    write_sections(project_dir / "demo" / "settings.ini", {"demo": {"alpha": "p", "beta": "p"}})
+    write_sections(
+        project_dir / "demo" / "settings-local-host.ini", {"demo": {"beta": "pl"}}
+    )
+
+    raw, src = backend.read_merged("demo")
+    assert raw == {"alpha": "p", "beta": "pl"}
+    assert src == {"alpha": "project", "beta": "project-local"}
+
+    backend.ensure_section("demo", scope="user", target_kind="settings.ini")
+    backend.write_key("demo", "gamma", "42", scope="user", target_kind="settings.ini")
+    data = read_sections(user_dir / "demo" / "settings.ini")
+    assert data["demo"]["gamma"] == "42"
+
+    backend.remove_key("demo", "gamma", scope="user", target_kind="settings.ini")
+    data = read_sections(user_dir / "demo" / "settings.ini")
+    assert "gamma" not in data["demo"]
+
+    assert backend.write_target_for("user-custom") == "settings-local-host.ini"
+    assert backend.write_target_for("demo") == "settings.ini"
 
 
