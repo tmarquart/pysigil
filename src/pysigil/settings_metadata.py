@@ -16,6 +16,10 @@ import re
 from typing import Any, Dict, Iterable, Literal, Mapping, Protocol
 
 
+####################
+##### ADAPTERS #####
+####################
+
 class TypeAdapter(Protocol):
     """Adapter for a primitive field type.
 
@@ -121,6 +125,9 @@ TYPE_REGISTRY: Dict[str, TypeAdapter] = {
 
 _PEP503_RE = re.compile(r"^[a-z0-9]+(?:[._-][a-z0-9]+)*$")
 
+######################
+##### FIELD SPEC #####
+######################
 
 @dataclass(frozen=True)
 class FieldSpec:
@@ -154,6 +161,9 @@ class FieldValue:
     source: Literal["user", "user-local", "project", "project-local"] | None = None
     raw: str | None = None
 
+##########################
+###### PROVIDER SPEC #####
+##########################
 
 @dataclass(frozen=True)
 class ProviderSpec:
@@ -184,6 +194,9 @@ class ProviderSpec:
             "fields": [f.to_gui_v0() for f in self.fields],
         }
 
+####################
+##### BACKENDS #####
+####################
 
 class SigilBackend(Protocol):
     """Minimal interface that hides IO/policy details from the manager."""
