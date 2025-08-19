@@ -19,6 +19,7 @@ def test_package_defaults_read_only(tmp_path: Path, monkeypatch) -> None:
     (pkg / ".sigil" / "settings.ini").write_text("[pkgdefaults]\nfoo = 7\n")
     (pkg / "__init__.py").write_text("")
     monkeypatch.syspath_prepend(tmp_path)
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
     user_dir = tmp_path / "user"
     s = Sigil("pkgdefaults", user_scope=user_dir)
     assert s.get_pref("foo") == 7
