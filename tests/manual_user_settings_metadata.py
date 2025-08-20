@@ -6,10 +6,12 @@ from pysigil.settings_metadata import (
     remove_field_spec,
     update_field_spec,
 )
+from pysigil.paths import user_config_dir
 
 
-def test_register_add_edit_delete(tmp_path):
-    path = tmp_path / "user" / "my-pkg.json"
+def manual_register_add_edit_delete():
+    path = user_config_dir('my-pkg') / "user" / "my-pkg.json"
+    print(path)
     register_provider(path, "my-pkg", "1.0", title="my-pkg")
 
     field = FieldSpec(key="alpha", type="string", label="Alpha")
@@ -23,3 +25,5 @@ def test_register_add_edit_delete(tmp_path):
     remove_field_spec(path, "alpha")
     spec = load_provider_spec(path)
     assert spec.fields == ()
+
+manual_register_add_edit_delete()
