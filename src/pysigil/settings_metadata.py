@@ -509,6 +509,46 @@ def add_field_spec(path: Path, field: FieldSpec) -> ProviderSpec:
     return spec
 
 
+def update_field_spec(path: Path, field: FieldSpec) -> ProviderSpec:
+    """Replace an existing *field* in the provider spec stored at *path*."""
+
+    spec = load_provider_spec(path)
+    fields = list(spec.fields)
+    for idx, existing in enumerate(fields):
+        if existing.key == field.key:
+            fields[idx] = field
+            break
+    else:  # pragma: no cover - defensive
+        raise KeyError(f"unknown field {field.key!r}")
+    spec = ProviderSpec(
+        provider_id=spec.provider_id,
+        schema_version=spec.schema_version,
+        title=spec.title,
+        description=spec.description,
+        fields=fields,
+    )
+    save_provider_spec(path, spec)
+    return spec
+
+
+def remove_field_spec(path: Path, key: str) -> ProviderSpec:
+    """Remove the field identified by *key* from the provider spec at *path*."""
+
+    spec = load_provider_spec(path)
+    fields = [f for f in spec.fields if f.key != key]
+    if len(fields) == len(spec.fields):  # pragma: no cover - defensive
+        raise KeyError(f"unknown field {key!r}")
+    spec = ProviderSpec(
+        provider_id=spec.provider_id,
+        schema_version=spec.schema_version,
+        title=spec.title,
+        description=spec.description,
+        fields=fields,
+    )
+    save_provider_spec(path, spec)
+    return spec
+
+
 __all__ = [
     "BooleanAdapter",
     "FieldSpec",
@@ -523,6 +563,8 @@ __all__ = [
     "TYPE_REGISTRY",
     "TypeAdapter",
     "add_field_spec",
+    "update_field_spec",
+    "remove_field_spec",
     "load_provider_spec",
     "register_provider",
     "save_provider_spec",
