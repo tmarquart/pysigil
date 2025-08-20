@@ -445,11 +445,16 @@ class ProviderManager:
 # ---------------------------------------------------------------------------
 
 def save_provider_spec(path: Path, spec: ProviderSpec) -> None:
-    """Persist *spec* as JSON at *path*.
+    """Persist provider metadata and field definitions at *path*.
 
-    The file is written atomically by using a temporary file which is then
-    moved into place.
+    The provider's package-level information (such as ``provider_id`` and
+    ``schema_version``) along with its field specifications are written to
+    disk in a deterministic JSON format.  The file is written atomically by
+    using a temporary file which is then moved into place.  Parent directories
+    are created as needed so callers can provide paths in yet-to-exist
+    configuration roots.
     """
+
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
