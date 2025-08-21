@@ -8,10 +8,9 @@ the :class:`~pysigil.orchestrator.Orchestrator`.
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from pysigil.orchestrator import InMemorySpecBackend, Orchestrator
-from pysigil.settings_metadata import IniFileBackend
+from pysigil.orchestrator import Orchestrator
 from pysigil.paths import user_config_dir
-from pysigil.settings_metadata import IniFileBackend
+from pysigil.settings_metadata import InMemorySpecBackend, IniFileBackend
 
 
 def manual_demo() -> None:
@@ -25,7 +24,7 @@ def manual_demo() -> None:
             project_dir=project_dir,
             host="host",
         )
-        spec_backend = IniFileBackend #InMemorySpecBackend()
+        spec_backend = InMemorySpecBackend()
         orch = Orchestrator(spec_backend, backend)
 
         # Register a provider (project) and add three fields
