@@ -9,6 +9,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from pysigil.orchestrator import InMemorySpecBackend, Orchestrator
+from pysigil.settings_metadata import IniFileBackend
 from pysigil.paths import user_config_dir
 from pysigil.settings_metadata import IniFileBackend
 
@@ -24,7 +25,7 @@ def manual_demo() -> None:
             project_dir=project_dir,
             host="host",
         )
-        spec_backend = InMemorySpecBackend()
+        spec_backend = IniFileBackend #InMemorySpecBackend()
         orch = Orchestrator(spec_backend, backend)
 
         # Register a provider (project) and add three fields
@@ -37,6 +38,8 @@ def manual_demo() -> None:
         orch.set_value("demo", "alpha", "hello")
         orch.set_value("demo", "beta", 42, scope="project")
         orch.set_value("demo", "gamma", True)
+
+        #orch.set_value("demo", "gamma", "NOT A BOOL") #errors as expected
         print("Effective after set:", orch.get_effective("demo"))
 
         # Edit one field and delete another
