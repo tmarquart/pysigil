@@ -12,8 +12,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from pathlib import Path
-from typing import Any, Dict, Literal, Protocol
-from uuid import uuid4
+from typing import Any, Literal
 
 from .authoring import normalize_provider_id
 from .settings_metadata import (
@@ -22,6 +21,7 @@ from .settings_metadata import (
     ProviderManager,
     ProviderSpec,
     SigilBackend,
+    SpecBackend,
     TYPE_REGISTRY,
     save_provider_spec,
 )
@@ -37,16 +37,8 @@ class OrchestratorError(Exception):
     """Base class for orchestrator specific errors."""
 
 
-class UnknownProviderError(OrchestratorError):
-    """Raised when a provider is requested that does not exist."""
-
-
 class UnknownFieldError(OrchestratorError):
     """Raised when a field key is unknown."""
-
-
-class DuplicateProviderError(OrchestratorError):
-    """Raised when attempting to create a provider that already exists."""
 
 
 class DuplicateFieldError(OrchestratorError):
@@ -59,85 +51,6 @@ class ValidationError(OrchestratorError):
 
 class PolicyError(OrchestratorError):
     """Raised when the configuration policy prevents an operation."""
-
-
-class ConflictError(OrchestratorError):
-    """Raised when concurrent spec modifications conflict."""
-
-
-# ---------------------------------------------------------------------------
-# spec backend protocol + in-memory implementation
-# ---------------------------------------------------------------------------
-
-
-class SpecBackend(Protocol):
-    """Protocol describing the provider specification backend."""
-
-    def get_provider_ids(self) -> list[str]:
-        ...
-
-    def get_spec(self, provider_id: str) -> ProviderSpec:
-        ...
-
-    def save_spec(self, spec: ProviderSpec, *, expected_etag: str | None = None) -> str:
-        ...
-
-    def create_spec(self, spec: ProviderSpec) -> str:
-        ...
-
-    def delete_spec(self, provider_id: str) -> None:
-        ...
-
-    def etag(self, provider_id: str) -> str:
-        ...
-
-
-class InMemorySpecBackend:
-    """Simple ``SpecBackend`` storing data in memory.
-
-    The backend assigns a random *etag* to every stored specification so
-    that concurrent modification can be detected by the ``Orchestrator``.
-    """
-
-    def __init__(self) -> None:
-        self._specs: Dict[str, ProviderSpec] = {}
-        self._etags: Dict[str, str] = {}
-
-    def get_provider_ids(self) -> list[str]:  # pragma: no cover - trivial
-        return sorted(self._specs)
-
-    def get_spec(self, provider_id: str) -> ProviderSpec:
-        try:
-            return self._specs[provider_id]
-        except KeyError as exc:  # pragma: no cover - defensive
-            raise UnknownProviderError(provider_id) from exc
-
-    def save_spec(self, spec: ProviderSpec, *, expected_etag: str | None = None) -> str:
-        current = self._etags.get(spec.provider_id)
-        if expected_etag is not None and current is not None and expected_etag != current:
-            raise ConflictError(spec.provider_id)
-        etag = uuid4().hex
-        self._specs[spec.provider_id] = spec
-        self._etags[spec.provider_id] = etag
-        return etag
-
-    def create_spec(self, spec: ProviderSpec) -> str:
-        if spec.provider_id in self._specs:
-            raise DuplicateProviderError(spec.provider_id)
-        etag = uuid4().hex
-        self._specs[spec.provider_id] = spec
-        self._etags[spec.provider_id] = etag
-        return etag
-
-    def delete_spec(self, provider_id: str) -> None:
-        self._specs.pop(provider_id, None)
-        self._etags.pop(provider_id, None)
-
-    def etag(self, provider_id: str) -> str:
-        try:
-            return self._etags[provider_id]
-        except KeyError as exc:  # pragma: no cover - defensive
-            raise UnknownProviderError(provider_id) from exc
 
 
 # ---------------------------------------------------------------------------
@@ -429,16 +342,11 @@ class Orchestrator:
 
 __all__ = [
     "Orchestrator",
-    "SpecBackend",
-    "InMemorySpecBackend",
     # errors
     "OrchestratorError",
-    "UnknownProviderError",
     "UnknownFieldError",
-    "DuplicateProviderError",
     "DuplicateFieldError",
     "ValidationError",
     "PolicyError",
-    "ConflictError",
 ]
 

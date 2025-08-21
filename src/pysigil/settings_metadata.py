@@ -16,6 +16,7 @@ from dataclasses import dataclass, field as dataclass_field
 from pathlib import Path
 import re
 from typing import Any, Dict, Iterable, Literal, Mapping, Protocol
+from uuid import uuid4
 
 from .config import host_id
 from .io_config import read_sections, write_sections
@@ -205,6 +206,96 @@ class ProviderSpec:
 ##### BACKENDS #####
 ####################
 
+# ---- specification storage ----
+
+class SpecBackend(Protocol):
+    """Protocol describing the provider specification backend."""
+
+    def get_provider_ids(self) -> list[str]:
+        ...
+
+    def get_spec(self, provider_id: str) -> ProviderSpec:
+        ...
+
+    def save_spec(self, spec: ProviderSpec, *, expected_etag: str | None = None) -> str:
+        ...
+
+    def create_spec(self, spec: ProviderSpec) -> str:
+        ...
+
+    def delete_spec(self, provider_id: str) -> None:
+        ...
+
+    def etag(self, provider_id: str) -> str:
+        ...
+
+
+class SpecBackendError(Exception):
+    """Base class for errors raised by :class:`SpecBackend` implementations."""
+
+
+class UnknownProviderError(SpecBackendError):
+    """Raised when a provider is requested that does not exist."""
+
+
+class DuplicateProviderError(SpecBackendError):
+    """Raised when attempting to create a provider that already exists."""
+
+
+class ConflictError(SpecBackendError):
+    """Raised when concurrent spec modifications conflict."""
+
+
+class InMemorySpecBackend:
+    """Simple :class:`SpecBackend` storing data in memory.
+
+    The backend assigns a random *etag* to every stored specification so
+    that concurrent modification can be detected by higher layers.
+    """
+
+    def __init__(self) -> None:
+        self._specs: Dict[str, ProviderSpec] = {}
+        self._etags: Dict[str, str] = {}
+
+    def get_provider_ids(self) -> list[str]:  # pragma: no cover - trivial
+        return sorted(self._specs)
+
+    def get_spec(self, provider_id: str) -> ProviderSpec:
+        try:
+            return self._specs[provider_id]
+        except KeyError as exc:  # pragma: no cover - defensive
+            raise UnknownProviderError(provider_id) from exc
+
+    def save_spec(self, spec: ProviderSpec, *, expected_etag: str | None = None) -> str:
+        current = self._etags.get(spec.provider_id)
+        if expected_etag is not None and current is not None and expected_etag != current:
+            raise ConflictError(spec.provider_id)
+        etag = uuid4().hex
+        self._specs[spec.provider_id] = spec
+        self._etags[spec.provider_id] = etag
+        return etag
+
+    def create_spec(self, spec: ProviderSpec) -> str:
+        if spec.provider_id in self._specs:
+            raise DuplicateProviderError(spec.provider_id)
+        etag = uuid4().hex
+        self._specs[spec.provider_id] = spec
+        self._etags[spec.provider_id] = etag
+        return etag
+
+    def delete_spec(self, provider_id: str) -> None:
+        self._specs.pop(provider_id, None)
+        self._etags.pop(provider_id, None)
+
+    def etag(self, provider_id: str) -> str:
+        try:
+            return self._etags[provider_id]
+        except KeyError as exc:  # pragma: no cover - defensive
+            raise UnknownProviderError(provider_id) from exc
+
+
+# ---- configuration storage ----
+
 class SigilBackend(Protocol):
     """Minimal interface that hides IO/policy details from the manager."""
 
@@ -302,22 +393,15 @@ class IniFileBackend:
         base.mkdir(parents=True, exist_ok=True)
         return base / target_kind
 
-    def _iter_read_paths(self, provider_id: str) -> list[tuple[str, Path]]:
-        files = [
-            ("user", self.user_dir / provider_id / "settings.ini"),
-            ("user-local", self.user_dir / provider_id / f"settings-local-{self.host}.ini"),
-        ]
+    def _iter_read_paths(self, provider_id: str) -> Iterable[tuple[str, Path]]:
+        yield "user", self.user_dir / provider_id / "settings.ini"
+        yield "user-local", self.user_dir / provider_id / f"settings-local-{self.host}.ini"
         if self.project_dir is not None:
-            files.extend(
-                [
-                    ("project", self.project_dir / provider_id / "settings.ini"),
-                    (
-                        "project-local",
-                        self.project_dir / provider_id / f"settings-local-{self.host}.ini",
-                    ),
-                ]
+            yield "project", self.project_dir / provider_id / "settings.ini"
+            yield (
+                "project-local",
+                self.project_dir / provider_id / f"settings-local-{self.host}.ini",
             )
-        return files
 
     # ------------------------------------------------------------------
     # SigilBackend API
@@ -564,6 +648,12 @@ __all__ = [
     "ProviderManager",
     "ProviderSpec",
     "SigilBackend",
+    "SpecBackend",
+    "SpecBackendError",
+    "InMemorySpecBackend",
+    "UnknownProviderError",
+    "DuplicateProviderError",
+    "ConflictError",
     "StringAdapter",
     "TYPE_REGISTRY",
     "TypeAdapter",

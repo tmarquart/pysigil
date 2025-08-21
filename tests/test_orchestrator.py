@@ -4,12 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from pysigil.orchestrator import (
-    InMemorySpecBackend,
-    Orchestrator,
-    ValidationError,
-)
-from pysigil.settings_metadata import IniFileBackend
+from pysigil.orchestrator import Orchestrator, ValidationError
+from pysigil.settings_metadata import InMemorySpecBackend, IniFileBackend
 
 
 def _make_orch(tmp_path: Path) -> Orchestrator:
