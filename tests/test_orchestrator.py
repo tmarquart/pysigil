@@ -156,19 +156,27 @@ def test_scope_precedence(tmp_path: Path, monkeypatch) -> None:
     orch.add_field("pkg", key="key", type="string")
 
     orch.set_value("pkg", "key", "default", scope="default")
-    orch.set_value("pkg", "key", "project", scope="project")
     orch.set_value("pkg", "key", "user", scope="user")
+    orch.set_value("pkg", "key", "project", scope="project")
+    eff = orch.get_effective("pkg")
+    assert eff["key"].value == "project"
+    assert eff["key"].source == "project"
+
+    orch.clear_value("pkg", "key", scope="project")
+
     eff = orch.get_effective("pkg")
     assert eff["key"].value == "user"
     assert eff["key"].source == "user"
 
     orch.clear_value("pkg", "key", scope="user")
     eff = orch.get_effective("pkg")
+
     assert eff["key"].value == "project"
     assert eff["key"].source == "project"
 
     orch.clear_value("pkg", "key", scope="project")
     eff = orch.get_effective("pkg")
+
     assert eff["key"].value == "default"
     assert eff["key"].source == "default"
 
