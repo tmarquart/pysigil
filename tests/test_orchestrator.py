@@ -5,17 +5,14 @@ from pathlib import Path
 import pytest
 
 from pysigil.orchestrator import Orchestrator, ValidationError
-from pysigil.settings_metadata import InMemorySpecBackend, IniFileBackend
 
 
 def _make_orch(tmp_path: Path) -> Orchestrator:
-    backend = IniFileBackend(
+    return Orchestrator(
         user_dir=tmp_path / "user",
         project_dir=tmp_path / "proj",
         host="host",
     )
-    spec_backend = InMemorySpecBackend()
-    return Orchestrator(spec_backend, backend)
 
 
 def test_register_add_set_get(tmp_path: Path) -> None:

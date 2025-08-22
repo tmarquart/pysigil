@@ -18,6 +18,8 @@ from .authoring import normalize_provider_id
 from .settings_metadata import (
     FieldSpec,
     FieldValue,
+    IniFileBackend,
+    IniSpecBackend,
     ProviderManager,
     ProviderSpec,
     SigilBackend,
@@ -61,7 +63,21 @@ class PolicyError(OrchestratorError):
 class Orchestrator:
     """High level façade coordinating spec and config backends."""
 
-    def __init__(self, spec_backend: SpecBackend, config_backend: SigilBackend):
+    def __init__(
+        self,
+        spec_backend: SpecBackend | None = None,
+        config_backend: SigilBackend | None = None,
+        *,
+        user_dir: Path | None = None,
+        project_dir: Path | None = None,
+        host: str | None = None,
+    ) -> None:
+        if spec_backend is None:
+            spec_backend = IniSpecBackend(base_dir=user_dir)
+        if config_backend is None:
+            config_backend = IniFileBackend(
+                user_dir=user_dir, project_dir=project_dir, host=host
+            )
         self.spec_backend = spec_backend
         self.config_backend = config_backend
 
