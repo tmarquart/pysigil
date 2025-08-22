@@ -73,7 +73,7 @@ class Orchestrator:
         host: str | None = None,
     ) -> None:
         if spec_backend is None:
-            spec_backend = IniSpecBackend(base_dir=user_dir)
+            spec_backend = IniSpecBackend()
         if config_backend is None:
             config_backend = IniFileBackend(
                 user_dir=user_dir, project_dir=project_dir, host=host
@@ -96,7 +96,10 @@ class Orchestrator:
             title=title,
             description=description,
         )
-        self.spec_backend.create_spec(spec)
+        try:
+            self.spec_backend.create_spec(spec)
+        except ProjectRootNotFoundError as exc:
+            raise PolicyError(str(exc)) from exc
         return spec
 
     def edit_provider(
@@ -114,12 +117,18 @@ class Orchestrator:
             title=spec.title if title is None else title,
             description=spec.description if description is None else description,
         )
-        self.spec_backend.save_spec(updated, expected_etag=etag)
+        try:
+            self.spec_backend.save_spec(updated, expected_etag=etag)
+        except ProjectRootNotFoundError as exc:
+            raise PolicyError(str(exc)) from exc
         return updated
 
     def delete_provider(self, provider_id: str) -> None:
         pid = normalize_provider_id(provider_id)
-        self.spec_backend.delete_spec(pid)
+        try:
+            self.spec_backend.delete_spec(pid)
+        except ProjectRootNotFoundError as exc:
+            raise PolicyError(str(exc)) from exc
 
     # ---- Field metadata ----
     def add_field(
@@ -138,7 +147,10 @@ class Orchestrator:
         field = FieldSpec(key=key, type=type, label=label, description=description)
         new_spec = replace(spec, fields=tuple(spec.fields) + (field,))
         etag = self.spec_backend.etag(pid)
-        self.spec_backend.save_spec(new_spec, expected_etag=etag)
+        try:
+            self.spec_backend.save_spec(new_spec, expected_etag=etag)
+        except ProjectRootNotFoundError as exc:
+            raise PolicyError(str(exc)) from exc
         mgr = ProviderManager(new_spec, self.config_backend)
         try:  # ensure default section exists for user scope
             mgr.init("user")
@@ -181,7 +193,10 @@ class Orchestrator:
 
         new_spec = replace(spec, fields=tuple(fields))
         etag = self.spec_backend.etag(pid)
-        self.spec_backend.save_spec(new_spec, expected_etag=etag)
+        try:
+            self.spec_backend.save_spec(new_spec, expected_etag=etag)
+        except ProjectRootNotFoundError as exc:
+            raise PolicyError(str(exc)) from exc
 
         raw_map, source_map = self.config_backend.read_merged(pid)
         raw = raw_map.get(key)
@@ -222,7 +237,10 @@ class Orchestrator:
             raise UnknownFieldError(key)
         new_spec = replace(spec, fields=tuple(fields))
         etag = self.spec_backend.etag(pid)
-        self.spec_backend.save_spec(new_spec, expected_etag=etag)
+        try:
+            self.spec_backend.save_spec(new_spec, expected_etag=etag)
+        except ProjectRootNotFoundError as exc:
+            raise PolicyError(str(exc)) from exc
 
         if remove_values:
             target = self.config_backend.write_target_for(pid)

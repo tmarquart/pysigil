@@ -4,11 +4,14 @@ from pathlib import Path
 
 import pytest
 
-from pysigil.orchestrator import Orchestrator, ValidationError
+from pysigil.orchestrator import Orchestrator, PolicyError, ValidationError
+from pysigil.settings_metadata import IniSpecBackend
 
 
 def _make_orch(tmp_path: Path) -> Orchestrator:
+    spec_backend = IniSpecBackend(user_dir=tmp_path / "user")
     return Orchestrator(
+        spec_backend=spec_backend,
         user_dir=tmp_path / "user",
         project_dir=tmp_path / "proj",
         host="host",
@@ -112,4 +115,28 @@ def test_default_scope_editing_with_dev_link(tmp_path: Path, monkeypatch) -> Non
     assert eff["key"].source == "default"
     assert eff["key"].value == 5
     assert "key = 5" in dev_defaults.read_text()
+
+
+def test_metadata_requires_dev_link(tmp_path: Path) -> None:
+    orch = Orchestrator(user_dir=tmp_path / "user")
+    with pytest.raises(PolicyError):
+        orch.register_provider("pkg")
+
+
+def test_metadata_stored_in_defaults(tmp_path: Path, monkeypatch) -> None:
+    import pysigil.authoring as auth
+
+    user_dir = tmp_path / "user"
+    dev_defaults = tmp_path / "pkg" / ".sigil" / "settings.ini"
+    dev_defaults.parent.mkdir(parents=True)
+    dev_defaults.write_text("[pkg]\n")
+    monkeypatch.setattr(auth, "user_config_dir", lambda app: str(user_dir))
+    auth.link("pkg", dev_defaults, validate=False)
+
+    orch = Orchestrator(user_dir=user_dir)
+    orch.register_provider("pkg")
+    orch.add_field("pkg", key="alpha", type="string")
+    meta_path = dev_defaults.parent / "metadata.ini"
+    assert meta_path.exists()
+    assert "field:alpha" in meta_path.read_text()
 
