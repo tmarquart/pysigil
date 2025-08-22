@@ -169,7 +169,13 @@ class FieldValue:
     """Parsed field value along with provenance information."""
 
     value: Any | None
-    source: Literal["user", "user-local", "project", "project-local"] | None = None
+    source: Literal[
+        "user",
+        "user-local",
+        "project",
+        "project-local",
+        "default",
+    ] | None = None
     raw: str | None = None
 
 ##########################
@@ -533,14 +539,14 @@ class IniFileBackend:
         raise ValueError(f"unknown scope {scope!r}")  # pragma: no cover - defensive
 
     def _iter_read_paths(self, provider_id: str) -> Iterable[tuple[str, Path]]:
-        yield "user", self.user_dir / provider_id / "settings.ini"
-        yield "user-local", self.user_dir / provider_id / f"settings-local-{self.host}.ini"
-        if self.project_dir is not None:
-            yield "project", self.project_dir / "settings.ini"
-            yield "project-local", self.project_dir / f"settings-local-{self.host}.ini"
         dl = get_dev_link(provider_id)
         if dl is not None and dl.defaults_path.is_file():
             yield "default", dl.defaults_path
+        if self.project_dir is not None:
+            yield "project", self.project_dir / "settings.ini"
+            yield "project-local", self.project_dir / f"settings-local-{self.host}.ini"
+        yield "user", self.user_dir / provider_id / "settings.ini"
+        yield "user-local", self.user_dir / provider_id / f"settings-local-{self.host}.ini"
 
     # ------------------------------------------------------------------
     # SigilBackend API
