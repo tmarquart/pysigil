@@ -271,8 +271,8 @@ class InMemorySpecBackend:
 class IniSpecBackend:
     """Persist provider specifications in simple INI files.
 
-    Provider metadata is stored in ``<base>/<provider_id>.ini`` where the
-    ``__meta__`` section holds package level information and each field is
+    Provider metadata is stored in ``<base>/<provider_id>/metadata.ini`` where
+    the ``__meta__`` section holds package level information and each field is
     represented by a ``field:<key>`` section with ``type``, ``label`` and
     ``description`` keys.  An in-memory ``etag`` is maintained for conflict
     detection in the same manner as :class:`InMemorySpecBackend`.
@@ -291,7 +291,7 @@ class IniSpecBackend:
 
     # ------------------------------------------------------------ helpers
     def _path(self, provider_id: str) -> Path:
-        return self.base_dir / f"{provider_id}.ini"
+        return self.base_dir / provider_id / "metadata.ini"
 
     def _write(self, path: Path, spec: ProviderSpec) -> None:
         parser = configparser.ConfigParser()
@@ -345,7 +345,9 @@ class IniSpecBackend:
 
     # -------------------------------------------------------------- API
     def get_provider_ids(self) -> list[str]:  # pragma: no cover - trivial
-        return sorted(p.stem for p in self.base_dir.glob("*.ini"))
+        return sorted(
+            p.name for p in self.base_dir.iterdir() if (p / "metadata.ini").exists()
+        )
 
     def get_spec(self, provider_id: str) -> ProviderSpec:
         path = self._path(provider_id)

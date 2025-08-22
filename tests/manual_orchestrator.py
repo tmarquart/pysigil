@@ -30,9 +30,9 @@ def manual_demo() -> None:
         orch.add_field("demo", key="beta", type="integer", label="Beta")
         orch.add_field("demo", key="gamma", type="boolean", label="Gamma")
 
-        # Set some values in user and project scopes
+        # Set some values in user scope
         orch.set_value("demo", "alpha", "hello")
-        orch.set_value("demo", "beta", 42, scope="project")
+        orch.set_value("demo", "beta", 42)
         orch.set_value("demo", "gamma", True)
 
         #orch.set_value("demo", "gamma", "NOT A BOOL") #errors as expected
@@ -50,9 +50,9 @@ def manual_demo() -> None:
         print("Updated provider title:", spec.title)
 
         user_file = user_dir / "demo" / "settings.ini"
-        project_file = project_dir / "demo" / "settings.ini"
+        spec_file = user_dir / "demo" / "metadata.ini"
         print("User file contents:\n", user_file.read_text())
-        print("Project file contents:\n", project_file.read_text())
+        print("Metadata file contents:\n", spec_file.read_text())
 
 
 if __name__ == "__main__":  # pragma: no cover - manual execution
