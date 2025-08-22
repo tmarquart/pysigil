@@ -271,7 +271,7 @@ class Orchestrator:
         key: str,
         value: object,
         *,
-        scope: Literal["user", "project"] = "user",
+        scope: Literal["user", "project", "default"] = "user",
     ) -> None:
         mgr = self._manager(provider_id)
         try:
@@ -286,7 +286,7 @@ class Orchestrator:
         provider_id: str,
         key: str,
         *,
-        scope: Literal["user", "project"] = "user",
+        scope: Literal["user", "project", "default"] = "user",
     ) -> None:
         mgr = self._manager(provider_id)
         try:
@@ -299,7 +299,7 @@ class Orchestrator:
         provider_id: str,
         updates: dict[str, object],
         *,
-        scope: Literal["user", "project"] = "user",
+        scope: Literal["user", "project", "default"] = "user",
         atomic: bool = True,
     ) -> None:
         mgr = self._manager(provider_id)

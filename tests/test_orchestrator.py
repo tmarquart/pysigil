@@ -93,3 +93,23 @@ def test_set_many_atomic(tmp_path: Path) -> None:
     eff = orch.get_effective("pkg")
     assert eff["a"].value is None and eff["b"].value is None
 
+
+def test_default_scope_editing_with_dev_link(tmp_path: Path, monkeypatch) -> None:
+    import pysigil.authoring as auth
+
+    user_dir = tmp_path / "user"
+    dev_defaults = tmp_path / "pkg" / ".sigil" / "settings.ini"
+    dev_defaults.parent.mkdir(parents=True)
+    dev_defaults.write_text("[pkg]\nkey=0\n")
+    monkeypatch.setattr(auth, "user_config_dir", lambda app: str(user_dir))
+    auth.link("pkg", dev_defaults, validate=False)
+
+    orch = _make_orch(tmp_path)
+    orch.register_provider("pkg")
+    orch.add_field("pkg", key="key", type="integer")
+    orch.set_value("pkg", "key", 5, scope="default")
+    eff = orch.get_effective("pkg")
+    assert eff["key"].source == "default"
+    assert eff["key"].value == 5
+    assert "key = 5" in dev_defaults.read_text()
+
