@@ -557,6 +557,7 @@ class IniFileBackend:
                     yield "project", self.project_dir / "settings.ini"
                     yield "project-local", self.project_dir / f"settings-local-{self.host}.ini"
 
+
     # ------------------------------------------------------------------
     # SigilBackend API
     # ------------------------------------------------------------------
