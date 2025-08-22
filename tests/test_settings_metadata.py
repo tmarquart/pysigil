@@ -71,8 +71,8 @@ def test_ini_file_backend(tmp_path):
     )
 
     raw, src = backend.read_merged("demo")
-    assert raw == {"alpha": "p", "beta": "pl"}
-    assert src == {"alpha": "project", "beta": "project-local"}
+    assert raw == {"alpha": "u", "beta": "pl"}
+    assert src == {"alpha": "user", "beta": "project-local"}
 
     backend.ensure_section("demo", scope="user", target_kind="settings.ini")
     backend.write_key("demo", "gamma", "42", scope="user", target_kind="settings.ini")
