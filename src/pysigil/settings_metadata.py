@@ -23,7 +23,8 @@ from .config import host_id
 from .io_config import read_sections, write_sections
 from .paths import user_config_dir
 from .root import ProjectRootNotFoundError, find_project_root
-from .authoring import get as get_dev_link
+from .authoring import get as get_dev_link, list_links
+from .resolver import resolve_defaults
 
 
 ####################
@@ -272,27 +273,56 @@ class InMemorySpecBackend:
 class IniSpecBackend:
     """Persist provider specifications in simple INI files.
 
-    Provider metadata is stored in ``<base>/<provider_id>/metadata.ini`` where
-    the ``__meta__`` section holds package level information and each field is
-    represented by a ``field:<key>`` section with ``type``, ``label`` and
-    ``description`` keys.  An in-memory ``etag`` is maintained for conflict
-    detection in the same manner as :class:`InMemorySpecBackend`.
+    Metadata primarily lives alongside a package's defaults file (the
+    ``default`` scope).  When a development link exists for a provider, the
+    metadata is read from and written to ``<defaults_dir>/metadata.ini``.  For
+    convenience and testing purposes a secondary user-level directory can be
+    supplied where metadata files are also consulted.
 
     Parameters
     ----------
-    base_dir:
-        Directory in which specification files are stored.  Defaults to the
-        current user's configuration directory for ``sigil``.
+    user_dir:
+        Optional directory for user-level metadata storage.  When provided this
+        location is used as a fallback when no development link (and thus no
+        default location) exists for a provider.
     """
 
-    def __init__(self, *, base_dir: Path | None = None) -> None:
-        self.base_dir = Path(base_dir) if base_dir else Path(user_config_dir("sigil"))
-        self.base_dir.mkdir(parents=True, exist_ok=True)
+    def __init__(self, *, user_dir: Path | None = None) -> None:
+        self.user_dir = Path(user_dir) if user_dir else None
+        if self.user_dir is not None:
+            self.user_dir.mkdir(parents=True, exist_ok=True)
         self._etags: Dict[str, str] = {}
 
     # ------------------------------------------------------------ helpers
-    def _path(self, provider_id: str) -> Path:
-        return self.base_dir / provider_id / "metadata.ini"
+    def _user_path(self, provider_id: str) -> Path:
+        assert self.user_dir is not None
+        return self.user_dir / provider_id / "metadata.ini"
+
+    def _read_path(self, provider_id: str) -> Path:
+        dl = get_dev_link(provider_id)
+        if dl is not None:
+            path = dl.defaults_path.parent / "metadata.ini"
+            if path.is_file():
+                return path
+        else:
+            path, _src = resolve_defaults(provider_id, "metadata.ini")
+            if path is not None and path.is_file():
+                return path
+        if self.user_dir is not None:
+            return self._user_path(provider_id)
+        raise UnknownProviderError(provider_id)
+
+    def _write_path(self, provider_id: str) -> Path:
+        dl = get_dev_link(provider_id)
+        if dl is not None:
+            path = dl.defaults_path.parent / "metadata.ini"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            return path
+        if self.user_dir is not None:
+            path = self._user_path(provider_id)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            return path
+        raise ProjectRootNotFoundError("No development link configured")
 
     def _write(self, path: Path, spec: ProviderSpec) -> None:
         parser = configparser.ConfigParser()
@@ -346,26 +376,34 @@ class IniSpecBackend:
 
     # -------------------------------------------------------------- API
     def get_provider_ids(self) -> list[str]:  # pragma: no cover - trivial
-        return sorted(
-            p.name for p in self.base_dir.iterdir() if (p / "metadata.ini").exists()
-        )
+        ids: set[str] = set()
+        if self.user_dir is not None and self.user_dir.exists():
+            ids.update(
+                p.name
+                for p in self.user_dir.iterdir()
+                if (p / "metadata.ini").exists()
+            )
+        for pid, defaults in list_links(must_exist_on_disk=True).items():
+            if (defaults.parent / "metadata.ini").exists():
+                ids.add(pid)
+        return sorted(ids)
 
     def get_spec(self, provider_id: str) -> ProviderSpec:
-        path = self._path(provider_id)
+        path = self._read_path(provider_id)
         return self._read(path, provider_id)
 
     def save_spec(self, spec: ProviderSpec, *, expected_etag: str | None = None) -> str:
         current = self._etags.get(spec.provider_id)
         if expected_etag is not None and current is not None and expected_etag != current:
             raise ConflictError(spec.provider_id)
-        path = self._path(spec.provider_id)
+        path = self._write_path(spec.provider_id)
         self._write(path, spec)
         etag = uuid4().hex
         self._etags[spec.provider_id] = etag
         return etag
 
     def create_spec(self, spec: ProviderSpec) -> str:
-        path = self._path(spec.provider_id)
+        path = self._write_path(spec.provider_id)
         if path.exists():
             raise DuplicateProviderError(spec.provider_id)
         self._write(path, spec)
@@ -374,14 +412,14 @@ class IniSpecBackend:
         return etag
 
     def delete_spec(self, provider_id: str) -> None:
-        path = self._path(provider_id)
+        path = self._write_path(provider_id)
         if path.exists():
             path.unlink()
         self._etags.pop(provider_id, None)
 
     def etag(self, provider_id: str) -> str:
         if provider_id not in self._etags:
-            if not self._path(provider_id).exists():
+            if not self._read_path(provider_id).exists():
                 raise UnknownProviderError(provider_id)
             self._etags[provider_id] = uuid4().hex
         return self._etags[provider_id]
