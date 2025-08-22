@@ -16,7 +16,14 @@ from .errors import (
     UnknownScopeError,
 )
 from .gui import events
-from .merge_policy import CORE_DEFAULTS, KeyPath, parse_key, read_env
+from .merge_policy import (
+    CORE_DEFAULTS,
+    KeyPath,
+    PRECEDENCE_PROJECT_WINS,
+    PRECEDENCE_USER_WINS,
+    parse_key,
+    read_env,
+)
 from .root import ProjectRootNotFoundError
 from .resolver import (
     project_settings_file,
@@ -40,10 +47,6 @@ def _backend_for(path: Path):
 logger = logging.getLogger("pysigil")
 
 KEY_JOIN_CHAR = "_"
-
-
-PRECEDENCE_USER_WINS = ("env", "user", "project", "default", "core")
-PRECEDENCE_PROJECT_WINS = ("env", "project", "user", "default", "core")
 
 
 class Sigil:

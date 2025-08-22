@@ -9,6 +9,7 @@ from .paths import user_config_dir
 
 from .authoring import normalize_provider_id
 from .root import ProjectRootNotFoundError, find_project_root
+from .merge_policy import PRECEDENCE_PROJECT_WINS
 
 # ---------------------------------------------------------------------------
 # Host and provider helpers
@@ -68,10 +69,13 @@ def load(provider_id: str, *, auto: bool = True) -> dict[str, Any]:
     pid = normalize_provider_id(provider_id)
     h = host_id()
     acc: dict[str, Any] = {}
-    for f in user_files(pid, h):
-        acc = merge_ini_section(acc, f, section=pid)
-    for f in project_files(pid, h, auto=auto):
-        acc = merge_ini_section(acc, f, section=pid)
+    for scope in reversed(PRECEDENCE_PROJECT_WINS):
+        if scope == "user":
+            for f in user_files(pid, h):
+                acc = merge_ini_section(acc, f, section=pid)
+        elif scope == "project":
+            for f in project_files(pid, h, auto=auto):
+                acc = merge_ini_section(acc, f, section=pid)
     return acc
 
 

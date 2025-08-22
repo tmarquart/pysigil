@@ -140,3 +140,35 @@ def test_metadata_stored_in_defaults(tmp_path: Path, monkeypatch) -> None:
     assert meta_path.exists()
     assert "field:alpha" in meta_path.read_text()
 
+
+def test_scope_precedence(tmp_path: Path, monkeypatch) -> None:
+    import pysigil.authoring as auth
+
+    user_dir = tmp_path / "user"
+    dev_defaults = tmp_path / "pkg" / ".sigil" / "settings.ini"
+    dev_defaults.parent.mkdir(parents=True)
+    dev_defaults.write_text("[pkg]\n", encoding="utf-8")
+    monkeypatch.setattr(auth, "user_config_dir", lambda app: str(user_dir))
+    auth.link("pkg", dev_defaults, validate=False)
+
+    orch = _make_orch(tmp_path)
+    orch.register_provider("pkg")
+    orch.add_field("pkg", key="key", type="string")
+
+    orch.set_value("pkg", "key", "default", scope="default")
+    orch.set_value("pkg", "key", "user", scope="user")
+    orch.set_value("pkg", "key", "project", scope="project")
+    eff = orch.get_effective("pkg")
+    assert eff["key"].value == "project"
+    assert eff["key"].source == "project"
+
+    orch.clear_value("pkg", "key", scope="project")
+    eff = orch.get_effective("pkg")
+    assert eff["key"].value == "user"
+    assert eff["key"].source == "user"
+
+    orch.clear_value("pkg", "key", scope="user")
+    eff = orch.get_effective("pkg")
+    assert eff["key"].value == "default"
+    assert eff["key"].source == "default"
+
