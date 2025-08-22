@@ -12,6 +12,7 @@ intended to be a stable, extendable base for future GUI work.
 from __future__ import annotations
 
 import json
+import configparser
 from dataclasses import dataclass, field as dataclass_field
 from pathlib import Path
 import re
@@ -266,32 +267,121 @@ class InMemorySpecBackend:
         except KeyError as exc:  # pragma: no cover - defensive
             raise UnknownProviderError(provider_id) from exc
 
+
+class IniSpecBackend:
+    """Persist provider specifications in simple INI files.
+
+    Provider metadata is stored in ``<base>/<provider_id>.ini`` where the
+    ``__meta__`` section holds package level information and each field is
+    represented by a ``field:<key>`` section with ``type``, ``label`` and
+    ``description`` keys.  An in-memory ``etag`` is maintained for conflict
+    detection in the same manner as :class:`InMemorySpecBackend`.
+
+    Parameters
+    ----------
+    base_dir:
+        Directory in which specification files are stored.  Defaults to the
+        current user's configuration directory for ``sigil``.
+    """
+
+    def __init__(self, *, base_dir: Path | None = None) -> None:
+        self.base_dir = Path(base_dir) if base_dir else Path(user_config_dir("sigil"))
+        self.base_dir.mkdir(parents=True, exist_ok=True)
+        self._etags: Dict[str, str] = {}
+
+    # ------------------------------------------------------------ helpers
+    def _path(self, provider_id: str) -> Path:
+        return self.base_dir / f"{provider_id}.ini"
+
+    def _write(self, path: Path, spec: ProviderSpec) -> None:
+        parser = configparser.ConfigParser()
+        meta: Dict[str, str] = {"schema_version": spec.schema_version}
+        if spec.title is not None:
+            meta["title"] = spec.title
+        if spec.description is not None:
+            meta["description"] = spec.description
+        parser["__meta__"] = meta
+        for field in spec.fields:
+            section = f"field:{field.key}"
+            parser.add_section(section)
+            parser.set(section, "type", field.type)
+            if field.label is not None:
+                parser.set(section, "label", field.label)
+            if field.description is not None:
+                parser.set(section, "description", field.description)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(path.suffix + ".tmp")
+        with tmp.open("w") as fh:
+            parser.write(fh)
+        tmp.replace(path)
+
+    def _read(self, path: Path, provider_id: str) -> ProviderSpec:
+        parser = configparser.ConfigParser()
+        if not path.exists():
+            raise UnknownProviderError(provider_id)
+        parser.read(path)
+        meta = parser["__meta__"]
+        fields: list[FieldSpec] = []
+        for section in parser.sections():
+            if not section.startswith("field:"):
+                continue
+            key = section.split(":", 1)[1]
+            data = parser[section]
+            fields.append(
+                FieldSpec(
+                    key=key,
+                    type=data.get("type", "string"),
+                    label=data.get("label"),
+                    description=data.get("description"),
+                )
+            )
+        return ProviderSpec(
+            provider_id=provider_id,
+            schema_version=meta.get("schema_version", "0"),
+            title=meta.get("title"),
+            description=meta.get("description"),
+            fields=fields,
+        )
+
+    # -------------------------------------------------------------- API
+    def get_provider_ids(self) -> list[str]:  # pragma: no cover - trivial
+        return sorted(p.stem for p in self.base_dir.glob("*.ini"))
+
+    def get_spec(self, provider_id: str) -> ProviderSpec:
+        path = self._path(provider_id)
+        return self._read(path, provider_id)
+
     def save_spec(self, spec: ProviderSpec, *, expected_etag: str | None = None) -> str:
         current = self._etags.get(spec.provider_id)
         if expected_etag is not None and current is not None and expected_etag != current:
             raise ConflictError(spec.provider_id)
+        path = self._path(spec.provider_id)
+        self._write(path, spec)
         etag = uuid4().hex
-        self._specs[spec.provider_id] = spec
         self._etags[spec.provider_id] = etag
         return etag
 
     def create_spec(self, spec: ProviderSpec) -> str:
-        if spec.provider_id in self._specs:
+        path = self._path(spec.provider_id)
+        if path.exists():
             raise DuplicateProviderError(spec.provider_id)
+        self._write(path, spec)
         etag = uuid4().hex
-        self._specs[spec.provider_id] = spec
         self._etags[spec.provider_id] = etag
         return etag
 
     def delete_spec(self, provider_id: str) -> None:
-        self._specs.pop(provider_id, None)
+        path = self._path(provider_id)
+        if path.exists():
+            path.unlink()
         self._etags.pop(provider_id, None)
 
     def etag(self, provider_id: str) -> str:
-        try:
-            return self._etags[provider_id]
-        except KeyError as exc:  # pragma: no cover - defensive
-            raise UnknownProviderError(provider_id) from exc
+        if provider_id not in self._etags:
+            if not self._path(provider_id).exists():
+                raise UnknownProviderError(provider_id)
+            self._etags[provider_id] = uuid4().hex
+        return self._etags[provider_id]
 
 
 # ---- configuration storage ----
@@ -651,6 +741,7 @@ __all__ = [
     "SpecBackend",
     "SpecBackendError",
     "InMemorySpecBackend",
+    "IniSpecBackend",
     "UnknownProviderError",
     "DuplicateProviderError",
     "ConflictError",

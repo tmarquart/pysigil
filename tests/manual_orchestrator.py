@@ -10,7 +10,6 @@ from tempfile import TemporaryDirectory
 
 from pysigil.orchestrator import Orchestrator
 from pysigil.paths import user_config_dir
-from pysigil.settings_metadata import InMemorySpecBackend, IniFileBackend
 
 
 def manual_demo() -> None:
@@ -19,13 +18,11 @@ def manual_demo() -> None:
     user_dir = user_config_dir("sigil")
     with TemporaryDirectory() as tmp:
         project_dir = Path(tmp) / "proj"
-        backend = IniFileBackend(
+        orch = Orchestrator(
             user_dir=user_dir,
             project_dir=project_dir,
             host="host",
         )
-        spec_backend = InMemorySpecBackend()
-        orch = Orchestrator(spec_backend, backend)
 
         # Register a provider (project) and add three fields
         orch.register_provider("demo", title="Demo Project")
@@ -49,7 +46,7 @@ def manual_demo() -> None:
 
         # Edit the provider itself
         orch.edit_provider("demo", title="Demo Project Updated")
-        spec = spec_backend.get_spec("demo")
+        spec = orch.spec_backend.get_spec("demo")
         print("Updated provider title:", spec.title)
 
         user_file = user_dir / "demo" / "settings.ini"
