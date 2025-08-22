@@ -65,9 +65,9 @@ def test_ini_file_backend(tmp_path):
     backend = IniFileBackend(user_dir=user_dir, project_dir=project_dir, host="host")
 
     write_sections(user_dir / "demo" / "settings.ini", {"demo": {"alpha": "u"}})
-    write_sections(project_dir / "demo" / "settings.ini", {"demo": {"alpha": "p", "beta": "p"}})
+    write_sections(project_dir / "settings.ini", {"demo": {"alpha": "p", "beta": "p"}})
     write_sections(
-        project_dir / "demo" / "settings-local-host.ini", {"demo": {"beta": "pl"}}
+        project_dir / "settings-local-host.ini", {"demo": {"beta": "pl"}}
     )
 
     raw, src = backend.read_merged("demo")

@@ -35,8 +35,7 @@ def test_precedence(monkeypatch, tmp_path: Path) -> None:
     (user_dir / "pkg").mkdir()
     (user_dir / "pkg" / "settings.ini").write_text("[pkg]\na=1\n")
     (user_dir / "pkg" / "settings-local-host.ini").write_text("[pkg]\na=2\n")
-    proj_dir = project_root / ".sigil" / "pkg"
-    proj_dir.mkdir(parents=True)
+    proj_dir = project_root / ".sigil"
     (proj_dir / "settings.ini").write_text("[pkg]\na=3\n")
     (proj_dir / "settings-local-host.ini").write_text("[pkg]\na=4\n")
     data = cfg.load("pkg")
@@ -67,8 +66,7 @@ def test_host_filtering(monkeypatch, tmp_path: Path) -> None:
     (user_dir / "pkg").mkdir()
     (user_dir / "pkg" / "settings-local-host.ini").write_text("[pkg]\nx=1\n")
     (user_dir / "pkg" / "settings-local-other.ini").write_text("[pkg]\nx=2\n")
-    proj_dir = project_root / ".sigil" / "pkg"
-    proj_dir.mkdir(parents=True)
+    proj_dir = project_root / ".sigil"
     (proj_dir / "settings-local-host.ini").write_text("[pkg]\ny=3\n")
     (proj_dir / "settings-local-other.ini").write_text("[pkg]\ny=4\n")
     data = cfg.load("pkg")
@@ -80,7 +78,7 @@ def test_gitignore_idempotent(monkeypatch, tmp_path: Path, capsys) -> None:
     _run_cli(["config", "gitignore", "--init", "--auto"], capsys)
     _run_cli(["config", "gitignore", "--init", "--auto"], capsys)
     content = (project_root / ".gitignore").read_text().splitlines()
-    assert content == [".sigil/*/settings-local*"]
+    assert content == [".sigil/settings-local*"]
 
 
 def test_cli_roundtrip(monkeypatch, tmp_path: Path, capsys) -> None:
@@ -88,7 +86,7 @@ def test_cli_roundtrip(monkeypatch, tmp_path: Path, capsys) -> None:
     _run_cli(["config", "init", "--provider", "pkg", "--scope", "user"], capsys)
     _run_cli(["config", "init", "--provider", "pkg", "--scope", "project", "--auto"], capsys)
     (user_dir / "pkg" / "settings.ini").write_text("[pkg]\nkey=user\n")
-    proj_dir = project_root / ".sigil" / "pkg"
+    proj_dir = project_root / ".sigil"
     (proj_dir / "settings.ini").write_text("[pkg]\nkey=project\n")
     res = _run_cli(["config", "show", "--provider", "pkg", "--as", "json", "--auto"], capsys)
     assert res.exit_code == 0

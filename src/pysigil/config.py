@@ -43,7 +43,7 @@ def project_files(provider_id: str, host: str, *, auto: bool = True) -> list[Pat
     root = _project_dir(auto)
     if root is None:
         return []
-    base = root / ".sigil" / provider_id
+    base = root / ".sigil"
     files = [base / "settings.ini", base / f"settings-local-{host}.ini"]
     return [f for f in files if f.exists()]
 
@@ -87,7 +87,7 @@ def _scope_dir(scope: str, provider_id: str, *, auto: bool) -> Path:
         root = _project_dir(auto)
         if root is None:
             raise ProjectRootNotFoundError("No project root found")
-        base = root / ".sigil" / pid
+        base = root / ".sigil"
     base.mkdir(parents=True, exist_ok=True)
     return base
 
@@ -138,7 +138,7 @@ def ensure_gitignore(*, auto: bool = False) -> Path:
     if root is None:
         raise ProjectRootNotFoundError("No project root found")
     gi = root / ".gitignore"
-    rule = ".sigil/*/settings-local*"
+    rule = ".sigil/settings-local*"
     lines: list[str] = []
     if gi.exists():
         lines = gi.read_text().splitlines()
@@ -161,8 +161,13 @@ def available_providers(*, auto: bool = True) -> list[str]:
     if root is not None:
         proj_base = root / ".sigil"
         if proj_base.exists():
-            for p in proj_base.iterdir():
-                if p.is_dir():
-                    providers.add(normalize_provider_id(p.name))
+            for ini in proj_base.glob("settings*.ini"):
+                parser = configparser.ConfigParser()
+                try:
+                    parser.read(ini)
+                except Exception:
+                    continue
+                for section in parser.sections():
+                    providers.add(normalize_provider_id(section))
     return sorted(providers)
 
