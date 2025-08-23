@@ -14,10 +14,12 @@ from __future__ import annotations
 import configparser
 import json
 import re
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Mapping, MutableMapping
+from contextlib import contextmanager
 from dataclasses import dataclass, field as dataclass_field
 from pathlib import Path
-from typing import Any, Literal, Protocol
+from types import SimpleNamespace
+from typing import Any, Iterator, Literal, Protocol
 from uuid import uuid4
 
 from .authoring import get as get_dev_link, list_links
@@ -459,6 +461,17 @@ class SigilBackend(Protocol):
     def write_target_for(self, provider_id: str) -> str:
         ...
 
+    @contextmanager
+    def transaction(
+        self,
+        provider_id: str,
+        *,
+        scope: str,
+        target_kind: str,
+    ) -> Iterator[MutableMapping[str, str]]:
+        """Stage updates to a provider section and commit on success."""
+        ...
+
 
 class IniFileBackend:
     """Store provider settings in INI files on the filesystem.
@@ -607,6 +620,28 @@ class IniFileBackend:
             return f"settings-local-{self.host}.ini"
         return "settings.ini"
 
+    @contextmanager
+    def transaction(
+        self,
+        provider_id: str,
+        *,
+        scope: str,
+        target_kind: str,
+    ) -> Iterator[MutableMapping[str, str]]:
+        path = self._scope_path(provider_id, scope, target_kind)
+        data = read_sections(path)
+        section = dict(data.get(provider_id, {}))
+        try:
+            yield section
+        except Exception:  # pragma: no cover - passthrough
+            raise
+        else:
+            if section:
+                data[provider_id] = section
+            elif provider_id in data:
+                del data[provider_id]
+            write_sections(path, data)
+
 class ProviderManager:
     """Orchestrates access to provider settings through a backend."""
 
@@ -632,6 +667,24 @@ class ProviderManager:
                 value=value, source=source_map.get(field.key), raw=raw
             )
         return result
+
+    @contextmanager
+    def transaction(self, *, scope: str = "user") -> Iterator[SimpleNamespace]:
+        target = self.backend.write_target_for(self.spec.provider_id)
+        with self.backend.transaction(
+            self.spec.provider_id, scope=scope, target_kind=target
+        ) as section:
+            def set_value(key: str, python_value: Any) -> None:
+                field = self._field_for(key)
+                adapter = TYPE_REGISTRY[field.type]
+                adapter.validate(python_value, field)
+                section[key] = adapter.serialize(python_value)
+
+            def clear_value(key: str) -> None:
+                self._field_for(key)
+                section.pop(key, None)
+
+            yield SimpleNamespace(set=set_value, clear=clear_value)
 
     def set(self, key: str, python_value: Any, *, scope: str = "user") -> None:
         field = self._field_for(key)

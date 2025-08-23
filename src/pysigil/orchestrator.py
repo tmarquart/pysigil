@@ -300,9 +300,14 @@ class Orchestrator:
         scope: Literal["user", "project", "default"] = "user",
         atomic: bool = True,
     ) -> None:
+        """Set multiple values for *provider_id* at once.
+
+        When ``atomic`` is true (the default) all updates are validated and
+        written as a single transaction.  If validation or writing fails no
+        changes are persisted.
+        """
         mgr = self._manager(provider_id)
         if atomic:
-            # Validate first
             fields = mgr._fields  # pylint: disable=protected-access
             for key, value in updates.items():
                 field = fields.get(key)
@@ -313,8 +318,12 @@ class Orchestrator:
                     adapter.validate(value, field)
                 except (TypeError, ValueError) as exc:
                     raise ValidationError(str(exc)) from exc
-        for key, value in updates.items():
-            mgr.set(key, value, scope=scope)
+            with mgr.transaction(scope=scope) as tx:
+                for key, value in updates.items():
+                    tx.set(key, value)
+        else:
+            for key, value in updates.items():
+                mgr.set(key, value, scope=scope)
 
     def validate_value(self, provider_id: str, key: str, value: object) -> None:
         mgr = self._manager(provider_id)
