@@ -1,8 +1,12 @@
+"""Manual smoke test for the Tk based GUI.
+
+Run this module directly to open the GUI.  The interface will list all
+registered providers and allow selecting one to display its fields.
+"""
+
 from pysigil.ui.tk import TkApp
 
-app = TkApp()
+if __name__ == "__main__":  # pragma: no cover - manual test only
+    app = TkApp()
+    app.root.mainloop()
 
-# Optionally load a provider to populate state
-app.core.select_provider("sigil_dummy")  # replace with your provider ID
-
-app.root.mainloop()
