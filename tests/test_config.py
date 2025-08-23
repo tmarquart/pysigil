@@ -42,6 +42,17 @@ def test_precedence(monkeypatch, tmp_path: Path) -> None:
     assert data == {"a": "4"}
 
 
+def test_invalid_ini_logs_warning(monkeypatch, tmp_path: Path, caplog) -> None:
+    user_dir, _ = _patch_env(monkeypatch, tmp_path)
+    (user_dir / "pkg").mkdir()
+    # write invalid INI content to trigger warning
+    (user_dir / "pkg" / "settings.ini").write_text("not an ini")
+    with caplog.at_level("WARNING"):
+        data = cfg.load("pkg")
+    assert data == {}
+    assert "Failed to read config" in caplog.text
+
+
 def _run_cli(args: list[str], capsys) -> SimpleNamespace:
     code = cli_main(args)
     out = capsys.readouterr().out
