@@ -282,6 +282,11 @@ class ProviderHandle:
         scope: Literal["user", "project"] = "user",
         atomic: bool = True,
     ) -> None:
+        """Set multiple configuration values.
+
+        With ``atomic=True`` (the default) updates are staged and committed
+        only if all validations and writes succeed.
+        """
         try:
             _ORCH.set_many(
                 self.provider_id, dict(updates), scope=scope, atomic=atomic

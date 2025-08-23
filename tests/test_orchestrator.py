@@ -5,7 +5,8 @@ from pathlib import Path
 import pytest
 
 from pysigil.orchestrator import Orchestrator, PolicyError, ValidationError
-from pysigil.settings_metadata import IniSpecBackend
+from pysigil.settings_metadata import IniSpecBackend, read_sections, write_sections
+import pysigil.settings_metadata as sm
 
 
 def _make_orch(tmp_path: Path) -> Orchestrator:
@@ -108,6 +109,23 @@ def test_set_many_atomic(tmp_path: Path) -> None:
         orch.set_many("pkg", {"a": 1, "b": "bad"}, atomic=True)
     eff = orch.get_effective("pkg")
     assert eff["a"].value is None and eff["b"].value is None
+
+
+def test_set_many_rollback_on_write_error(tmp_path: Path, monkeypatch) -> None:
+    orch = _make_orch(tmp_path)
+    orch.register_provider("pkg")
+    orch.add_field("pkg", key="a", type="integer")
+    orch.add_field("pkg", key="b", type="integer")
+    target = tmp_path / "user" / "pkg" / "settings.ini"
+    write_sections(target, {"pkg": {"a": "1"}})
+
+    def boom(path, data):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(sm, "write_sections", boom)
+    with pytest.raises(RuntimeError):
+        orch.set_many("pkg", {"a": 2, "b": 3}, atomic=True)
+    assert read_sections(target) == {"pkg": {"a": "1"}}
 
 
 def test_default_scope_editing_with_dev_link(tmp_path: Path, monkeypatch) -> None:
