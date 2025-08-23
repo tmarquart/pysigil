@@ -425,6 +425,7 @@ class Sigil:
             return self.project_path
         if scope == "project-local":
             return self.project_local_path
+
         if scope == "default" and self.default_path is not None:
             return self.default_path
         raise UnknownScopeError(scope)

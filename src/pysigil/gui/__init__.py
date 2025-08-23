@@ -254,6 +254,7 @@ def launch_gui(
     combo = ttk.Combobox(header, textvariable=pkg_var, values=packages, state="readonly")
     combo.pack(side="left")
 
+
     search_var = tk.StringVar()
     ttk.Entry(header, textvariable=search_var, width=20).pack(side="left", padx=6)
 
@@ -276,6 +277,7 @@ def launch_gui(
 
     for text, val in scope_labels:
         ttk.Radiobutton(scope_frame, text=text, variable=scope_var, value=val, command=_on_scope_change).pack(side="left")
+
 
     path_label = ttk.Label(header, text="")
     path_label.pack(side="left", padx=6)
@@ -301,6 +303,7 @@ def launch_gui(
 
     source_map: dict[str, str] = {}
 
+
     def _refresh() -> None:
         if _sigil_instance is None:
             return
@@ -322,6 +325,7 @@ def launch_gui(
                 values=(key, val, label_map.get(src, src), "Override \u25BE   Reset"),
             )
 
+
     def _on_add() -> None:
         res = _open_value_dialog("add", scope_var.get())
         if not res or _sigil_instance is None:
@@ -329,6 +333,7 @@ def launch_gui(
         key, value = res
         _sigil_instance.set_pref(key, value, scope=scope_var.get())
         _refresh()
+
 
     def _on_init() -> None:
         init_config(pkg_var.get(), scope_var.get())
@@ -339,10 +344,12 @@ def launch_gui(
             return
         current = _sigil_instance.get_pref(key) or ""
         res = _open_value_dialog("edit", scope, key=key, value=str(current))
+
         if not res:
             return
         new_key, new_val = res
         if new_key != key:
+
             _sigil_instance.set_pref(key, None, scope=scope)
             key = new_key
         _sigil_instance.set_pref(key, new_val, scope=scope)
@@ -381,6 +388,7 @@ def launch_gui(
     tree.bind("<Button-1>", _on_tree_click)
 
     search_var.trace_add("write", lambda *args: _refresh())
+
 
     def _on_pkg_change(event=None):
         new_pkg = pkg_var.get()
