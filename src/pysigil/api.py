@@ -17,6 +17,7 @@ from .errors import (
     ValidationError,
 )
 from .orchestrator import Orchestrator
+from .config import target_path as cfg_target_path
 from .settings_metadata import FieldSpec, FieldValue, ProviderSpec
 
 __all__ = [
@@ -318,3 +319,7 @@ class ProviderHandle:
     def reload_spec(self) -> ProviderInfo:
         spec = _ORCH.reload_spec(self.provider_id)
         return _provider_info(spec)
+
+    def target_path(self, scope: Literal["user", "project"] = "user") -> Path:
+        """Return the file path used for *scope* writes."""
+        return cfg_target_path(self.provider_id, scope)

@@ -95,28 +95,6 @@ def effective_scope_for(key: KeyPath) -> str:
     return _sigil_instance.effective_scope_for(key)
 
 
-# ---------------------------------------------------------------------------
-# Legacy preference editor helpers (kept for tests)
-# ---------------------------------------------------------------------------
-
-
-def _current_scope(widgets: dict) -> str:
-    nb = widgets["notebook"]
-    tab_id = nb.select()
-    return nb.tab(tab_id, "text").lower()
-
-
-def _populate_tree(tree, scope: str) -> None:
-    if _sigil_instance is None:
-        logger.debug("no sigil instance; skipping populate for %s", scope)
-        return
-    tree.delete(*tree.get_children())
-    values = _sigil_instance.scoped_values().get(scope, {})
-    logger.debug("populate %s with %d entries", scope, len(values))
-    for key, value in sorted(values.items()):
-        tree.insert("", "end", iid=key, values=(key, value))
-
-
 def _open_value_dialog(
     mode: Literal["add", "edit"],
     scope: str,
@@ -143,51 +121,14 @@ def _open_value_dialog(
 
         def apply(self):  # type: ignore[override]
             self.result = (self.key_w.get(), self.val_w.get())
-
     dlg = _Dialog(parent, title)
     return dlg.result
 
 
-def _on_add(widgets: dict) -> None:
-    scope = _current_scope(widgets)
-    res = _open_value_dialog("add", scope)
-    if not res or _sigil_instance is None:
-        return
-    key, value = res
-    _sigil_instance.set_pref(key, value, scope=scope)
-
-
-def _on_edit(widgets: dict) -> None:
-    scope = _current_scope(widgets)
-    tree = widgets["trees"][scope]
-    sel = tree.selection()
-    if not sel:
-        return
-    key = sel[0]
-    current = tree.item(key, "values")[1]
-    res = _open_value_dialog("edit", scope, key=key, value=current)
-    if not res or _sigil_instance is None:
-        return
-    new_key, new_val = res
-    if new_key != key:
-        _sigil_instance.set_pref(key, None, scope=scope)
-        key = new_key
-    _sigil_instance.set_pref(key, new_val, scope=scope)
-
-
-def _on_delete(widgets: dict) -> None:
-    scope = _current_scope(widgets)
-    tree = widgets["trees"][scope]
-    sel = tree.selection()
-    if not sel or _sigil_instance is None:
-        return
-    key = sel[0]
-    _sigil_instance.set_pref(key, None, scope=scope)
-
-
 def _on_pref_changed(widgets: dict, key: str, new_val: str | None, scope: str) -> None:
+    """Update simple tree/label structures when a preference changes."""
     logger.debug("pref_changed %s=%s scope=%s", key, new_val, scope)
-    tree = widgets["trees"].get(scope)
+    tree = widgets.get("trees", {}).get(scope)
     empty = widgets.get("empty_labels", {}).get(scope)
     if tree is None or empty is None:
         return
@@ -210,6 +151,7 @@ def _on_pref_changed(widgets: dict, key: str, new_val: str | None, scope: str) -
 # ---------------------------------------------------------------------------
 # GUI launcher with package selection + state persistence
 # ---------------------------------------------------------------------------
+
 
 class _HeadlessGUI:
     """Simple stand-in object used for tests when no real Tk GUI is needed."""
@@ -287,24 +229,15 @@ def launch_gui(
 
     if sigil is not None:
         pkg = sigil.app_name
-        # Ensure provided Sigil instance becomes the active one.
         global _sigil_instance, _current_package
         _sigil_instance = sigil
         _current_package = pkg
     else:
-        pkg = (
-            package
-            or _detect_project_package()
-            or state.get("last_package")
-            or "pysigil"
-        )
+        pkg = package or state.get("last_package") or "pysigil"
         open_package(pkg, include_sigil)
         pkg = _current_package or pkg
     packages = [pkg, *[p for p in packages if p != pkg]]
-
-    tab = state.get("last_tab", "User")
-    inc = include_sigil or state.get("include_sigil", False)
-    state = {"last_package": pkg, "last_tab": tab, "include_sigil": inc}
+    state = {"last_package": pkg, "last_tab": "User", "include_sigil": include_sigil}
 
     if not run_mainloop:
         return _HeadlessGUI(state, remember_state, state_path, packages)
@@ -320,81 +253,113 @@ def launch_gui(
     pkg_var = tk.StringVar(value=pkg)
     combo = ttk.Combobox(header, textvariable=pkg_var, values=packages, state="readonly")
     combo.pack(side="left")
-    refresh_cb = refresh_callback or (lambda: None)
-    ttk.Button(header, text="Refresh", command=refresh_cb).pack(side="left", padx=4)
-    sigil_var = tk.BooleanVar(value=inc)
-    ttk.Checkbutton(
-        header,
-        text="Show Sigil settings",
-        variable=sigil_var,
-        command=lambda: None,
-    ).pack(side="right")
 
-    notebook = ttk.Notebook(root)
-    notebook.pack(fill="both", expand=True)
-    trees: dict[str, ttk.Treeview] = {}
-    empty_labels: dict[str, ttk.Label] = {}
-    for scope in ("default", "user", "project"):
-        frame = ttk.Frame(notebook)
-        tree = ttk.Treeview(frame, columns=("key", "value"), show="headings")
-        tree.heading("key", text="key")
-        tree.heading("value", text="value")
-        tree.pack(fill="both", expand=True)
-        notebook.add(frame, text=scope.title())
-        trees[scope] = tree
-        empty_labels[scope] = ttk.Label(frame, text="No settings in this scope yet.")
+    scope_var = tk.StringVar(
+        value=_sigil_instance.default_scope if _sigil_instance else "user"
+    )
+
+    scope_frame = ttk.Frame(header)
+    scope_frame.pack(side="left", padx=6)
+    def _on_scope_change() -> None:
+        if _sigil_instance is None:
+            return
+        _sigil_instance.set_default_scope(scope_var.get())
+        _update_path()
+    for text, val in (("User", "user"), ("Project", "project")):
+        ttk.Radiobutton(
+            scope_frame,
+            text=text,
+            variable=scope_var,
+            value=val,
+            command=_on_scope_change,
+        ).pack(side="left")
+
+    path_label = ttk.Label(header, text="")
+    path_label.pack(side="left", padx=6)
+
+    def _update_path() -> None:
+        if _sigil_instance is None:
+            path_label.config(text="")
+            return
+        path_label.config(
+            text=f"Will write to: {_sigil_instance.path_for_scope(scope_var.get())}"
+        )
+
+    _update_path()
+
+    ttk.Button(header, text="New setting", command=lambda: _on_add()).pack(
+        side="right"
+    )
+
+    tree = ttk.Treeview(root, columns=("key", "value", "source"), show="headings")
+    tree.heading("key", text="Key")
+    tree.heading("value", text="Value")
+    tree.heading("source", text="Source")
+    tree.pack(fill="both", expand=True)
 
     def _refresh() -> None:
-        logger.debug("refreshing view")
-        for scope, tree in trees.items():
-            logger.debug("refreshing scope %s", scope)
-            _populate_tree(tree, scope)
-            if not tree.get_children():
-                tree.pack_forget()
-                empty_labels[scope].pack(fill="both", expand=True)
-            else:
-                empty_labels[scope].pack_forget()
-                tree.pack(fill="both", expand=True)
+        if _sigil_instance is None:
+            return
+        tree.delete(*tree.get_children())
+        scoped = _sigil_instance.scoped_values()
+        all_keys = set().union(*(d.keys() for d in scoped.values()))
+        for key in sorted(all_keys):
+            val = _sigil_instance.get_pref(key)
+            src = _sigil_instance.effective_scope_for(key)
+            tree.insert("", "end", iid=key, values=(key, val, src))
 
-    _refresh()
+    def _on_add() -> None:
+        res = _open_value_dialog("add", scope_var.get())
+        if not res or _sigil_instance is None:
+            return
+        key, value = res
+        _sigil_instance.set_pref(key, value, scope=scope_var.get())
+        _refresh()
 
-    widgets = {"notebook": notebook, "trees": trees, "empty_labels": empty_labels}
+    def _on_edit() -> None:
+        sel = tree.selection()
+        if not sel or _sigil_instance is None:
+            return
+        key = sel[0]
+        current = _sigil_instance.get_pref(key) or ""
+        res = _open_value_dialog("edit", scope_var.get(), key=key, value=str(current))
+        if not res:
+            return
+        new_key, new_val = res
+        if new_key != key:
+            _sigil_instance.set_pref(key, None, scope=scope_var.get())
+            key = new_key
+        _sigil_instance.set_pref(key, new_val, scope=scope_var.get())
+        _refresh()
+
+    def _on_reset() -> None:
+        sel = tree.selection()
+        if not sel or _sigil_instance is None:
+            return
+        key = sel[0]
+        _sigil_instance.set_pref(key, None, scope=scope_var.get())
+        _refresh()
+
     button_bar = ttk.Frame(root)
     button_bar.pack(fill="x", padx=4, pady=4)
-    ttk.Button(button_bar, text="Add", command=lambda: _on_add(widgets)).pack(
-        side="left", padx=2
-    )
-    ttk.Button(button_bar, text="Edit", command=lambda: _on_edit(widgets)).pack(
-        side="left", padx=2
-    )
-    ttk.Button(button_bar, text="Delete", command=lambda: _on_delete(widgets)).pack(
-        side="left", padx=2
-    )
-    events.on("pref_changed", lambda k, v, s: _on_pref_changed(widgets, k, v, s))
+    ttk.Button(button_bar, text="Override", command=_on_edit).pack(side="left", padx=2)
+    ttk.Button(button_bar, text="Reset", command=_on_reset).pack(side="left", padx=2)
 
     def _on_pkg_change(event=None):
         new_pkg = pkg_var.get()
-        logger.debug("package switched to %s", new_pkg)
-        state["last_package"] = new_pkg
-        open_package(new_pkg, sigil_var.get())
+        open_package(new_pkg, False)
+        _update_path()
         _refresh()
 
     combo.bind("<<ComboboxSelected>>", _on_pkg_change)
 
-    def _on_tab_change(event=None):
-        tab_name = notebook.tab(notebook.select(), "text")
-        logger.debug("tab changed to %s", tab_name)
-        state["last_tab"] = tab_name
+    events.on("pref_changed", lambda *args: _refresh())
 
-    notebook.bind("<<NotebookTabChanged>>", _on_tab_change)
-    for i, scope in enumerate(["Default", "User", "Project"]):
-        if scope == tab:
-            notebook.select(i)
-            break
+    _refresh()
 
     def _on_close() -> None:
-        state["include_sigil"] = sigil_var.get()
         if remember_state:
+            state["last_package"] = pkg_var.get()
             gui_state.write_state(state, state_path)
         root.destroy()
 
@@ -410,9 +375,5 @@ __all__ = [
     "launch_gui",
     "launch_config_gui",
     "_open_value_dialog",
-    "_populate_tree",
-    "_on_add",
-    "_on_edit",
-    "_on_delete",
     "_on_pref_changed",
 ]

@@ -381,6 +381,21 @@ class Sigil:
                     return scope
         return "none"
 
+    def path_for_scope(self, scope: str) -> Path:
+        """Return the path backing *scope*.
+
+        This helper exposes the location that will be written to when a value
+        is saved in the given *scope*.  It is primarily intended for user
+        interfaces that need to communicate the write target clearly.
+        """
+        if scope == "user":
+            return self.user_path
+        if scope == "project":
+            return self.project_path
+        if scope == "default" and self.default_path is not None:
+            return self.default_path
+        raise UnknownScopeError(scope)
+
     def set_pref(self, key: str | KeyPath, value: Any, *, scope: str | None = None) -> None:
         target_scope = scope or self._default_scope
         if target_scope == "core":

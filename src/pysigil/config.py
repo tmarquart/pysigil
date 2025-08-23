@@ -138,6 +138,21 @@ def init_config(provider_id: str, scope: str, *, auto: bool = False) -> Path:
     return path
 
 
+def target_path(provider_id: str, scope: str, *, auto: bool = False) -> Path:
+    """Return the configuration file path for *provider_id* and *scope*.
+
+    Unlike :func:`init_config` this does not seed the file with any content;
+    it merely returns the path where settings would be written.  Directories
+    are created as needed so the returned path is always usable for writes.
+    """
+    pid = normalize_provider_id(provider_id)
+    h = host_id()
+    base = _scope_dir(scope, pid, auto=auto)
+    if pid == "user-custom":
+        return base / f"settings-local-{h}.ini"
+    return base / "settings.ini"
+
+
 def open_scope(provider_id: str, scope: str, *, auto: bool = False) -> Path:
     return _scope_dir(scope, provider_id, auto=auto)
 
