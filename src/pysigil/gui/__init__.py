@@ -298,10 +298,11 @@ def launch_gui(
     tree.heading("value", text="Value")
     tree.heading("source", text="Source")
     tree.heading("actions", text="Actions")
-    tree.column("actions", width=160, anchor="w")
+    tree.column("actions", width=200, anchor="w")
     tree.pack(fill="both", expand=True)
 
     source_map: dict[str, str] = {}
+    key_scopes: dict[str, set[str]] = {}
 
 
     def _refresh() -> None:
@@ -312,6 +313,12 @@ def launch_gui(
         scoped = _sigil_instance.scoped_values()
         all_keys = set().union(*(d.keys() for d in scoped.values()))
         label_map = {val: text for text, val in scope_labels}
+        key_scopes.clear()
+        editable = {val for _, val in scope_labels}
+        for sc, mapping in scoped.items():
+            if sc in editable:
+                for k in mapping:
+                    key_scopes.setdefault(k, set()).add(sc)
         for key in sorted(all_keys):
             if search and search not in key.lower():
                 continue
@@ -322,7 +329,12 @@ def launch_gui(
                 "",
                 "end",
                 iid=key,
-                values=(key, val, label_map.get(src, src), "Override \u25BE   Reset"),
+                values=(
+                    key,
+                    val,
+                    label_map.get(src, src),
+                    "Override \u25BE   Reset \u25BE",
+                ),
             )
 
 
@@ -355,18 +367,26 @@ def launch_gui(
         _sigil_instance.set_pref(key, new_val, scope=scope)
         _refresh()
 
-    def _on_reset(key: str) -> None:
+    def _on_reset(key: str, scope: str) -> None:
         if _sigil_instance is None:
             return
-        src = source_map.get(key)
-        if src:
-            _sigil_instance.set_pref(key, None, scope=src)
-            _refresh()
+        _sigil_instance.set_pref(key, None, scope=scope)
+        _refresh()
 
     def _show_override_menu(event, key: str) -> None:
         menu = tk.Menu(tree, tearoff=0)
         for text, val in scope_labels:
             menu.add_command(label=text, command=lambda sc=val: _on_override(key, sc))
+        menu.post(event.x_root, event.y_root)
+
+    def _show_reset_menu(event, key: str) -> None:
+        menu = tk.Menu(tree, tearoff=0)
+        scopes = key_scopes.get(key, set())
+        for text, val in scope_labels:
+            state = "normal" if val in scopes else "disabled"
+            menu.add_command(
+                label=text, command=lambda sc=val: _on_reset(key, sc), state=state
+            )
         menu.post(event.x_root, event.y_root)
 
     def _on_tree_click(event) -> None:
@@ -380,10 +400,10 @@ def launch_gui(
         if not bbox:
             return
         rel_x = event.x - bbox[0]
-        if rel_x < bbox[2] * 0.6:
+        if rel_x < bbox[2] * 0.5:
             _show_override_menu(event, item)
         else:
-            _on_reset(item)
+            _show_reset_menu(event, item)
 
     tree.bind("<Button-1>", _on_tree_click)
 
