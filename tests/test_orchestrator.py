@@ -50,6 +50,19 @@ def test_edit_field_type_change_convert(tmp_path: Path) -> None:
     assert eff["num"].value == 42
 
 
+def test_edit_field_type_change_convert_failure(tmp_path: Path) -> None:
+    orch = _make_orch(tmp_path)
+    orch.register_provider("pkg")
+    orch.add_field("pkg", key="num", type="string")
+    orch.set_value("pkg", "num", "forty-two")
+    with pytest.raises(ValidationError):
+        orch.edit_field("pkg", "num", new_type="integer", on_type_change="convert")
+    spec = orch.reload_spec("pkg")
+    assert spec.fields[0].type == "string"
+    eff = orch.get_effective("pkg")
+    assert eff["num"].value == "forty-two"
+
+
 def test_delete_field_removes_values(tmp_path: Path) -> None:
     orch = _make_orch(tmp_path)
     orch.register_provider("pkg")
