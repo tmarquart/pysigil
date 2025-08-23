@@ -34,8 +34,14 @@ from uuid import uuid4
 
 from .authoring import get as get_dev_link, list_links
 from .config import host_id
-from .errors import ConflictError, DuplicateProviderError, UnknownProviderError
-from .io_config import read_sections, write_sections
+from .errors import (
+    ConflictError,
+    DuplicateProviderError,
+    SigilLoadError,
+    UnknownFieldError,
+    UnknownProviderError,
+)
+from .io_config import IniIOError, read_sections, write_sections
 from .merge_policy import PRECEDENCE_PROJECT_WINS
 from .paths import user_config_dir
 from .resolver import resolve_defaults
@@ -609,6 +615,12 @@ class IniFileBackend:
                     yield "project", self.project_dir / "settings.ini"
                     yield "project-local", self.project_dir / f"settings-local-{self.host}.ini"
 
+    def _read_sections(self, path: Path) -> dict[str, dict[str, str]]:
+        try:
+            return read_sections(path)
+        except IniIOError as exc:  # pragma: no cover - defensive
+            raise SigilLoadError(str(exc)) from exc
+
 
     # ------------------------------------------------------------------
     # SigilBackend API
@@ -617,7 +629,7 @@ class IniFileBackend:
         raw: dict[str, str] = {}
         source: dict[str, str] = {}
         for scope, path in self._iter_read_paths(provider_id):
-            data = read_sections(path).get(provider_id, {})
+            data = self._read_sections(path).get(provider_id, {})
             for k, v in data.items():
                 raw[k] = v
                 source[k] = scope
@@ -633,7 +645,7 @@ class IniFileBackend:
         target_kind: str,
     ) -> None:
         path = self._scope_path(provider_id, scope, target_kind)
-        data = read_sections(path)
+        data = self._read_sections(path)
         section = data.setdefault(provider_id, {})
         section[key] = raw_value
         write_sections(path, data)
@@ -647,7 +659,7 @@ class IniFileBackend:
         target_kind: str,
     ) -> None:
         path = self._scope_path(provider_id, scope, target_kind)
-        data = read_sections(path)
+        data = self._read_sections(path)
         section = data.get(provider_id, {})
         if key in section:
             del section[key]
@@ -665,7 +677,7 @@ class IniFileBackend:
         target_kind: str,
     ) -> None:
         path = self._scope_path(provider_id, scope, target_kind)
-        data = read_sections(path)
+        data = self._read_sections(path)
         data.setdefault(provider_id, {})
         write_sections(path, data)
 
@@ -708,7 +720,7 @@ class ProviderManager:
         try:
             return self._fields[key]
         except KeyError as exc:  # pragma: no cover - defensive
-            raise KeyError(f"unknown key {key!r}") from exc
+            raise UnknownFieldError(key) from exc
 
     def effective(self) -> dict[str, FieldValue]:
         raw_map, source_map = self.backend.read_merged(self.spec.provider_id)

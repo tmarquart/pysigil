@@ -18,7 +18,9 @@ from .authoring import normalize_provider_id
 from .errors import (
     DuplicateFieldError,
     PolicyError,
+    SigilLoadError,
     UnknownFieldError,
+    UnknownProviderError,
     ValidationError,
 )
 from .root import ProjectRootNotFoundError
@@ -69,6 +71,16 @@ class Orchestrator:
         title: str | None = None,
         description: str | None = None,
     ) -> ProviderSpec:
+        """Create and store a new provider specification.
+
+        Raises
+        ------
+        DuplicateProviderError
+            If the provider already exists.
+        PolicyError
+            If the provider metadata cannot be written due to project
+            configuration.
+        """
         pid = normalize_provider_id(provider_id)
         spec = ProviderSpec(
             provider_id=pid,
@@ -89,6 +101,16 @@ class Orchestrator:
         title: str | None = None,
         description: str | None = None,
     ) -> ProviderSpec:
+        """Modify metadata for an existing provider.
+
+        Raises
+        ------
+        UnknownProviderError
+            If the provider is not registered.
+        PolicyError
+            If the provider metadata cannot be written due to project
+            configuration.
+        """
         pid = normalize_provider_id(provider_id)
         spec = self.spec_backend.get_spec(pid)
         etag = self.spec_backend.etag(pid)
@@ -104,6 +126,14 @@ class Orchestrator:
         return updated
 
     def delete_provider(self, provider_id: str) -> None:
+        """Delete a provider specification.
+
+        Raises
+        ------
+        PolicyError
+            If the provider metadata cannot be removed due to project
+            configuration.
+        """
         pid = normalize_provider_id(provider_id)
         try:
             self.spec_backend.delete_spec(pid)
@@ -120,6 +150,18 @@ class Orchestrator:
         label: str | None = None,
         description: str | None = None,
     ) -> FieldSpec:
+        """Add a new field to a provider specification.
+
+        Raises
+        ------
+        UnknownProviderError
+            If the provider is not registered.
+        DuplicateFieldError
+            If a field with *key* already exists.
+        PolicyError
+            If the provider metadata cannot be written due to project
+            configuration.
+        """
         pid = normalize_provider_id(provider_id)
         spec = self.spec_backend.get_spec(pid)
         if key in {f.key for f in spec.fields}:
@@ -149,6 +191,21 @@ class Orchestrator:
         description: str | None = None,
         on_type_change: Literal["convert", "clear"] = "convert",
     ) -> FieldSpec:
+        """Modify an existing field definition.
+
+        Raises
+        ------
+        UnknownProviderError
+            If the provider is not registered.
+        UnknownFieldError
+            If *key* does not exist.
+        DuplicateFieldError
+            If *new_key* conflicts with another field.
+        PolicyError
+            If metadata or configuration cannot be written.
+        SigilLoadError
+            If existing configuration values cannot be read.
+        """
         pid = normalize_provider_id(provider_id)
         spec = self.spec_backend.get_spec(pid)
         fields = list(spec.fields)
@@ -227,6 +284,20 @@ class Orchestrator:
         remove_values: bool = False,
         scopes: tuple[str, ...] = ("user", "project"),
     ) -> None:
+        """Remove a field from a provider specification.
+
+        Raises
+        ------
+        UnknownProviderError
+            If the provider is not registered.
+        UnknownFieldError
+            If *key* does not exist.
+        PolicyError
+            If metadata or configuration cannot be written.
+        SigilLoadError
+            If existing configuration values cannot be read when
+            removing stored values.
+        """
         pid = normalize_provider_id(provider_id)
         spec = self.spec_backend.get_spec(pid)
         fields = [f for f in spec.fields if f.key != key]
@@ -251,14 +322,31 @@ class Orchestrator:
 
     # ---- Discovery ----
     def list_providers(self) -> list[str]:
+        """Return identifiers for all registered providers."""
         return self.spec_backend.get_provider_ids()
 
     def list_fields(self, provider_id: str) -> list[FieldSpec]:
+        """List field specifications for *provider_id*.
+
+        Raises
+        ------
+        UnknownProviderError
+            If the provider is not registered.
+        """
         pid = normalize_provider_id(provider_id)
         spec = self.spec_backend.get_spec(pid)
         return list(spec.fields)
 
     def find_untracked_keys(self, provider_id: str) -> list[str]:
+        """Return config keys not described in provider metadata.
+
+        Raises
+        ------
+        UnknownProviderError
+            If the provider is not registered.
+        SigilLoadError
+            If configuration values cannot be read.
+        """
         pid = normalize_provider_id(provider_id)
         spec = self.spec_backend.get_spec(pid)
         raw_map, _ = self.config_backend.read_merged(pid)
@@ -266,6 +354,17 @@ class Orchestrator:
         return sorted(set(raw_map) - tracked)
 
     def adopt_untracked(self, provider_id: str, mapping: dict[str, str]) -> list[FieldSpec]:
+        """Create field specs for previously untracked keys.
+
+        Raises
+        ------
+        UnknownProviderError
+            If the provider is not registered.
+        DuplicateFieldError
+            If any key already exists.
+        PolicyError
+            If metadata cannot be written.
+        """
         added: list[FieldSpec] = []
         for key, type in mapping.items():
             added.append(self.add_field(provider_id, key=key, type=type))
@@ -278,6 +377,15 @@ class Orchestrator:
         return ProviderManager(spec, self.config_backend)
 
     def get_effective(self, provider_id: str) -> dict[str, FieldValue]:
+        """Return effective configuration values for *provider_id*.
+
+        Raises
+        ------
+        UnknownProviderError
+            If the provider is not registered.
+        SigilLoadError
+            If configuration values cannot be read.
+        """
         return self._manager(provider_id).effective()
 
     def set_value(
@@ -288,6 +396,21 @@ class Orchestrator:
         *,
         scope: Literal["user", "project", "default"] = "user",
     ) -> None:
+        """Persist *value* for *key*.
+
+        Raises
+        ------
+        UnknownProviderError
+            If the provider is not registered.
+        UnknownFieldError
+            If *key* is not defined.
+        ValidationError
+            If *value* fails validation.
+        PolicyError
+            If configuration cannot be written due to project settings.
+        SigilLoadError
+            If configuration values cannot be read.
+        """
         mgr = self._manager(provider_id)
         try:
             mgr.set(key, value, scope=scope)
@@ -303,6 +426,19 @@ class Orchestrator:
         *,
         scope: Literal["user", "project", "default"] = "user",
     ) -> None:
+        """Remove the stored value for *key*.
+
+        Raises
+        ------
+        UnknownProviderError
+            If the provider is not registered.
+        UnknownFieldError
+            If *key* is not defined.
+        PolicyError
+            If configuration cannot be written.
+        SigilLoadError
+            If configuration values cannot be read.
+        """
         mgr = self._manager(provider_id)
         try:
             mgr.clear(key, scope=scope)
@@ -317,11 +453,27 @@ class Orchestrator:
         scope: Literal["user", "project", "default"] = "user",
         atomic: bool = True,
     ) -> None:
-        """Set multiple values for *provider_id* at once.
+
+        """Set multiple configuration values.
+
+        Raises
+        ------
+        UnknownProviderError
+            If the provider is not registered.
+        UnknownFieldError
+            If any key is not defined.
+        ValidationError
+            If any value fails validation.
+        PolicyError
+            If configuration cannot be written.
+        SigilLoadError
+            If configuration values cannot be read.
+Set multiple values for *provider_id* at once.
 
         When ``atomic`` is true (the default) all updates are validated and
         written as a single transaction.  If validation or writing fails no
         changes are persisted.
+
         """
         mgr = self._manager(provider_id)
         if atomic:
@@ -343,6 +495,17 @@ class Orchestrator:
                 mgr.set(key, value, scope=scope)
 
     def validate_value(self, provider_id: str, key: str, value: object) -> None:
+        """Validate *value* for *key* without persisting it.
+
+        Raises
+        ------
+        UnknownProviderError
+            If the provider is not registered.
+        UnknownFieldError
+            If *key* is not defined.
+        ValidationError
+            If *value* is invalid.
+        """
         mgr = self._manager(provider_id)
         field = mgr._field_for(key)  # pylint: disable=protected-access
         adapter = TYPE_REGISTRY[field.type]
@@ -352,6 +515,15 @@ class Orchestrator:
             raise ValidationError(str(exc)) from exc
 
     def validate_all(self, provider_id: str) -> dict[str, str | None]:
+        """Validate all stored values for *provider_id*.
+
+        Raises
+        ------
+        UnknownProviderError
+            If the provider is not registered.
+        SigilLoadError
+            If configuration values cannot be read.
+        """
         pid = normalize_provider_id(provider_id)
         spec = self.spec_backend.get_spec(pid)
         raw_map, _ = self.config_backend.read_merged(pid)
@@ -369,6 +541,13 @@ class Orchestrator:
 
     # ---- Spec persistence ----
     def export_spec(self, provider_id: str, dest: str | Path) -> Path:
+        """Export the provider specification to *dest*.
+
+        Raises
+        ------
+        UnknownProviderError
+            If the provider is not registered.
+        """
         pid = normalize_provider_id(provider_id)
         spec = self.spec_backend.get_spec(pid)
         path = Path(dest)
@@ -376,6 +555,13 @@ class Orchestrator:
         return path
 
     def reload_spec(self, provider_id: str) -> ProviderSpec:
+        """Reload and return the specification for *provider_id*.
+
+        Raises
+        ------
+        UnknownProviderError
+            If the provider is not registered.
+        """
         pid = normalize_provider_id(provider_id)
         return self.spec_backend.get_spec(pid)
 
@@ -383,9 +569,11 @@ class Orchestrator:
 __all__ = [
     "Orchestrator",
     # errors
+    "UnknownProviderError",
     "UnknownFieldError",
     "DuplicateFieldError",
     "ValidationError",
     "PolicyError",
+    "SigilLoadError",
 ]
 
