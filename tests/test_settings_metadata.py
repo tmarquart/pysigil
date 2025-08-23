@@ -71,6 +71,7 @@ def test_ini_file_backend(tmp_path):
     )
 
     raw, src = backend.read_merged("demo")
+    print(raw)
     assert raw == {"alpha": "u", "beta": "pl"}
     assert src == {"alpha": "user", "beta": "project-local"}
 

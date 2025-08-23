@@ -11,6 +11,7 @@ from tempfile import TemporaryDirectory
 from pysigil.orchestrator import Orchestrator
 from pysigil.paths import user_config_dir
 
+#C:\Users\tmarq\AppData\Local\sigil\sigil\demo
 
 def manual_demo() -> None:
     """Showcase provider registration and modification."""
