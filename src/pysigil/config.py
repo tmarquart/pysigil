@@ -164,6 +164,7 @@ def target_path(provider_id: str, scope: str, *, auto: bool = False) -> Path:
     pid = normalize_provider_id(provider_id)
     h = host_id()
     base = _scope_dir(scope, pid, auto=auto)
+
     if scope in {"user-local", "project-local"} or pid == "user-custom":
         return base / f"settings-local-{h}.ini"
     return base / "settings.ini"

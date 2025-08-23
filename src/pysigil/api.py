@@ -328,8 +328,10 @@ class ProviderHandle:
         spec = _ORCH.reload_spec(self.provider_id)
         return _provider_info(spec)
 
+
     def target_path(
         self, scope: Literal["user", "user-local", "project", "project-local"] = "user"
     ) -> Path:
+
         """Return the file path used for *scope* writes."""
         return cfg_target_path(self.provider_id, scope)
