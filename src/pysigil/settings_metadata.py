@@ -13,12 +13,18 @@ from __future__ import annotations
 
 import configparser
 import json
+import os
 import re
 from collections.abc import Iterable, Mapping
+from contextlib import contextmanager
 from dataclasses import dataclass, field as dataclass_field
 from pathlib import Path
 from typing import Any, Literal, Protocol
-from uuid import uuid4
+
+if os.name == "nt":  # pragma: no cover - platform specific
+    import msvcrt
+else:  # pragma: no cover - platform specific
+    import fcntl
 
 from .authoring import get as get_dev_link, list_links
 from .config import host_id
@@ -137,6 +143,38 @@ TYPE_REGISTRY: dict[str, TypeAdapter] = {
 }
 
 _PEP503_RE = re.compile(r"^[a-z0-9]+(?:[._-][a-z0-9]+)*$")
+
+
+def _stat_etag(st: os.stat_result) -> str:
+    """Return a simple ETag from ``os.stat`` results."""
+
+    return f"{st.st_mtime_ns}-{st.st_size}"
+
+
+def _path_etag(path: Path) -> str:
+    return _stat_etag(path.stat())
+
+
+@contextmanager
+def _locked(path: Path, exclusive: bool):
+    """Context manager acquiring an advisory lock for *path*."""
+
+    lock_path = path.with_suffix(path.suffix + ".lock")
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    with lock_path.open("a") as fh:
+        if os.name == "nt":  # pragma: no cover - platform specific
+            fh.seek(0)
+            mode = msvcrt.LK_LOCK if exclusive else msvcrt.LK_RLCK
+            msvcrt.locking(fh.fileno(), mode, 1)
+        else:  # pragma: no cover - platform specific
+            fcntl.flock(fh.fileno(), fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH)
+        try:
+            yield
+        finally:
+            if os.name == "nt":  # pragma: no cover - platform specific
+                msvcrt.locking(fh.fileno(), msvcrt.LK_UNLCK, 1)
+            else:  # pragma: no cover - platform specific
+                fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
 
 ######################
 ##### FIELD SPEC #####
@@ -317,7 +355,7 @@ class IniSpecBackend:
             return path
         raise ProjectRootNotFoundError("No development link configured")
 
-    def _write(self, path: Path, spec: ProviderSpec) -> None:
+    def _write_locked(self, path: Path, spec: ProviderSpec) -> str:
         parser = configparser.ConfigParser()
         meta: dict[str, str] = {"schema_version": spec.schema_version}
         if spec.title is not None:
@@ -338,12 +376,16 @@ class IniSpecBackend:
         with tmp.open("w") as fh:
             parser.write(fh)
         tmp.replace(path)
+        return _path_etag(path)
 
     def _read(self, path: Path, provider_id: str) -> ProviderSpec:
         parser = configparser.ConfigParser()
-        if not path.exists():
-            raise UnknownProviderError(provider_id)
-        parser.read(path)
+        with _locked(path, exclusive=False):
+            if not path.exists():
+                raise UnknownProviderError(provider_id)
+            with path.open("r") as fh:
+                parser.read_file(fh)
+                st = os.fstat(fh.fileno())
         meta = parser["__meta__"]
         fields: list[FieldSpec] = []
         for section in parser.sections():
@@ -359,13 +401,15 @@ class IniSpecBackend:
                     description=data.get("description"),
                 )
             )
-        return ProviderSpec(
+        spec = ProviderSpec(
             provider_id=provider_id,
             schema_version=meta.get("schema_version", "0"),
             title=meta.get("title"),
             description=meta.get("description"),
             fields=fields,
         )
+        self._etags[provider_id] = _stat_etag(st)
+        return spec
 
     # -------------------------------------------------------------- API
     def get_provider_ids(self) -> list[str]:  # pragma: no cover - trivial
@@ -386,36 +430,42 @@ class IniSpecBackend:
         return self._read(path, provider_id)
 
     def save_spec(self, spec: ProviderSpec, *, expected_etag: str | None = None) -> str:
-        current = self._etags.get(spec.provider_id)
-        if expected_etag is not None and current is not None and expected_etag != current:
-            raise ConflictError(spec.provider_id)
         path = self._write_path(spec.provider_id)
-        self._write(path, spec)
-        etag = uuid4().hex
+        with _locked(path, exclusive=True):
+            on_disk = _path_etag(path) if path.exists() else None
+            current = self._etags.get(spec.provider_id)
+            if current is not None and on_disk is not None and current != on_disk:
+                raise ConflictError(spec.provider_id)
+            if expected_etag is not None and current is not None and expected_etag != current:
+                raise ConflictError(spec.provider_id)
+            etag = self._write_locked(path, spec)
         self._etags[spec.provider_id] = etag
         return etag
 
     def create_spec(self, spec: ProviderSpec) -> str:
         path = self._write_path(spec.provider_id)
-        if path.exists():
-            raise DuplicateProviderError(spec.provider_id)
-        self._write(path, spec)
-        etag = uuid4().hex
+        with _locked(path, exclusive=True):
+            if path.exists():
+                raise DuplicateProviderError(spec.provider_id)
+            etag = self._write_locked(path, spec)
         self._etags[spec.provider_id] = etag
         return etag
 
     def delete_spec(self, provider_id: str) -> None:
         path = self._write_path(provider_id)
-        if path.exists():
-            path.unlink()
+        with _locked(path, exclusive=True):
+            if path.exists():
+                path.unlink()
         self._etags.pop(provider_id, None)
 
     def etag(self, provider_id: str) -> str:
-        if provider_id not in self._etags:
-            if not self._read_path(provider_id).exists():
+        path = self._read_path(provider_id)
+        with _locked(path, exclusive=False):
+            if not path.exists():
                 raise UnknownProviderError(provider_id)
-            self._etags[provider_id] = uuid4().hex
-        return self._etags[provider_id]
+            etag = _path_etag(path)
+        self._etags[provider_id] = etag
+        return etag
 
 
 # ---- configuration storage ----
