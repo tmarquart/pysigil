@@ -20,7 +20,8 @@ except Exception:  # pragma: no cover - fallback when tkinter missing
     simpledialog = None  # type: ignore
     ttk = None  # type: ignore
 
-from .. import api
+
+from ... import api
 from ..core import AppCore, AppState
 from ..widgets import FIELD_WIDGETS
 
