@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import configparser
+import logging
 import socket
 from pathlib import Path
 from typing import Any
@@ -10,6 +11,10 @@ from .paths import user_config_dir
 from .authoring import normalize_provider_id
 from .root import ProjectRootNotFoundError, find_project_root
 from .merge_policy import PRECEDENCE_PROJECT_WINS
+from .io_config import IniIOError
+
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Host and provider helpers
@@ -57,8 +62,8 @@ def merge_ini_section(acc: dict[str, Any], ini_path: Path, *, section: str) -> d
     parser = configparser.ConfigParser()
     try:
         parser.read(ini_path)
-    except Exception:
-        return acc
+    except Exception as exc:  # pragma: no cover - defensive
+        raise IniIOError(str(exc)) from exc
     if parser.has_section(section):
         for k, v in parser.items(section):
             acc[k] = v
@@ -72,10 +77,16 @@ def load(provider_id: str, *, auto: bool = True) -> dict[str, Any]:
     for scope in reversed(PRECEDENCE_PROJECT_WINS):
         if scope == "user":
             for f in user_files(pid, h):
-                acc = merge_ini_section(acc, f, section=pid)
+                try:
+                    acc = merge_ini_section(acc, f, section=pid)
+                except IniIOError as exc:
+                    logger.warning("Failed to read config %s: %s", f, exc)
         elif scope == "project":
             for f in project_files(pid, h, auto=auto):
-                acc = merge_ini_section(acc, f, section=pid)
+                try:
+                    acc = merge_ini_section(acc, f, section=pid)
+                except IniIOError as exc:
+                    logger.warning("Failed to read config %s: %s", f, exc)
     return acc
 
 
@@ -101,7 +112,8 @@ def _seed_section(path: Path, section: str, comment: str) -> None:
         parser = configparser.ConfigParser()
         try:
             parser.read(path)
-        except Exception:
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.warning("Failed to read config %s: %s", path, exc)
             parser = None
         if parser and parser.has_section(section):
             return
@@ -169,7 +181,8 @@ def available_providers(*, auto: bool = True) -> list[str]:
                 parser = configparser.ConfigParser()
                 try:
                     parser.read(ini)
-                except Exception:
+                except Exception as exc:  # pragma: no cover - defensive
+                    logger.warning("Failed to read config %s: %s", ini, exc)
                     continue
                 for section in parser.sections():
                     providers.add(normalize_provider_id(section))
