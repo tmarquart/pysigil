@@ -37,6 +37,7 @@ from .secrets import (
     SecretChain,
     SecretProvider,
 )
+from .config import host_id
 
 
 def _backend_for(path: Path):
@@ -69,6 +70,8 @@ class Sigil:
         self.app_name = pep503_name(app_name)
         self.settings_filename = settings_filename
 
+        self._host = host_id()
+
         if user_scope is not None:
             self.user_path = Path(user_scope)
             if (
@@ -95,6 +98,9 @@ class Sigil:
                 )
             except ProjectRootNotFoundError:
                 self.project_path = Path.cwd() / self.settings_filename
+
+        self.user_local_path = self.user_path.parent / f"settings-local-{self._host}.ini"
+        self.project_local_path = self.project_path.parent / f"settings-local-{self._host}.ini"
 
         if default_path is not None:
             self.default_path = Path(default_path)
@@ -148,7 +154,7 @@ class Sigil:
         """
         if scope == "default" and not self._defaults_writable:
             raise ReadOnlyScopeError("Default scope is read-only")
-        if scope not in {"user", "project", "default"}:
+        if scope not in {"user", "user-local", "project", "project-local", "default"}:
             raise UnknownScopeError(scope)
         self._default_scope = scope
 
@@ -159,16 +165,28 @@ class Sigil:
 
             user_backend = _backend_for(self.user_path)
             project_backend = _backend_for(self.project_path)
+            user_local_backend = _backend_for(self.user_local_path)
+            project_local_backend = _backend_for(self.project_local_path)
             self._user = {}
             for k, v in user_backend.load(self.user_path).items():
                 nk = self._normalize_key(k)
                 if nk:
                     self._user[nk] = v
+            self._user_local = {}
+            for k, v in user_local_backend.load(self.user_local_path).items():
+                nk = self._normalize_key(k)
+                if nk:
+                    self._user_local[nk] = v
             self._project = {}
             for k, v in project_backend.load(self.project_path).items():
                 nk = self._normalize_key(k)
                 if nk:
                     self._project[nk] = v
+            self._project_local = {}
+            for k, v in project_local_backend.load(self.project_local_path).items():
+                nk = self._normalize_key(k)
+                if nk:
+                    self._project_local[nk] = v
             if self.default_path is not None:
                 default_backend = _backend_for(self.default_path)
                 for k, v in default_backend.load(self.default_path).items():
@@ -182,7 +200,9 @@ class Sigil:
         self._merged.update(self._core)
         self._merged.update(self._defaults)
         self._merged.update(self._user)
+        self._merged.update(self._user_local)
         self._merged.update(self._project)
+        self._merged.update(self._project_local)
         self._merged.update(self._env)
 
     def _normalize_key(self, path: KeyPath) -> KeyPath | None:
@@ -216,19 +236,24 @@ class Sigil:
     def scoped_values(self) -> Mapping[str, MutableMapping[str, str]]:
         """Return all known preferences grouped by scope.
 
-        The returned mapping contains ``"default"``, ``"user"`` and ``"project"``
-        keys, each mapping to a flat dictionary of preference keys to values.
+        The returned mapping contains ``"default"``, ``"user"``, ``"user-local"``,
+        ``"project"`` and ``"project-local"`` keys, each mapping to a flat
+        dictionary of preference keys to values.
         """
         with self._lock:
             core_flat = self._flatten(self._core)
             default_flat = self._flatten(self._defaults)
             user_flat = self._flatten(self._user)
+            user_local_flat = self._flatten(self._user_local)
             project_flat = self._flatten(self._project)
+            project_local_flat = self._flatten(self._project_local)
             return {
                 "core": core_flat,
                 "default": default_flat,
                 "user": user_flat,
+                "user-local": user_local_flat,
                 "project": project_flat,
+                "project-local": project_local_flat,
             }
 
     def _flatten(self, data: Mapping[KeyPath, str]) -> MutableMapping[str, str]:
@@ -251,8 +276,12 @@ class Sigil:
     def _get_scope_dict(self, scope: str) -> MutableMapping[KeyPath, str]:
         if scope == "user":
             return self._user
+        if scope == "user-local":
+            return self._user_local
         if scope == "project":
             return self._project
+        if scope == "project-local":
+            return self._project_local
         if scope == "default":
             return self._defaults
         if scope == "core":
@@ -381,6 +410,25 @@ class Sigil:
                     return scope
         return "none"
 
+    def path_for_scope(self, scope: str) -> Path:
+        """Return the path backing *scope*.
+
+        This helper exposes the location that will be written to when a value
+        is saved in the given *scope*.  It is primarily intended for user
+        interfaces that need to communicate the write target clearly.
+        """
+        if scope == "user":
+            return self.user_path
+        if scope == "user-local":
+            return self.user_local_path
+        if scope == "project":
+            return self.project_path
+        if scope == "project-local":
+            return self.project_local_path
+        if scope == "default" and self.default_path is not None:
+            return self.default_path
+        raise UnknownScopeError(scope)
+
     def set_pref(self, key: str | KeyPath, value: Any, *, scope: str | None = None) -> None:
         target_scope = scope or self._default_scope
         if target_scope == "core":
@@ -413,8 +461,12 @@ class Sigil:
     def _get_scope_storage(self, scope: str) -> tuple[MutableMapping[KeyPath, str], Path]:
         if scope == "user":
             return self._user, self.user_path
+        if scope == "user-local":
+            return self._user_local, self.user_local_path
         if scope == "project":
             return self._project, self.project_path
+        if scope == "project-local":
+            return self._project_local, self.project_local_path
         if scope == "default" and self._defaults_writable and self.default_path is not None:
             return self._defaults, self.default_path
         raise UnknownScopeError(scope)
