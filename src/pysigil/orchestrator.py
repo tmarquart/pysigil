@@ -12,10 +12,18 @@ from __future__ import annotations
 
 from dataclasses import replace
 from pathlib import Path
-from typing import Any, Literal
+from typing import Literal
 
 from .authoring import normalize_provider_id
+from .errors import (
+    DuplicateFieldError,
+    PolicyError,
+    UnknownFieldError,
+    ValidationError,
+)
+from .root import ProjectRootNotFoundError
 from .settings_metadata import (
+    TYPE_REGISTRY,
     FieldSpec,
     FieldValue,
     IniFileBackend,
@@ -24,36 +32,8 @@ from .settings_metadata import (
     ProviderSpec,
     SigilBackend,
     SpecBackend,
-    TYPE_REGISTRY,
     save_provider_spec,
 )
-from .root import ProjectRootNotFoundError
-
-
-# ---------------------------------------------------------------------------
-# errors
-# ---------------------------------------------------------------------------
-
-
-class OrchestratorError(Exception):
-    """Base class for orchestrator specific errors."""
-
-
-class UnknownFieldError(OrchestratorError):
-    """Raised when a field key is unknown."""
-
-
-class DuplicateFieldError(OrchestratorError):
-    """Raised when attempting to add a field that already exists."""
-
-
-class ValidationError(OrchestratorError):
-    """Raised when value validation fails."""
-
-
-class PolicyError(OrchestratorError):
-    """Raised when the configuration policy prevents an operation."""
-
 
 # ---------------------------------------------------------------------------
 # orchestrator implementation
@@ -377,7 +357,6 @@ class Orchestrator:
 __all__ = [
     "Orchestrator",
     # errors
-    "OrchestratorError",
     "UnknownFieldError",
     "DuplicateFieldError",
     "ValidationError",

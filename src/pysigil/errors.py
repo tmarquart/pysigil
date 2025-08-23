@@ -24,3 +24,35 @@ class ReadOnlyScopeError(SigilError):
 
 class SigilSecretsError(SigilError):
     """Raised for errors in the secrets subsystem."""
+
+
+class UnknownProviderError(SigilError):
+    """Raised when a provider is not registered."""
+
+
+class DuplicateProviderError(SigilError):
+    """Raised when attempting to create a provider that already exists."""
+
+
+class ConflictError(SigilError):
+    """Raised when concurrent modifications conflict."""
+
+
+class UnknownFieldError(SigilError):
+    """Raised when a field key is unknown."""
+
+
+class DuplicateFieldError(SigilError):
+    """Raised when attempting to add a field that already exists."""
+
+
+class ValidationError(SigilError):
+    """Raised when value validation fails."""
+
+
+class PolicyError(SigilError):
+    """Raised when policy prevents an operation."""
+
+
+class IOFailureError(SigilError):
+    """Raised for unexpected IO failures."""
