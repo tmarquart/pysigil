@@ -33,7 +33,11 @@ class EditorWidget(Protocol):
 def _simple_entry(master) -> EditorWidget:
     if tk is None or ttk is None:  # pragma: no cover - tkinter missing
         raise RuntimeError("tkinter is required for widgets")
-    entry = ttk.Entry(master)
+    frame = ttk.Frame(master)
+    entry = ttk.Entry(frame)
+    entry.pack(side="left", fill="x", expand=True)
+    badge = ttk.Label(frame, text="")
+    badge.pack(side="left", padx=4)
 
     def get_value() -> object | None:
         text = entry.get()
@@ -50,21 +54,25 @@ def _simple_entry(master) -> EditorWidget:
         else:
             entry.configure(foreground="black")
 
-    def set_source_badge(_src: str | None) -> None:  # pragma: no cover - placeholder
-        pass
+    def set_source_badge(src: str | None) -> None:
+        badge.configure(text=src or "")
 
-    entry.get_value = get_value  # type: ignore[attr-defined]
-    entry.set_value = set_value  # type: ignore[attr-defined]
-    entry.set_error = set_error  # type: ignore[attr-defined]
-    entry.set_source_badge = set_source_badge  # type: ignore[attr-defined]
-    return entry  # type: ignore[return-value]
+    frame.get_value = get_value  # type: ignore[attr-defined]
+    frame.set_value = set_value  # type: ignore[attr-defined]
+    frame.set_error = set_error  # type: ignore[attr-defined]
+    frame.set_source_badge = set_source_badge  # type: ignore[attr-defined]
+    return frame  # type: ignore[return-value]
 
 
 def _boolean_check(master) -> EditorWidget:
     if tk is None or ttk is None:  # pragma: no cover - tkinter missing
         raise RuntimeError("tkinter is required for widgets")
+    frame = ttk.Frame(master)
     var = tk.BooleanVar()
-    widget = ttk.Checkbutton(master, variable=var)
+    widget = ttk.Checkbutton(frame, variable=var)
+    widget.pack(side="left")
+    badge = ttk.Label(frame, text="")
+    badge.pack(side="left", padx=4)
 
     def get_value() -> object | None:
         return var.get()
@@ -75,14 +83,14 @@ def _boolean_check(master) -> EditorWidget:
     def set_error(_msg: str | None) -> None:  # pragma: no cover - placeholder
         pass
 
-    def set_source_badge(_src: str | None) -> None:  # pragma: no cover - placeholder
-        pass
+    def set_source_badge(src: str | None) -> None:
+        badge.configure(text=src or "")
 
-    widget.get_value = get_value  # type: ignore[attr-defined]
-    widget.set_value = set_value  # type: ignore[attr-defined]
-    widget.set_error = set_error  # type: ignore[attr-defined]
-    widget.set_source_badge = set_source_badge  # type: ignore[attr-defined]
-    return widget  # type: ignore[return-value]
+    frame.get_value = get_value  # type: ignore[attr-defined]
+    frame.set_value = set_value  # type: ignore[attr-defined]
+    frame.set_error = set_error  # type: ignore[attr-defined]
+    frame.set_source_badge = set_source_badge  # type: ignore[attr-defined]
+    return frame  # type: ignore[return-value]
 
 
 FIELD_WIDGETS: Dict[str, Callable[[Any], EditorWidget]] = {

@@ -19,8 +19,9 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, Literal, Protocol
 from concurrent.futures import ThreadPoolExecutor, Future
 import threading
+from pathlib import Path
 
-from .. import api
+from .. import api, config, paths
 
 # ---------------------------------------------------------------------------
 # Application state
@@ -36,6 +37,9 @@ class AppState:
     fields: list[api.FieldInfo] = field(default_factory=list)
     values: Dict[str, api.ValueInfo] = field(default_factory=dict)
     active_tab: Literal["overview", "user", "project"] = "overview"
+    active_scope: Literal["user", "project"] = "user"
+    host_id: str = config.host_id()
+    project_root: Path | None = None
     is_dirty_spec: bool = False
     is_dirty_values: bool = False
     project_detected: bool = True
@@ -138,6 +142,69 @@ class ProvidersService:
     def init(self, pid: str, scope: Literal["user", "project"]) -> None:
         api.handle(pid).init(scope)
 
+    def edit_field(
+        self,
+        pid: str,
+        key: str,
+        *,
+        new_key: str | None = None,
+        new_type: str | None = None,
+        label: str | None = None,
+        description: str | None = None,
+        on_type_change: Literal["convert", "clear"] = "convert",
+        migrate_scopes: tuple[Literal["user", "project"], ...] = ("user",),
+    ) -> api.FieldInfo:
+        return api.handle(pid).edit_field(
+            key,
+            new_key=new_key,
+            new_type=new_type,
+            label=label,
+            description=description,
+            on_type_change=on_type_change,
+            migrate_scopes=migrate_scopes,
+        )
+
+    def delete_field(
+        self,
+        pid: str,
+        key: str,
+        *,
+        remove_values: bool = False,
+        scopes: tuple[Literal["user", "project"], ...] = ("user",),
+    ) -> None:
+        api.handle(pid).delete_field(key, remove_values=remove_values, scopes=scopes)
+
+    def adopt_untracked(self, pid: str, mapping: Dict[str, str]) -> list[api.FieldInfo]:
+        return api.handle(pid).adopt_untracked(mapping)
+
+    def open_folder(self, pid: str, scope: Literal["user", "project"]) -> Path:
+        path = config.open_scope(pid, scope)
+        self._open_path(path)
+        return path
+
+    def open_file(self, pid: str, scope: Literal["user", "project"]) -> Path:
+        path = config.init_config(pid, scope)
+        self._open_path(path)
+        return path
+
+    def ensure_gitignore(self) -> Path:
+        return config.ensure_gitignore()
+
+    # -- helpers -----------------------------------------------------
+    @staticmethod
+    def _open_path(path: Path) -> None:
+        try:  # pragma: no cover - platform specific
+            import os, subprocess, sys
+
+            if sys.platform.startswith("darwin"):
+                subprocess.run(["open", str(path)], check=False)
+            elif os.name == "nt":
+                os.startfile(str(path))  # type: ignore[attr-defined]
+            else:
+                subprocess.run(["xdg-open", str(path)], check=False)
+        except Exception:
+            pass
+
     def export_spec(self, pid: str) -> None:  # pragma: no cover - thin pass through
         api.handle(pid).export_spec()
 
@@ -192,11 +259,19 @@ class AppCore:
             info = self.service.select_provider(pid)
             fields = self.service.get_fields(pid)
             values = self.service.get_effective(pid)
+            try:
+                root = paths.project_root()
+                detected = True
+            except Exception:
+                root = None
+                detected = False
             with self._lock:
                 self.state.provider_id = pid
                 self.state.provider_info = info
                 self.state.fields = fields
                 self.state.values = values
+                self.state.project_root = root
+                self.state.project_detected = detected
             self.events.emit_state(self.state)
 
         return self.run_async(_task)
@@ -214,10 +289,18 @@ class AppCore:
             info = self.service.reload_spec(pid)
             fields = self.service.get_fields(pid)
             values = self.service.get_effective(pid)
+            try:
+                root = paths.project_root()
+                detected = True
+            except Exception:
+                root = None
+                detected = False
             with self._lock:
                 self.state.provider_info = info
                 self.state.fields = fields
                 self.state.values = values
+                self.state.project_root = root
+                self.state.project_detected = detected
             self.events.emit_state(self.state)
 
         return self.run_async(_task)
@@ -230,12 +313,17 @@ class AppCore:
             raise RuntimeError("no provider selected")
 
         def _task() -> None:
-            self.service.set_value(pid, key, value, scope=scope)
-            val = self.service.get_effective(pid).get(key)
-            if val is not None:
-                with self._lock:
-                    self.state.values[key] = val
-            self.events.emit_state(self.state)
+            try:
+                self.service.set_value(pid, key, value, scope=scope)
+                val = self.service.get_effective(pid).get(key)
+                if val is not None:
+                    with self._lock:
+                        self.state.values[key] = val
+                self.events.emit_toast("Saved", "info")
+                self.events.emit_state(self.state)
+            except Exception as exc:
+                self.events.emit_error(str(exc))
+                self.events.emit_toast(str(exc), "error")
 
         return self.run_async(_task)
 
@@ -247,10 +335,178 @@ class AppCore:
             raise RuntimeError("no provider selected")
 
         def _task() -> None:
-            self.service.clear_value(pid, key, scope=scope)
-            with self._lock:
-                self.state.values.pop(key, None)
-            self.events.emit_state(self.state)
+            try:
+                self.service.clear_value(pid, key, scope=scope)
+                with self._lock:
+                    self.state.values.pop(key, None)
+                self.events.emit_toast("Cleared", "info")
+                self.events.emit_state(self.state)
+            except Exception as exc:
+                self.events.emit_error(str(exc))
+                self.events.emit_toast(str(exc), "error")
+
+        return self.run_async(_task)
+
+    def init_scope(self, scope: Literal["user", "project"]) -> Future[None]:
+        pid = self.state.provider_id
+        if pid is None:
+            raise RuntimeError("no provider selected")
+
+        def _task() -> None:
+            try:
+                self.service.init(pid, scope)
+                self.events.emit_toast(f"Initialized {scope} scope", "info")
+            except Exception as exc:
+                self.events.emit_error(str(exc))
+                self.events.emit_toast(str(exc), "error")
+
+        return self.run_async(_task)
+
+    def open_folder(self, scope: Literal["user", "project"]) -> Future[None]:
+        pid = self.state.provider_id
+        if pid is None:
+            raise RuntimeError("no provider selected")
+
+        def _task() -> None:
+            try:
+                path = self.service.open_folder(pid, scope)
+                self.events.emit_toast(str(path), "info")
+            except Exception as exc:
+                self.events.emit_error(str(exc))
+                self.events.emit_toast(str(exc), "error")
+
+        return self.run_async(_task)
+
+    def open_file(self, scope: Literal["user", "project"]) -> Future[None]:
+        pid = self.state.provider_id
+        if pid is None:
+            raise RuntimeError("no provider selected")
+
+        def _task() -> None:
+            try:
+                path = self.service.open_file(pid, scope)
+                self.events.emit_toast(str(path), "info")
+            except Exception as exc:
+                self.events.emit_error(str(exc))
+                self.events.emit_toast(str(exc), "error")
+
+        return self.run_async(_task)
+
+    def add_gitignore(self) -> Future[None]:
+        def _task() -> None:
+            try:
+                path = self.service.ensure_gitignore()
+                self.events.emit_toast(str(path), "info")
+            except Exception as exc:
+                self.events.emit_error(str(exc))
+                self.events.emit_toast(str(exc), "error")
+
+        return self.run_async(_task)
+
+    def set_active_scope(self, scope: Literal["user", "project"]) -> None:
+        with self._lock:
+            self.state.active_scope = scope
+        self.events.emit_state(self.state)
+
+    def add_field(
+        self,
+        key: str,
+        type: str,
+        *,
+        label: str | None = None,
+        description: str | None = None,
+        init_scope: Literal["user", "project"] | None = "user",
+    ) -> Future[None]:
+        pid = self.state.provider_id
+        if pid is None:
+            raise RuntimeError("no provider selected")
+
+        def _task() -> None:
+            try:
+                self.service.add_field(
+                    pid,
+                    key,
+                    type,
+                    label=label,
+                    description=description,
+                    init_scope=init_scope,
+                )
+                self.refresh()
+            except Exception as exc:
+                self.events.emit_error(str(exc))
+                self.events.emit_toast(str(exc), "error")
+
+        return self.run_async(_task)
+
+    def edit_field(
+        self,
+        key: str,
+        *,
+        new_key: str | None = None,
+        new_type: str | None = None,
+        label: str | None = None,
+        description: str | None = None,
+        on_type_change: Literal["convert", "clear"] = "convert",
+        migrate_scopes: tuple[Literal["user", "project"], ...] = ("user",),
+    ) -> Future[None]:
+        pid = self.state.provider_id
+        if pid is None:
+            raise RuntimeError("no provider selected")
+
+        def _task() -> None:
+            try:
+                self.service.edit_field(
+                    pid,
+                    key,
+                    new_key=new_key,
+                    new_type=new_type,
+                    label=label,
+                    description=description,
+                    on_type_change=on_type_change,
+                    migrate_scopes=migrate_scopes,
+                )
+                self.refresh()
+            except Exception as exc:
+                self.events.emit_error(str(exc))
+                self.events.emit_toast(str(exc), "error")
+
+        return self.run_async(_task)
+
+    def delete_field(
+        self,
+        key: str,
+        *,
+        remove_values: bool = False,
+        scopes: tuple[Literal["user", "project"], ...] = ("user",),
+    ) -> Future[None]:
+        pid = self.state.provider_id
+        if pid is None:
+            raise RuntimeError("no provider selected")
+
+        def _task() -> None:
+            try:
+                self.service.delete_field(
+                    pid, key, remove_values=remove_values, scopes=scopes
+                )
+                self.refresh()
+            except Exception as exc:
+                self.events.emit_error(str(exc))
+                self.events.emit_toast(str(exc), "error")
+
+        return self.run_async(_task)
+
+    def adopt_untracked(self, mapping: Dict[str, str]) -> Future[None]:
+        pid = self.state.provider_id
+        if pid is None:
+            raise RuntimeError("no provider selected")
+
+        def _task() -> None:
+            try:
+                self.service.adopt_untracked(pid, mapping)
+                self.refresh()
+            except Exception as exc:
+                self.events.emit_error(str(exc))
+                self.events.emit_toast(str(exc), "error")
 
         return self.run_async(_task)
 
