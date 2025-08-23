@@ -17,6 +17,7 @@ from .errors import (
     ValidationError,
 )
 from .orchestrator import Orchestrator
+from .config import target_path as cfg_target_path
 from .settings_metadata import FieldSpec, FieldValue, ProviderSpec
 
 __all__ = [
@@ -158,7 +159,9 @@ class ProviderHandle:
         *,
         label: str | None = None,
         description: str | None = None,
-        init_scope: Literal["user", "project"] | None = "user",
+        init_scope: Literal[
+            "user", "user-local", "project", "project-local"
+        ] | None = "user",
     ) -> FieldInfo:
         try:
             field = _ORCH.add_field(
@@ -188,7 +191,9 @@ class ProviderHandle:
         label: str | None = None,
         description: str | None = None,
         on_type_change: Literal["convert", "clear"] = "convert",
-        migrate_scopes: tuple[Literal["user", "project"], ...] = ("user",),
+        migrate_scopes: tuple[
+            Literal["user", "user-local", "project", "project-local"], ...
+        ] = ("user",),
     ) -> FieldInfo:
         try:
             field = _ORCH.edit_field(
@@ -213,7 +218,9 @@ class ProviderHandle:
         key: str,
         *,
         remove_values: bool = False,
-        scopes: tuple[Literal["user", "project"], ...] = ("user", "project"),
+        scopes: tuple[
+            Literal["user", "user-local", "project", "project-local"], ...
+        ] = ("user", "project"),
     ) -> None:
         try:
             _ORCH.delete_field(
@@ -251,7 +258,7 @@ class ProviderHandle:
         key: str,
         value: object,
         *,
-        scope: Literal["user", "project"] = "user",
+        scope: Literal["user", "user-local", "project", "project-local"] = "user",
     ) -> None:
         try:
             _ORCH.set_value(self.provider_id, key, value, scope=scope)
@@ -266,7 +273,7 @@ class ProviderHandle:
         self,
         key: str,
         *,
-        scope: Literal["user", "project"] = "user",
+        scope: Literal["user", "user-local", "project", "project-local"] = "user",
     ) -> None:
         try:
             _ORCH.clear_value(self.provider_id, key, scope=scope)
@@ -279,7 +286,7 @@ class ProviderHandle:
         self,
         updates: Mapping[str, object],
         *,
-        scope: Literal["user", "project"] = "user",
+        scope: Literal["user", "user-local", "project", "project-local"] = "user",
         atomic: bool = True,
     ) -> None:
         """Set multiple configuration values.
@@ -301,7 +308,9 @@ class ProviderHandle:
             raise UnknownFieldError(str(exc)) from exc
 
     # -------- Utilities / ergonomics --------
-    def init(self, *, scope: Literal["user", "project"] = "user") -> None:
+    def init(
+        self, *, scope: Literal["user", "user-local", "project", "project-local"] = "user"
+    ) -> None:
         try:
             self._manager().init(scope)
         except PolicyError as exc:
@@ -318,3 +327,9 @@ class ProviderHandle:
     def reload_spec(self) -> ProviderInfo:
         spec = _ORCH.reload_spec(self.provider_id)
         return _provider_info(spec)
+
+    def target_path(
+        self, scope: Literal["user", "user-local", "project", "project-local"] = "user"
+    ) -> Path:
+        """Return the file path used for *scope* writes."""
+        return cfg_target_path(self.provider_id, scope)
