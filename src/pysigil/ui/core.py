@@ -102,6 +102,9 @@ class ProvidersService:
     def get_effective(self, pid: str) -> Dict[str, api.ValueInfo]:
         return api.handle(pid).effective()
 
+    def get_layers(self, pid: str) -> Dict[str, Dict[str, api.ValueInfo | None]]:
+        return api.handle(pid).layers()
+
     def add_field(
         self,
         pid: str,

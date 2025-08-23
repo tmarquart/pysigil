@@ -388,6 +388,10 @@ class Orchestrator:
         """
         return self._manager(provider_id).effective()
 
+    def get_layers(self, provider_id: str) -> dict[str, dict[str, FieldValue | None]]:
+        """Return values for all scopes for *provider_id*."""
+        return self._manager(provider_id).layers()
+
     def set_value(
         self,
         provider_id: str,

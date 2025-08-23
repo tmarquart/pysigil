@@ -247,6 +247,17 @@ class ProviderHandle:
         values = _ORCH.get_effective(self.provider_id)
         return {k: _value_info(v) for k, v in values.items()}
 
+    def layers(self) -> dict[str, dict[str, ValueInfo | None]]:
+        """Return values for all scopes for this provider."""
+        layers = _ORCH.get_layers(self.provider_id)
+        result: dict[str, dict[str, ValueInfo | None]] = {}
+        for key, per_scope in layers.items():
+            result[key] = {
+                scope: (_value_info(v) if v is not None else None)
+                for scope, v in per_scope.items()
+            }
+        return result
+
     def get(self, key: str) -> ValueInfo:
         eff = self.effective()
         if key not in eff:

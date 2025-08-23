@@ -488,6 +488,15 @@ class SigilBackend(Protocol):
     def read_merged(self, provider_id: str) -> tuple[Mapping[str, str], Mapping[str, str]]:
         ...
 
+    def read_layers(self, provider_id: str) -> Mapping[str, Mapping[str, str]]:
+        """Return raw values for all scopes for *provider_id*.
+
+        The returned mapping uses scope names (e.g. ``"user"`` or
+        ``"project-local"``) as keys and maps them to dictionaries of raw
+        key/value pairs.  Scopes missing on disk are omitted from the result.
+        """
+        ...
+
     def write_key(
         self,
         provider_id: str,
@@ -635,6 +644,13 @@ class IniFileBackend:
                 source[k] = scope
         return raw, source
 
+    def read_layers(self, provider_id: str) -> Mapping[str, Mapping[str, str]]:
+        layers: dict[str, Mapping[str, str]] = {}
+        for scope, path in self._iter_read_paths(provider_id):
+            data = self._read_sections(path).get(provider_id, {})
+            layers[scope] = data
+        return layers
+
     def write_key(
         self,
         provider_id: str,
@@ -732,6 +748,23 @@ class ProviderManager:
             result[field.key] = FieldValue(
                 value=value, source=source_map.get(field.key), raw=raw
             )
+        return result
+
+    def layers(self) -> dict[str, dict[str, FieldValue | None]]:
+        """Return raw and parsed values for each scope."""
+        raw_layers = self.backend.read_layers(self.spec.provider_id)
+        result: dict[str, dict[str, FieldValue | None]] = {}
+        for field in self.spec.fields:
+            per_scope: dict[str, FieldValue | None] = {}
+            for scope, mapping in raw_layers.items():
+                raw = mapping.get(field.key)
+                if raw is None:
+                    per_scope[scope] = None
+                else:
+                    adapter = TYPE_REGISTRY[field.type]
+                    value = adapter.parse(raw)
+                    per_scope[scope] = FieldValue(value=value, source=scope, raw=raw)
+            result[field.key] = per_scope
         return result
 
     @contextmanager
