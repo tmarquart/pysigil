@@ -1,8 +1,10 @@
 import pytest
 
+from pysigil.errors import ConflictError
 from pysigil.settings_metadata import (
     FieldSpec,
     IniFileBackend,
+    IniSpecBackend,
     ProviderManager,
     ProviderSpec,
 )
@@ -86,5 +88,16 @@ def test_ini_file_backend(tmp_path):
 
     assert backend.write_target_for("user-custom") == "settings-local-host.ini"
     assert backend.write_target_for("demo") == "settings.ini"
+
+
+def test_spec_backend_detects_external_change(tmp_path):
+    backend = IniSpecBackend(user_dir=tmp_path)
+    spec = ProviderSpec(provider_id="demo", schema_version="1")
+    backend.create_spec(spec)
+    loaded = backend.get_spec("demo")
+    path = tmp_path / "demo" / "metadata.ini"
+    path.write_text(path.read_text() + "\n# external\n")
+    with pytest.raises(ConflictError):
+        backend.save_spec(loaded)
 
 
