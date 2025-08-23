@@ -5,7 +5,8 @@ from pathlib import Path
 import pytest
 
 from pysigil.orchestrator import Orchestrator, PolicyError, ValidationError
-from pysigil.settings_metadata import IniSpecBackend
+from pysigil.settings_metadata import IniSpecBackend, read_sections, write_sections
+import pysigil.settings_metadata as sm
 
 
 def _make_orch(tmp_path: Path) -> Orchestrator:
@@ -48,6 +49,19 @@ def test_edit_field_type_change_convert(tmp_path: Path) -> None:
     orch.edit_field("pkg", "num", new_type="integer", on_type_change="convert")
     eff = orch.get_effective("pkg")
     assert eff["num"].value == 42
+
+
+def test_edit_field_type_change_convert_failure(tmp_path: Path) -> None:
+    orch = _make_orch(tmp_path)
+    orch.register_provider("pkg")
+    orch.add_field("pkg", key="num", type="string")
+    orch.set_value("pkg", "num", "forty-two")
+    with pytest.raises(ValidationError):
+        orch.edit_field("pkg", "num", new_type="integer", on_type_change="convert")
+    spec = orch.reload_spec("pkg")
+    assert spec.fields[0].type == "string"
+    eff = orch.get_effective("pkg")
+    assert eff["num"].value == "forty-two"
 
 
 def test_delete_field_removes_values(tmp_path: Path) -> None:
@@ -95,6 +109,23 @@ def test_set_many_atomic(tmp_path: Path) -> None:
         orch.set_many("pkg", {"a": 1, "b": "bad"}, atomic=True)
     eff = orch.get_effective("pkg")
     assert eff["a"].value is None and eff["b"].value is None
+
+
+def test_set_many_rollback_on_write_error(tmp_path: Path, monkeypatch) -> None:
+    orch = _make_orch(tmp_path)
+    orch.register_provider("pkg")
+    orch.add_field("pkg", key="a", type="integer")
+    orch.add_field("pkg", key="b", type="integer")
+    target = tmp_path / "user" / "pkg" / "settings.ini"
+    write_sections(target, {"pkg": {"a": "1"}})
+
+    def boom(path, data):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(sm, "write_sections", boom)
+    with pytest.raises(RuntimeError):
+        orch.set_many("pkg", {"a": 2, "b": 3}, atomic=True)
+    assert read_sections(target) == {"pkg": {"a": "1"}}
 
 
 def test_default_scope_editing_with_dev_link(tmp_path: Path, monkeypatch) -> None:
