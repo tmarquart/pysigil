@@ -171,34 +171,51 @@ class Orchestrator:
             description=old_field.description if description is None else description,
         )
 
-        new_spec = replace(spec, fields=tuple(fields))
-        etag = self.spec_backend.etag(pid)
-        try:
-            self.spec_backend.save_spec(new_spec, expected_etag=etag)
-        except ProjectRootNotFoundError as exc:
-            raise PolicyError(str(exc)) from exc
-
         raw_map, source_map = self.config_backend.read_merged(pid)
         raw = raw_map.get(key)
         source = source_map.get(key)
         if raw is not None and source is not None:
             scope = source.split("-")[0]
             target = self.config_backend.write_target_for(pid)
-            if nk != key:
-                self.config_backend.write_key(pid, nk, raw, scope=scope, target_kind=target)
-                self.config_backend.remove_key(pid, key, scope=scope, target_kind=target)
-                raw_map[nk] = raw
-                raw = raw_map.get(nk)
+            new_raw = raw
             if nt != old_field.type:
                 if on_type_change == "convert":
                     adapter = TYPE_REGISTRY[nt]
-                    value = adapter.parse(raw)
-                    raw_new = adapter.serialize(value)
-                    self.config_backend.write_key(
-                        pid, nk, raw_new, scope=scope, target_kind=target
-                    )
+                    try:
+                        value = adapter.parse(raw)
+                        new_raw = adapter.serialize(value)
+                    except Exception as exc:
+                        raise ValidationError(str(exc)) from exc
                 elif on_type_change == "clear":
-                    self.config_backend.remove_key(pid, nk, scope=scope, target_kind=target)
+                    new_raw = None
+            if nk != key:
+                if new_raw is not None:
+                    self.config_backend.write_key(
+                        pid, nk, new_raw, scope=scope, target_kind=target
+                    )
+                else:
+                    self.config_backend.remove_key(
+                        pid, nk, scope=scope, target_kind=target
+                    )
+                self.config_backend.remove_key(
+                    pid, key, scope=scope, target_kind=target
+                )
+            else:
+                if new_raw is None:
+                    self.config_backend.remove_key(
+                        pid, nk, scope=scope, target_kind=target
+                    )
+                elif new_raw != raw:
+                    self.config_backend.write_key(
+                        pid, nk, new_raw, scope=scope, target_kind=target
+                    )
+
+        new_spec = replace(spec, fields=tuple(fields))
+        etag = self.spec_backend.etag(pid)
+        try:
+            self.spec_backend.save_spec(new_spec, expected_etag=etag)
+        except ProjectRootNotFoundError as exc:
+            raise PolicyError(str(exc)) from exc
 
         return fields[index]
 
