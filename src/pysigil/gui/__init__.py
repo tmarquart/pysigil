@@ -14,7 +14,7 @@ except Exception:  # pragma: no cover - fallback for headless tests
     simpledialog = None  # type: ignore
     ttk = None  # type: ignore
 
-from ..config import available_providers
+from ..config import available_providers, init_config
 from ..merge_policy import KeyPath
 from . import events, gui_state
 from .config_gui import launch as launch_config_gui
@@ -254,25 +254,33 @@ def launch_gui(
     combo = ttk.Combobox(header, textvariable=pkg_var, values=packages, state="readonly")
     combo.pack(side="left")
 
-    scope_var = tk.StringVar(
-        value=_sigil_instance.default_scope if _sigil_instance else "user"
-    )
 
+    search_var = tk.StringVar()
+    ttk.Entry(header, textvariable=search_var, width=20).pack(side="left", padx=6)
+
+    scope_var = tk.StringVar(value=_sigil_instance.default_scope if _sigil_instance else "user")
     scope_frame = ttk.Frame(header)
     scope_frame.pack(side="left", padx=6)
+
+    SCOPE_LABELS = [
+        ("User", "user"),
+        ("Machine", "user-local"),
+        ("Project", "project"),
+        ("Project·Machine", "project-local"),
+    ]
+
+
     def _on_scope_change() -> None:
         if _sigil_instance is None:
             return
         _sigil_instance.set_default_scope(scope_var.get())
         _update_path()
-    for text, val in (("User", "user"), ("Project", "project")):
-        ttk.Radiobutton(
-            scope_frame,
-            text=text,
-            variable=scope_var,
-            value=val,
-            command=_on_scope_change,
-        ).pack(side="left")
+
+
+    for text, val in SCOPE_LABELS:
+        ttk.Radiobutton(scope_frame, text=text, variable=scope_var, value=val, command=_on_scope_change).pack(side="left")
+
+
 
     path_label = ttk.Label(header, text="")
     path_label.pack(side="left", padx=6)
@@ -281,32 +289,47 @@ def launch_gui(
         if _sigil_instance is None:
             path_label.config(text="")
             return
-        path_label.config(
-            text=f"Will write to: {_sigil_instance.path_for_scope(scope_var.get())}"
-        )
+
+        path_label.config(text=f"Will write to: {_sigil_instance.path_for_scope(scope_var.get())}")
 
     _update_path()
 
-    ttk.Button(header, text="New setting", command=lambda: _on_add()).pack(
-        side="right"
-    )
+    ttk.Button(header, text="New setting", command=lambda: _on_add()).pack(side="right")
+    ttk.Button(header, text="Init", command=lambda: _on_init()).pack(side="right", padx=2)
 
-    tree = ttk.Treeview(root, columns=("key", "value", "source"), show="headings")
+    tree = ttk.Treeview(root, columns=("key", "value", "source", "actions"), show="headings")
     tree.heading("key", text="Key")
     tree.heading("value", text="Value")
     tree.heading("source", text="Source")
+    tree.heading("actions", text="Actions")
+    tree.column("actions", width=160, anchor="w")
     tree.pack(fill="both", expand=True)
+
+    source_map: dict[str, str] = {}
+
 
     def _refresh() -> None:
         if _sigil_instance is None:
             return
         tree.delete(*tree.get_children())
+
+        search = search_var.get().lower()
         scoped = _sigil_instance.scoped_values()
         all_keys = set().union(*(d.keys() for d in scoped.values()))
+        label_map = {val: text for text, val in SCOPE_LABELS}
         for key in sorted(all_keys):
+            if search and search not in key.lower():
+                continue
             val = _sigil_instance.get_pref(key)
             src = _sigil_instance.effective_scope_for(key)
-            tree.insert("", "end", iid=key, values=(key, val, src))
+            source_map[key] = src
+            tree.insert(
+                "",
+                "end",
+                iid=key,
+                values=(key, val, label_map.get(src, src), "Override \u25BE   Reset"),
+            )
+
 
     def _on_add() -> None:
         res = _open_value_dialog("add", scope_var.get())
@@ -316,34 +339,60 @@ def launch_gui(
         _sigil_instance.set_pref(key, value, scope=scope_var.get())
         _refresh()
 
-    def _on_edit() -> None:
-        sel = tree.selection()
-        if not sel or _sigil_instance is None:
+    def _on_init() -> None:
+        init_config(pkg_var.get(), scope_var.get())
+        _refresh()
+
+    def _on_override(key: str, scope: str) -> None:
+        if _sigil_instance is None:
             return
-        key = sel[0]
         current = _sigil_instance.get_pref(key) or ""
-        res = _open_value_dialog("edit", scope_var.get(), key=key, value=str(current))
+        res = _open_value_dialog("edit", scope, key=key, value=str(current))
+
         if not res:
             return
         new_key, new_val = res
         if new_key != key:
-            _sigil_instance.set_pref(key, None, scope=scope_var.get())
+
+            _sigil_instance.set_pref(key, None, scope=scope)
             key = new_key
-        _sigil_instance.set_pref(key, new_val, scope=scope_var.get())
+        _sigil_instance.set_pref(key, new_val, scope=scope)
         _refresh()
 
-    def _on_reset() -> None:
-        sel = tree.selection()
-        if not sel or _sigil_instance is None:
+    def _on_reset(key: str) -> None:
+        if _sigil_instance is None:
             return
-        key = sel[0]
-        _sigil_instance.set_pref(key, None, scope=scope_var.get())
-        _refresh()
+        src = source_map.get(key)
+        if src:
+            _sigil_instance.set_pref(key, None, scope=src)
+            _refresh()
 
-    button_bar = ttk.Frame(root)
-    button_bar.pack(fill="x", padx=4, pady=4)
-    ttk.Button(button_bar, text="Override", command=_on_edit).pack(side="left", padx=2)
-    ttk.Button(button_bar, text="Reset", command=_on_reset).pack(side="left", padx=2)
+    def _show_override_menu(event, key: str) -> None:
+        menu = tk.Menu(tree, tearoff=0)
+        for text, val in SCOPE_LABELS:
+            menu.add_command(label=text, command=lambda sc=val: _on_override(key, sc))
+        menu.post(event.x_root, event.y_root)
+
+    def _on_tree_click(event) -> None:
+        item = tree.identify_row(event.y)
+        if not item:
+            return
+        column = tree.identify_column(event.x)
+        if column != "#4":
+            return
+        bbox = tree.bbox(item, "actions")
+        if not bbox:
+            return
+        rel_x = event.x - bbox[0]
+        if rel_x < bbox[2] * 0.6:
+            _show_override_menu(event, item)
+        else:
+            _on_reset(item)
+
+    tree.bind("<Button-1>", _on_tree_click)
+
+    search_var.trace_add("write", lambda *args: _refresh())
+
 
     def _on_pkg_change(event=None):
         new_pkg = pkg_var.get()

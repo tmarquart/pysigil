@@ -74,19 +74,35 @@ def load(provider_id: str, *, auto: bool = True) -> dict[str, Any]:
     pid = normalize_provider_id(provider_id)
     h = host_id()
     acc: dict[str, Any] = {}
+    root = _project_dir(auto)
     for scope in reversed(PRECEDENCE_PROJECT_WINS):
         if scope == "user":
-            for f in user_files(pid, h):
-                try:
-                    acc = merge_ini_section(acc, f, section=pid)
-                except IniIOError as exc:
-                    logger.warning("Failed to read config %s: %s", f, exc)
+            files = [Path(user_config_dir("sigil")) / pid / "settings.ini"]
+        elif scope == "user-local":
+            files = [
+                Path(user_config_dir("sigil"))
+                / pid
+                / f"settings-local-{h}.ini"
+            ]
         elif scope == "project":
-            for f in project_files(pid, h, auto=auto):
-                try:
-                    acc = merge_ini_section(acc, f, section=pid)
-                except IniIOError as exc:
-                    logger.warning("Failed to read config %s: %s", f, exc)
+            if root is None:
+                continue
+            base = root / ".sigil"
+            files = [base / "settings.ini"]
+        elif scope == "project-local":
+            if root is None:
+                continue
+            base = root / ".sigil"
+            files = [base / f"settings-local-{h}.ini"]
+        else:
+            continue
+        for f in files:
+            if not f.exists():
+                continue
+            try:
+                acc = merge_ini_section(acc, f, section=pid)
+            except IniIOError as exc:
+                logger.warning("Failed to read config %s: %s", f, exc)
     return acc
 
 
@@ -96,7 +112,7 @@ def load(provider_id: str, *, auto: bool = True) -> dict[str, Any]:
 
 def _scope_dir(scope: str, provider_id: str, *, auto: bool) -> Path:
     pid = normalize_provider_id(provider_id)
-    if scope == "user":
+    if scope in {"user", "user-local"}:
         base = Path(user_config_dir("sigil")) / pid
     else:
         root = _project_dir(auto)
@@ -128,9 +144,9 @@ def init_config(provider_id: str, scope: str, *, auto: bool = False) -> Path:
     pid = normalize_provider_id(provider_id)
     h = host_id()
     base = _scope_dir(scope, pid, auto=auto)
-    if pid == "user-custom":
+    if scope in {"user-local", "project-local"} or pid == "user-custom":
         path = base / f"settings-local-{h}.ini"
-        comment = "# per-machine user-custom settings\n"
+        comment = "# per-machine settings\n"
     else:
         path = base / "settings.ini"
         comment = "# add keys here\n"
@@ -148,7 +164,8 @@ def target_path(provider_id: str, scope: str, *, auto: bool = False) -> Path:
     pid = normalize_provider_id(provider_id)
     h = host_id()
     base = _scope_dir(scope, pid, auto=auto)
-    if pid == "user-custom":
+
+    if scope in {"user-local", "project-local"} or pid == "user-custom":
         return base / f"settings-local-{h}.ini"
     return base / "settings.ini"
 
