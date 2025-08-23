@@ -1,24 +1,23 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Mapping, Literal
+from typing import Any, Literal
 
-from .orchestrator import (
-    Orchestrator,
-    DuplicateFieldError as _ODuplicateFieldError,
-    PolicyError as _OPolicyError,
-    ValidationError as _OValidationError,
-    UnknownFieldError as _OUnknownFieldError,
+from .errors import (
+    ConflictError,
+    DuplicateFieldError,
+    DuplicateProviderError,
+    IOFailureError,
+    PolicyError,
+    SigilError,
+    UnknownFieldError,
+    UnknownProviderError,
+    ValidationError,
 )
-from .settings_metadata import (
-    FieldSpec,
-    FieldValue,
-    ProviderSpec,
-    UnknownProviderError as _SUnknownProviderError,
-    DuplicateProviderError as _SDuplicateProviderError,
-    ConflictError as _SConflictError,
-)
+from .orchestrator import Orchestrator
+from .settings_metadata import FieldSpec, FieldValue, ProviderSpec
 
 __all__ = [
     "SigilError",
@@ -28,7 +27,7 @@ __all__ = [
     "ValidationError",
     "PolicyError",
     "ConflictError",
-    "IOFailure",
+    "IOFailureError",
     "FieldInfo",
     "ValueInfo",
     "ProviderInfo",
@@ -38,43 +37,6 @@ __all__ = [
     "register_provider",
     "ProviderHandle",
 ]
-
-
-# ---------------------------------------------------------------------------
-# exceptions
-# ---------------------------------------------------------------------------
-
-
-class SigilError(Exception):
-    """Base class for API level errors."""
-
-
-class UnknownProviderError(SigilError):
-    """Raised when a provider is not registered."""
-
-
-class UnknownFieldError(SigilError):
-    """Raised when a field key is unknown."""
-
-
-class DuplicateFieldError(SigilError):
-    """Raised when attempting to add a field that already exists."""
-
-
-class ValidationError(SigilError):
-    """Raised when value validation fails."""
-
-
-class PolicyError(SigilError):
-    """Raised when policy prevents an operation."""
-
-
-class ConflictError(SigilError):
-    """Raised when concurrent modifications conflict."""
-
-
-class IOFailure(SigilError):
-    """Raised for unexpected IO failures."""
 
 
 # ---------------------------------------------------------------------------
@@ -144,14 +106,11 @@ def providers() -> list[str]:
 
 
 def get_provider(provider_id: str) -> ProviderInfo:
-    try:
-        spec = _ORCH.reload_spec(provider_id)
-    except _SUnknownProviderError as exc:  # pragma: no cover - defensive
-        raise UnknownProviderError(provider_id) from exc
+    spec = _ORCH.reload_spec(provider_id)
     return _provider_info(spec)
 
 
-def handle(provider_id: str) -> "ProviderHandle":
+def handle(provider_id: str) -> ProviderHandle:
     get_provider(provider_id)  # ensure existence
     return ProviderHandle(provider_id)
 
@@ -166,12 +125,8 @@ def register_provider(
         spec = _ORCH.register_provider(
             provider_id, title=title, description=description
         )
-    except _SDuplicateProviderError:
+    except DuplicateProviderError:
         spec = _ORCH.reload_spec(provider_id)
-    except _SConflictError as exc:  # pragma: no cover - defensive
-        raise ConflictError(str(exc)) from exc
-    except _OPolicyError as exc:
-        raise PolicyError(str(exc)) from exc
     return _provider_info(spec)
 
 
@@ -213,14 +168,14 @@ class ProviderHandle:
                 label=label,
                 description=description,
             )
-        except _ODuplicateFieldError as exc:
+        except DuplicateFieldError as exc:
             raise DuplicateFieldError(key) from exc
-        except _OPolicyError as exc:
+        except PolicyError as exc:
             raise PolicyError(str(exc)) from exc
         if init_scope is not None:
             try:
                 self._manager().init(init_scope)
-            except _OPolicyError as exc:  # pragma: no cover - defensive
+            except PolicyError as exc:  # pragma: no cover - defensive
                 raise PolicyError(str(exc)) from exc
         return _field_info(field)
 
@@ -245,11 +200,11 @@ class ProviderHandle:
                 description=description,
                 on_type_change=on_type_change,
             )
-        except _OUnknownFieldError as exc:
+        except UnknownFieldError as exc:
             raise UnknownFieldError(key) from exc
-        except _ODuplicateFieldError as exc:
+        except DuplicateFieldError as exc:
             raise DuplicateFieldError(str(exc)) from exc
-        except _OPolicyError as exc:
+        except PolicyError as exc:
             raise PolicyError(str(exc)) from exc
         return _field_info(field)
 
@@ -267,9 +222,9 @@ class ProviderHandle:
                 remove_values=remove_values,
                 scopes=scopes,
             )
-        except _OUnknownFieldError as exc:
+        except UnknownFieldError as exc:
             raise UnknownFieldError(key) from exc
-        except _OPolicyError as exc:
+        except PolicyError as exc:
             raise PolicyError(str(exc)) from exc
 
     # Untracked (manual INI edits)
@@ -300,9 +255,9 @@ class ProviderHandle:
     ) -> None:
         try:
             _ORCH.set_value(self.provider_id, key, value, scope=scope)
-        except _OValidationError as exc:
+        except ValidationError as exc:
             raise ValidationError(str(exc)) from exc
-        except _OPolicyError as exc:
+        except PolicyError as exc:
             raise PolicyError(str(exc)) from exc
         except KeyError as exc:  # propagated by provider manager
             raise UnknownFieldError(key) from exc
@@ -315,7 +270,7 @@ class ProviderHandle:
     ) -> None:
         try:
             _ORCH.clear_value(self.provider_id, key, scope=scope)
-        except _OPolicyError as exc:
+        except PolicyError as exc:
             raise PolicyError(str(exc)) from exc
         except KeyError as exc:
             raise UnknownFieldError(key) from exc
@@ -331,11 +286,11 @@ class ProviderHandle:
             _ORCH.set_many(
                 self.provider_id, dict(updates), scope=scope, atomic=atomic
             )
-        except _OValidationError as exc:
+        except ValidationError as exc:
             raise ValidationError(str(exc)) from exc
-        except _OUnknownFieldError as exc:
+        except UnknownFieldError as exc:
             raise UnknownFieldError(str(exc)) from exc
-        except _OPolicyError as exc:
+        except PolicyError as exc:
             raise PolicyError(str(exc)) from exc
         except KeyError as exc:
             raise UnknownFieldError(str(exc)) from exc
@@ -344,7 +299,7 @@ class ProviderHandle:
     def init(self, *, scope: Literal["user", "project"] = "user") -> None:
         try:
             self._manager().init(scope)
-        except _OPolicyError as exc:
+        except PolicyError as exc:
             raise PolicyError(str(exc)) from exc
 
     def export_spec(self, dest: str | Path | None = None) -> Path:
@@ -352,7 +307,7 @@ class ProviderHandle:
             dest = Path(f"{self.provider_id}-spec.json")
         try:
             return _ORCH.export_spec(self.provider_id, dest)
-        except _OPolicyError as exc:
+        except PolicyError as exc:
             raise PolicyError(str(exc)) from exc
 
     def reload_spec(self) -> ProviderInfo:

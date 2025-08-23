@@ -11,22 +11,23 @@ intended to be a stable, extendable base for future GUI work.
 
 from __future__ import annotations
 
-import json
 import configparser
+import json
+import re
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field as dataclass_field
 from pathlib import Path
-import re
-from typing import Any, Dict, Iterable, Literal, Mapping, Protocol
+from typing import Any, Literal, Protocol
 from uuid import uuid4
 
-from .config import host_id
-from .io_config import read_sections, write_sections
-from .paths import user_config_dir
-from .root import ProjectRootNotFoundError, find_project_root
 from .authoring import get as get_dev_link, list_links
-from .resolver import resolve_defaults
+from .config import host_id
+from .errors import ConflictError, DuplicateProviderError, UnknownProviderError
+from .io_config import read_sections, write_sections
 from .merge_policy import PRECEDENCE_PROJECT_WINS
-
+from .paths import user_config_dir
+from .resolver import resolve_defaults
+from .root import ProjectRootNotFoundError, find_project_root
 
 ####################
 ##### ADAPTERS #####
@@ -45,7 +46,7 @@ class TypeAdapter(Protocol):
     def serialize(self, value: Any) -> str:
         """Serialise *value* into text for storage."""
 
-    def validate(self, value: Any, spec: "FieldSpec") -> None:
+    def validate(self, value: Any, spec: FieldSpec) -> None:
         """Validate *value* against *spec*.
 
         Implementations should raise :class:`TypeError` or :class:`ValueError`
@@ -64,7 +65,7 @@ class StringAdapter:
             raise TypeError("expected str")
         return value
 
-    def validate(self, value: Any, spec: "FieldSpec") -> None:
+    def validate(self, value: Any, spec: FieldSpec) -> None:
         if value is not None and not isinstance(value, str):
             raise TypeError("expected str")
 
@@ -82,7 +83,7 @@ class IntegerAdapter:
             raise TypeError("expected int")
         return str(value)
 
-    def validate(self, value: Any, spec: "FieldSpec") -> None:
+    def validate(self, value: Any, spec: FieldSpec) -> None:
         if value is not None and not isinstance(value, int):
             raise TypeError("expected int")
 
@@ -100,7 +101,7 @@ class NumberAdapter:
             raise TypeError("expected number")
         return str(value)
 
-    def validate(self, value: Any, spec: "FieldSpec") -> None:
+    def validate(self, value: Any, spec: FieldSpec) -> None:
         if value is not None and not isinstance(value, int | float):
             raise TypeError("expected number")
 
@@ -123,12 +124,12 @@ class BooleanAdapter:
             raise TypeError("expected bool")
         return "true" if value else "false"
 
-    def validate(self, value: Any, spec: "FieldSpec") -> None:
+    def validate(self, value: Any, spec: FieldSpec) -> None:
         if value is not None and not isinstance(value, bool):
             raise TypeError("expected bool")
 
 
-TYPE_REGISTRY: Dict[str, TypeAdapter] = {
+TYPE_REGISTRY: dict[str, TypeAdapter] = {
     "string": StringAdapter(),
     "integer": IntegerAdapter(),
     "number": NumberAdapter(),
@@ -154,7 +155,7 @@ class FieldSpec:
         if self.type not in TYPE_REGISTRY:
             raise ValueError(f"unknown type: {self.type!r}")
 
-    def to_gui_v0(self) -> Dict[str, Any]:
+    def to_gui_v0(self) -> dict[str, Any]:
         """Return a minimal GUI representation."""
 
         return {
@@ -202,7 +203,7 @@ class ProviderSpec:
         # Freeze iterable of fields into a tuple for immutability
         object.__setattr__(self, "fields", tuple(self.fields))
 
-    def to_gui_doc_v0(self) -> Dict[str, Any]:
+    def to_gui_doc_v0(self) -> dict[str, Any]:
         """Return a dict representation for GUI consumption."""
 
         return {
@@ -241,22 +242,6 @@ class SpecBackend(Protocol):
         ...
 
 
-class SpecBackendError(Exception):
-    """Base class for errors raised by :class:`SpecBackend` implementations."""
-
-
-class UnknownProviderError(SpecBackendError):
-    """Raised when a provider is requested that does not exist."""
-
-
-class DuplicateProviderError(SpecBackendError):
-    """Raised when attempting to create a provider that already exists."""
-
-
-class ConflictError(SpecBackendError):
-    """Raised when concurrent spec modifications conflict."""
-
-
 class InMemorySpecBackend:
     """Simple :class:`SpecBackend` storing data in memory.
 
@@ -265,8 +250,8 @@ class InMemorySpecBackend:
     """
 
     def __init__(self) -> None:
-        self._specs: Dict[str, ProviderSpec] = {}
-        self._etags: Dict[str, str] = {}
+        self._specs: dict[str, ProviderSpec] = {}
+        self._etags: dict[str, str] = {}
 
     def get_provider_ids(self) -> list[str]:  # pragma: no cover - trivial
         return sorted(self._specs)
@@ -299,7 +284,7 @@ class IniSpecBackend:
         self.user_dir = Path(user_dir) if user_dir else None
         if self.user_dir is not None:
             self.user_dir.mkdir(parents=True, exist_ok=True)
-        self._etags: Dict[str, str] = {}
+        self._etags: dict[str, str] = {}
 
     # ------------------------------------------------------------ helpers
     def _user_path(self, provider_id: str) -> Path:
@@ -334,7 +319,7 @@ class IniSpecBackend:
 
     def _write(self, path: Path, spec: ProviderSpec) -> None:
         parser = configparser.ConfigParser()
-        meta: Dict[str, str] = {"schema_version": spec.schema_version}
+        meta: dict[str, str] = {"schema_version": spec.schema_version}
         if spec.title is not None:
             meta["title"] = spec.title
         if spec.description is not None:
@@ -562,8 +547,8 @@ class IniFileBackend:
     # SigilBackend API
     # ------------------------------------------------------------------
     def read_merged(self, provider_id: str) -> tuple[Mapping[str, str], Mapping[str, str]]:
-        raw: Dict[str, str] = {}
-        source: Dict[str, str] = {}
+        raw: dict[str, str] = {}
+        source: dict[str, str] = {}
         for scope, path in self._iter_read_paths(provider_id):
             data = read_sections(path).get(provider_id, {})
             for k, v in data.items():
@@ -628,7 +613,7 @@ class ProviderManager:
     def __init__(self, spec: ProviderSpec, backend: SigilBackend):
         self.spec = spec
         self.backend = backend
-        self._fields: Dict[str, FieldSpec] = {f.key: f for f in spec.fields}
+        self._fields: dict[str, FieldSpec] = {f.key: f for f in spec.fields}
 
     def _field_for(self, key: str) -> FieldSpec:
         try:
@@ -636,9 +621,9 @@ class ProviderManager:
         except KeyError as exc:  # pragma: no cover - defensive
             raise KeyError(f"unknown key {key!r}") from exc
 
-    def effective(self) -> Dict[str, FieldValue]:
+    def effective(self) -> dict[str, FieldValue]:
         raw_map, source_map = self.backend.read_merged(self.spec.provider_id)
-        result: Dict[str, FieldValue] = {}
+        result: dict[str, FieldValue] = {}
         for field in self.spec.fields:
             raw = raw_map.get(field.key)
             adapter = TYPE_REGISTRY[field.type]
@@ -804,7 +789,6 @@ __all__ = [
     "ProviderSpec",
     "SigilBackend",
     "SpecBackend",
-    "SpecBackendError",
     "InMemorySpecBackend",
     "IniSpecBackend",
     "UnknownProviderError",

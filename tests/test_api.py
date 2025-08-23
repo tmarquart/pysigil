@@ -2,7 +2,7 @@ import pytest
 
 from pysigil import api
 from pysigil.orchestrator import Orchestrator
-from pysigil.settings_metadata import IniSpecBackend, IniFileBackend
+from pysigil.settings_metadata import IniFileBackend, IniSpecBackend
 
 
 def make_api(tmp_path):
