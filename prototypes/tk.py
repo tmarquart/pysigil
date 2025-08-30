@@ -10,6 +10,13 @@ SCOPE_LABEL = {
     "Project": "Project",
     "ProjectMachine": "Project · Machine",
 }
+# short labels to avoid truncation on pills
+SCOPE_LABEL_SHORT = {
+    "User": "User",
+    "Machine": "Machine",
+    "Project": "Project",
+    "ProjectMachine": "Proj·Mach",
+}
 SCOPE_COLOR = {
     "User": "#1e40af",          # blue
     "Machine": "#065f46",       # green
@@ -80,6 +87,35 @@ class HoverTip:
         y = self.widget.winfo_rooty() + self.widget.winfo_height() + 6
         self.tip = tk.Toplevel(self.widget)
         self.tip.wm_overrideredirect(True)
+        self.tip.attributes('-topmost', True)
+        self.tip.wm_geometry(f"+{x}+{y}")
+        frm = tk.Frame(self.tip, bg="#111827", bd=0)
+        frm.pack()
+        lbl = tk.Label(frm, text=txt, bg="#111827", fg="#ffffff", padx=8, pady=6)
+        lbl.pack()
+
+    def _hide(self, _):
+        if self._after:
+            self.widget.after_cancel(self._after)
+            self._after = None
+        if self.tip:
+            tip = self.tip
+            self.tip = None
+            tip.after(120, tip.destroy)
+
+    def _schedule(self, _):
+        self._after = self.widget.after(self.delay, self._show)
+
+    def _show(self):
+        if self.tip:
+            return
+        txt = self.text_fn() or ""
+        if not txt:
+            return
+        x = self.widget.winfo_rootx() + 4
+        y = self.widget.winfo_rooty() + self.widget.winfo_height() + 6
+        self.tip = tk.Toplevel(self.widget)
+        self.tip.wm_overrideredirect(True)
         self.tip.wm_geometry(f"+{x}+{y}")
         frm = tk.Frame(self.tip, bg="#111827", bd=0)
         frm.pack()
@@ -98,9 +134,34 @@ class HoverTip:
 
 # --- Rounded pill button drawn on Canvas (so it looks like the Edit one) ---
 class PillButton(tk.Canvas):
-    def __init__(self, master, *, text, color, state, value_provider, clickable=True, on_click=None):
+    def __init__(self, master, *, text, color, state, value_provider, clickable=True, on_click=None, tooltip_title=None):
         """state: 'effective' | 'present' | 'empty' | 'disabled'"""
+        # Don't read ttk parent's background (can raise). Let Canvas default to system.
         super().__init__(master, height=28, highlightthickness=0, bd=0)
+        self.text = text
+        self.tooltip_title = tooltip_title or text
+        self.color = color
+        self.state = state
+        self.clickable = clickable and state != 'disabled'
+        self.on_click = on_click
+        self.font = tkfont.Font(size=9, weight="bold")
+        self.value_provider = value_provider
+        self.pad_x = 14
+        self.rad = 14
+        self.bind("<Configure>", lambda e: self._draw())
+        if self.clickable:
+            self.bind("<Button-1>", lambda e: on_click() if on_click else None)
+            self.configure(cursor="hand2")
+        else:
+            self.configure(cursor="arrow")
+        # keyboard support
+        self.configure(takefocus=1)
+        self.bind('<FocusIn>', lambda e: self._draw())
+        self.bind('<FocusOut>', lambda e: self._draw())
+        self.bind('<Key-Return>', lambda e: (self.on_click() if self.clickable and self.on_click else None))
+        self.bind('<Key-space>',  lambda e: (self.on_click() if self.clickable and self.on_click else None))
+        HoverTip(self, self._tip_text)
+        self._draw(initial=True)
         self.text = text
         self.color = color
         self.state = state
@@ -130,24 +191,18 @@ class PillButton(tk.Canvas):
         self.delete("all")
         # colors per state
         if self.state == 'effective':
-            fill = self.color
-            outline = self.color
-            fg = "#ffffff"
+            fill = self.color; outline = self.color; fg = "#ffffff"; width = 1
         elif self.state == 'present':
-            fill = "#ffffff"
-            outline = self.color
-            fg = self.color
+            fill = "#ffffff"; outline = self.color; fg = self.color; width = 2
         elif self.state == 'disabled':
-            fill = GREY_BG
-            outline = GREY_BORDER
-            fg = GREY_TXT
+            fill = GREY_BG; outline = GREY_BORDER; fg = GREY_TXT; width = 1
         else:  # empty
-            fill = "#ffffff"
-            outline = GREY_BORDER
-            fg = GREY_TXT
+            fill = "#ffffff"; outline = GREY_BORDER; fg = GREY_TXT; width = 1
         r = self.rad
-        self._round_rect(1, 1, w-1, 26, r, fill=fill, outline=outline)
+        self._round_rect(1, 1, w-1, 26, r, fill=fill, outline=outline, width=width)
         self.create_text(w/2, 14, text=self.text, fill=fg, font=self.font)
+        if self.focus_displayof() is self:
+            self.create_rectangle(3, 3, w-3, 24, outline='#111', dash=(2,2))
 
     def _round_rect(self, x1, y1, x2, y2, r, **kw):
         pts = [x1+r, y1,  x2-r, y1,  x2, y1,  x2, y1+r,  x2, y2-r,  x2, y2,  x2-r, y2,  x1+r, y2,  x1, y2,  x1, y2-r,  x1, y1+r,  x1, y1]
@@ -230,10 +285,12 @@ class FieldRow(ttk.Frame):
         self.lbl_key = ttk.Label(self, text=key, style="Key.TLabel")
         self.lbl_key.grid(row=0, column=0, sticky="w")
 
-        # Effective (read-only, non-entry look with lock)
+        # Effective (read-only, panel look with lock)
         self.var_eff = tk.StringVar(value="—")
-        self.lbl_eff = tk.Label(self, textvariable=self.var_eff, bg=GREY_BG, fg="#111", bd=1, relief="solid")
-        self.lbl_eff.configure(padx=10, pady=6)
+        self.lbl_eff = tk.Label(
+            self, textvariable=self.var_eff, bg=GREY_BG, fg="#111",
+            bd=1, relief="ridge", padx=10, pady=6
+        )
         self.lbl_eff.grid(row=0, column=1, sticky="ew", padx=(8,8))
 
         # Pills area
@@ -249,6 +306,25 @@ class FieldRow(ttk.Frame):
         # Listen for refresh requests
         self.bind("<<SigilRowChanged>>", lambda e: self.refresh(), add=True)
         self.refresh()
+
+    def _attach_pill_context(self, pill_widget, scope):
+        # Optional context menu: Edit / Remove
+        menu = tk.Menu(pill_widget, tearoff=0)
+        menu.add_command(label='Edit…', command=lambda: self._open_editor_focus(scope))
+        def popup(e):
+            # Enable/disable Remove dynamically
+            menu.delete(1, 'end')
+            if self.handle.layers(self.key).get(scope) is not None and self.handle.can_write(scope):
+                menu.add_command(label='Remove', command=lambda: self._remove_scope(scope))
+            pill_widget.focus_set()
+            menu.tk_popup(e.x_root, e.y_root)
+        pill_widget.bind('<Button-3>', popup)
+
+    def _remove_scope(self, scope):
+        try:
+            self.handle.clear(self.key, scope)
+        finally:
+            self.refresh()
 
     def refresh(self):
         # Effective value
@@ -268,14 +344,46 @@ class FieldRow(ttk.Frame):
             state = 'disabled' if not can else ('effective' if effective else ('present' if present else 'empty'))
             pill = PillButton(
                 self.pills,
-                text=SCOPE_LABEL[scope],
+                text=SCOPE_LABEL_SHORT[scope],
                 color=SCOPE_COLOR[scope],
                 state=state,
                 value_provider=lambda s=scope: self.handle.layers(self.key).get(s),
                 clickable=can,
-                on_click=lambda s=scope: self._open_editor_focus(s)
+                on_click=lambda s=scope: self._open_editor_focus(s),
+                tooltip_title=SCOPE_LABEL[scope],
             )
+            self._attach_pill_context(pill, scope)
             pill.pack(side="left", padx=(0,6))
+
+
+        # Effective value
+        val, src = self.handle.effective(self.key)
+        lock = "🔒 "  # 🔒
+        eff_txt = f"{lock}{val if val is not None else '—'}  ({SCOPE_LABEL[src] if src else '—'})"
+        self.var_eff.set(eff_txt)
+
+        # Rebuild pills (always render all 4, with state)
+        for w in self.pills.winfo_children():
+            w.destroy()
+        lyr = self.handle.layers(self.key)
+        for scope in SCOPES:
+            present = lyr.get(scope) is not None
+            effective = (src == scope)
+            can = self.handle.can_write(scope)
+            state = 'disabled' if not can else ('effective' if effective else ('present' if present else 'empty'))
+            pill = PillButton(
+                self.pills,
+                text=SCOPE_LABEL_SHORT[scope],
+                color=SCOPE_COLOR[scope],
+                state=state,
+                value_provider=lambda s=scope: self.handle.layers(self.key).get(s),
+                clickable=can,
+                on_click=lambda s=scope: self._open_editor_focus(s),
+                tooltip_title=SCOPE_LABEL[scope],
+            )
+            self._attach_pill_context(pill, scope)
+            pill.pack(side="left", padx=(0,6))
+# (side="left", padx=(0,6))
 
     def _open_editor_focus(self, scope):
         dlg = EditDialog(self.winfo_toplevel(), self.handle, self.key)

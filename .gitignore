@@ -4,5 +4,6 @@ __pycache__/
 dist/
 build/
 .idea/*
+prototypes/excluded/*
 .env
 .venv
