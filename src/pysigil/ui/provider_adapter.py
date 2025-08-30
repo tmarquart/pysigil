@@ -39,8 +39,8 @@ class ProviderAdapter:
 
     def scopes(self) -> List[str]:
         """Return scope ids in display order."""
-        known = set(policy.policy.scopes)
-        order = [s for s in policy.policy.precedence(read=True) if s in known]
+        known = set(policy.scopes)
+        order = [s for s in policy.precedence(read=True) if s in known]
         return [s for s in order if s != "core"]
 
     _SHORT_LABELS = {
@@ -69,7 +69,7 @@ class ProviderAdapter:
     def can_write(self, scope_id: str) -> bool:
         """Return ``True`` if *scope_id* is writable according to policy."""
         try:
-            return policy.policy.allows(scope_id)
+            return policy.allows(scope_id)
         except Exception:  # pragma: no cover - defensive
             return False
 
