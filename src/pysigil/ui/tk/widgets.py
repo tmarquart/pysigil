@@ -29,7 +29,7 @@ SCOPE_COLOR = {
     "Machine": "#065f46",  # emerald-900
     "Project": "#6d28d9",  # violet-700
     "ProjectMachine": "#c2410c",  # orange-700
-    "Def": "#334155",  # slate-700
+    "Def": "#000000",  # black
 }
 
 GREY_BG = "#f3f4f6"
