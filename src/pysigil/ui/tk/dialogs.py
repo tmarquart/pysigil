@@ -1,0 +1,131 @@
+"""Dialog windows used by :mod:`pysigil.ui.tk`."""
+
+from __future__ import annotations
+
+from collections.abc import Callable
+from typing import Dict
+
+try:  # pragma: no cover - importing tkinter is environment dependent
+    import tkinter as tk
+    from tkinter import messagebox, ttk
+except Exception:  # pragma: no cover - fallback when tkinter missing
+    tk = None  # type: ignore
+    messagebox = None  # type: ignore
+    ttk = None  # type: ignore
+
+from ..provider_adapter import ProviderAdapter, ValueInfo
+
+
+class EditDialog(tk.Toplevel):  # type: ignore[misc]
+    """Simple dialog for editing a key across scopes."""
+
+    def __init__(
+        self,
+        master: tk.Widget,
+        adapter: ProviderAdapter,
+        key: str,
+        *,
+        on_edit_save: Callable[[str, str, object], None] | None = None,
+        on_edit_remove: Callable[[str, str], None] | None = None,
+    ) -> None:
+        super().__init__(master)
+        self.title(f"Edit — {key}")
+        self.transient(master)
+        self.grab_set()
+        self.resizable(False, False)
+        self.adapter = adapter
+        self.key = key
+        self.on_edit_save = on_edit_save
+        self.on_edit_remove = on_edit_remove
+
+        body = ttk.Frame(self, padding=12)
+        body.pack(fill="both", expand=True)
+
+        ttk.Label(body, text=key, font=(None, 12, "bold")).grid(
+            row=0, column=0, columnspan=4, sticky="w", pady=(0, 6)
+        )
+        ttk.Separator(body).grid(row=1, column=0, columnspan=4, sticky="ew", pady=(0, 8))
+
+        self.entries: Dict[str, ttk.Entry] = {}
+
+        values = adapter.values_for_key(key)
+        scopes = list(adapter.scopes())
+        if "default" not in scopes:
+            scopes.append("default")
+
+        row = 2
+        for scope in scopes:
+            if scope == "env" and scope not in values:
+                continue
+
+            label = adapter.scope_label(scope)
+            ttk.Label(body, text=label).grid(
+                row=row, column=0, sticky="w", padx=(0, 8), pady=4
+            )
+            entry = ttk.Entry(body)
+            entry.grid(row=row, column=1, sticky="ew", pady=4)
+
+            vinfo: ValueInfo | None = values.get(scope)
+            if vinfo and vinfo.value is not None:
+                entry.insert(0, str(vinfo.value))
+
+            can_write = adapter.can_write(scope)
+            if scope == "env" or adapter.is_overlay(scope):
+                entry.state(["readonly"])
+                can_write = False
+            elif not can_write:
+                entry.state(["disabled"])
+
+            btn_save = ttk.Button(
+                body,
+                text="Save",
+                command=lambda s=scope: self._save_scope(s),
+            )
+            btn_save.grid(row=row, column=2, padx=4)
+            btn_remove = ttk.Button(
+                body,
+                text="Remove",
+                command=lambda s=scope: self._remove_scope(s),
+            )
+            btn_remove.grid(row=row, column=3, padx=4)
+
+            if not can_write:
+                btn_save.state(["disabled"])
+                btn_remove.state(["disabled"])
+
+            if vinfo and vinfo.error:
+                err = ttk.Label(body, text=vinfo.error, foreground="#b91c1c")
+                err.grid(row=row + 1, column=1, columnspan=3, sticky="w", pady=(0, 4))
+                row += 1
+
+            self.entries[scope] = entry
+            row += 1
+
+        ttk.Button(body, text="Close", command=self.destroy).grid(
+            row=row, column=3, sticky="e"
+        )
+        body.columnconfigure(1, weight=1)
+
+    # -- callbacks ---------------------------------------------------------
+    def _save_scope(self, scope: str) -> None:
+        if self.on_edit_save is None:
+            return
+        value = self.entries[scope].get()
+        try:
+            self.on_edit_save(self.key, scope, value)
+        except Exception as exc:  # pragma: no cover - defensive
+            if messagebox is not None:
+                messagebox.showerror("Error", str(exc), parent=self)
+
+    def _remove_scope(self, scope: str) -> None:
+        if self.on_edit_remove is None:
+            return
+        try:
+            self.on_edit_remove(self.key, scope)
+        except Exception as exc:  # pragma: no cover - defensive
+            if messagebox is not None:
+                messagebox.showerror("Error", str(exc), parent=self)
+            return
+        entry = self.entries.get(scope)
+        if entry is not None:
+            entry.delete(0, "end")
