@@ -98,6 +98,8 @@ class FieldRow(ttk.Frame):
         scopes = self.adapter.scopes()
         for scope in scopes:
             has_value = scope in values
+            if scope == "default" and not has_value:
+                continue
             if self.compact and scope != "default" and not has_value:
                 continue
 

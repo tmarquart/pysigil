@@ -26,7 +26,7 @@ from .config import (
 )
 from .core import Sigil
 from .discovery import pep503_name
-from .gui import launch_gui
+from .ui.tk import launch as launch_gui
 from .paths import (
     default_config_dir,
     default_data_dir,
@@ -193,11 +193,7 @@ def export_cmd(args: argparse.Namespace) -> int:
 
 
 def gui_cmd(args: argparse.Namespace) -> int:  # pragma: no cover - GUI interactions
-    launch_gui(
-        package=args.app,
-        include_sigil=args.include_sigil,
-        remember_state=not args.no_remember,
-    )
+    launch_gui(initial_provider=args.app)
     return 0
 
 

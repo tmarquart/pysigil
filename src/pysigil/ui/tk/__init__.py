@@ -39,6 +39,7 @@ class App:
         *,
         adapter: ProviderAdapter | None = None,
         events: EventBus | None = None,
+        initial_provider: str | None = None,
     ) -> None:
         if tk is None:  # pragma: no cover - environment without tkinter
             raise RuntimeError("tkinter is required for App")
@@ -49,6 +50,7 @@ class App:
         self.compact = True
         self.rows: dict[str, FieldRow] = {}
         self._edit_buttons: dict[str, ttk.Button] = {}
+        self._initial_provider = initial_provider
 
         self.root.title("pysigil")
 
@@ -79,6 +81,13 @@ class App:
             command=self.on_toggle_compact,
         ).pack(side="left")
 
+        ttk.Label(header, text="Project:").pack(side="left", padx=(12, 0))
+        self._project_var = tk.StringVar(value="")
+        self._project_entry = ttk.Entry(
+            header, textvariable=self._project_var, state="readonly", width=40
+        )
+        self._project_entry.pack(side="left", padx=(4, 0))
+
     def _build_table(self) -> None:
         self._table = ttk.Frame(self.root)
         self._table.pack(fill="both", expand=True, padx=6, pady=6)
@@ -96,7 +105,8 @@ class App:
         providers = self.adapter.list_providers()
         self._provider_box["values"] = providers
         if providers:
-            self._provider_var.set(providers[0])
+            initial = self._initial_provider if self._initial_provider in providers else providers[0]
+            self._provider_var.set(initial)
             self.on_provider_change()
 
     # ------------------------------------------------------------------
@@ -158,6 +168,11 @@ class App:
                 self.events.emit_error(str(exc))
                 return
             self._rebuild_rows()
+            try:
+                proj_path = self.adapter.target_path("project")
+            except Exception:
+                proj_path = ""
+            self._project_var.set(str(proj_path))
 
     def on_pill_click(self, key: str, scope: str) -> None:
         self._open_edit_dialog(key, scope)
@@ -188,5 +203,11 @@ class App:
             row.set_compact(self.compact)
 
 
-__all__ = ["App"]
+def launch(initial_provider: str | None = None) -> None:
+    """Convenience helper to launch the tkinter UI."""
+    app = App(initial_provider=initial_provider)
+    app.root.mainloop()
+
+
+__all__ = ["App", "launch"]
 
