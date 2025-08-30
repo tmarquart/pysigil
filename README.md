@@ -40,6 +40,23 @@ Typed helper methods are available for convenient access:
 `Sigil.get_int()`, `get_float()`, `get_bool()`.
 For package integration details see [docs/integration.md](docs/integration.md).
 
+## Policy API
+
+The merge order and write permissions are managed by a configurable
+`ScopePolicy`.  The default policy prefers project settings over user ones.
+To inspect or extend the policy:
+
+```python
+from pysigil.policy import Scope, ScopePolicy, policy
+
+# clone and add a git-tracked scope
+scopes = [*policy._scopes, Scope("git", writable=True)]
+git_policy = ScopePolicy(scopes)
+
+# precedence can be switched at runtime
+policy.set_store("user", {("pysigil", "policy"): "user_over_project"})
+```
+
 ## Using the GUI
 
 pysigil ships with a simple graphical editor for viewing and editing

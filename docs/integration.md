@@ -39,3 +39,20 @@ Files auto-created as needed.
 Zero runtime deps: pysigil is pure std-lib + your INI file.
 
 That’s it. Add one defaults file, one `[tool.sigil]` line, (optionally) four helper lines — and your package instantly gains a robust, chain-aware configuration system.
+
+## Custom scopes
+
+If the defaults are not enough you can extend the policy.  A *git-only* scope
+keeps settings under version control while a *machine* scope stores
+host-specific files.
+
+```python
+from pysigil.policy import Scope, ScopePolicy, policy
+
+git_only = Scope("git", writable=True)
+machine = Scope("ci", writable=True, machine=True)
+custom = ScopePolicy([*policy._scopes, git_only, machine])
+```
+
+The `machine=True` flag causes the file name to include the host, e.g.
+`settings-local-myhost.ini`.
