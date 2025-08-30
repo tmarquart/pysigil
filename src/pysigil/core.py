@@ -17,7 +17,7 @@ from .errors import (
 )
 from .gui import events
 from .merge_policy import KeyPath, parse_key, read_env
-from .policy import CORE_DEFAULTS, policy
+from .policy import CORE_DEFAULTS, ScopePolicy, policy as default_policy
 from .root import ProjectRootNotFoundError
 from .resolver import (
     project_settings_file,
@@ -55,7 +55,8 @@ class Sigil:
         default_path: Path | None = None,
         env_reader: Callable[[str], Mapping[KeyPath, str]] = read_env,
         secrets: Sequence[SecretProvider] | None = None,
-        settings_filename='settings.ini'
+        settings_filename='settings.ini',
+        policy: ScopePolicy | None = None,
     ) -> None:
         # Normalise the application name so that underscores and hyphens are
         # treated equivalently across all scopes.  This mirrors the
@@ -111,6 +112,20 @@ class Sigil:
             )
             self._defaults_writable = self._default_source == "dev-link"
 
+        # Mapping from scope names to backing paths
+        self._paths: dict[str, Path] = {
+            "user": self.user_path,
+            "user-local": self.user_local_path,
+            "project": self.project_path,
+            "project-local": self.project_local_path,
+        }
+        if self.default_path is not None:
+            self._paths["default"] = self.default_path
+
+        self.policy = (policy or default_policy).clone(
+            default_writable=self._defaults_writable
+        )
+
         self._defaults: MutableMapping[KeyPath, str] = {}
         if defaults:
             for k, v in defaults.items():
@@ -132,6 +147,28 @@ class Sigil:
         for section, mapping in CORE_DEFAULTS.items():
             for k, v in mapping.items():
                 self._core[parse_key(f"{section}.{k}")] = str(v)
+
+        # Stores for each scope
+        self._user: MutableMapping[KeyPath, str] = {}
+        self._user_local: MutableMapping[KeyPath, str] = {}
+        self._project: MutableMapping[KeyPath, str] = {}
+        self._project_local: MutableMapping[KeyPath, str] = {}
+        self._env: MutableMapping[KeyPath, str] = {}
+
+        for name, store in {
+            "core": self._core,
+            "default": self._defaults,
+            "user": self._user,
+            "user-local": self._user_local,
+            "project": self._project,
+            "project-local": self._project_local,
+            "env": self._env,
+        }.items():
+            try:
+                self.policy.set_store(name, store)
+            except UnknownScopeError:
+                pass
+
         self.invalidate_cache()
 
     @property
@@ -142,41 +179,41 @@ class Sigil:
     def set_default_scope(self, scope: str) -> None:
         """Set the default scope for writes.
 
-        Only ``"user"``, ``"project"`` and ``"default"`` scopes are supported.
-        The ``"default"`` scope is writable only when defaults were loaded via a
-        development link.
+        Only writable scopes are supported.  The ``"default"`` scope is only
+        available when defaults were loaded via a development link or explicit
+        path.
         """
-        if scope == "default" and not self._defaults_writable:
+        if not self.policy.allows(scope):
             raise ReadOnlyScopeError("Default scope is read-only")
-        if scope not in {"user", "user-local", "project", "project-local", "default"}:
-            raise UnknownScopeError(scope)
         self._default_scope = scope
 
     def invalidate_cache(self) -> None:
         with self._lock:
             raw_env = self._env_reader(self.app_name)
-            self._env = {(self.app_name, *k): v for k, v in raw_env.items()}
+            self._env.clear()
+            for k, v in raw_env.items():
+                self._env[(self.app_name, *k)] = v
 
             user_backend = _backend_for(self.user_path)
             project_backend = _backend_for(self.project_path)
             user_local_backend = _backend_for(self.user_local_path)
             project_local_backend = _backend_for(self.project_local_path)
-            self._user = {}
+            self._user.clear()
             for k, v in user_backend.load(self.user_path).items():
                 nk = self._normalize_key(k)
                 if nk:
                     self._user[nk] = v
-            self._user_local = {}
+            self._user_local.clear()
             for k, v in user_local_backend.load(self.user_local_path).items():
                 nk = self._normalize_key(k)
                 if nk:
                     self._user_local[nk] = v
-            self._project = {}
+            self._project.clear()
             for k, v in project_backend.load(self.project_path).items():
                 nk = self._normalize_key(k)
                 if nk:
                     self._project[nk] = v
-            self._project_local = {}
+            self._project_local.clear()
             for k, v in project_local_backend.load(self.project_local_path).items():
                 nk = self._normalize_key(k)
                 if nk:
@@ -191,13 +228,8 @@ class Sigil:
 
     def _merge_cache(self) -> None:
         self._merged = {}
-        self._merged.update(self._core)
-        self._merged.update(self._defaults)
-        self._merged.update(self._user)
-        self._merged.update(self._user_local)
-        self._merged.update(self._project)
-        self._merged.update(self._project_local)
-        self._merged.update(self._env)
+        for scope in self.policy.iter_scopes(read=True):
+            self._merged.update(self.policy.get_store(scope))
 
     def _normalize_key(self, path: KeyPath) -> KeyPath | None:
         """Return *path* with normalised prefix if it belongs to us.
@@ -219,13 +251,8 @@ class Sigil:
     def _strip_prefix(self, path: KeyPath) -> KeyPath:
         return path[1:] if self._is_ours(path) else path
 
-    def _order_for(self, keypath: KeyPath) -> tuple[str, ...]:
-        return policy.precedence("project_over_user")
-
     def _value_from_scope(self, scope: str, key: KeyPath) -> str | None:
-        if scope == "env":
-            return self._env.get(key)
-        return self._get_scope_dict(scope).get(key)
+        return self.policy.get_store(scope).get(key)
 
     def scoped_values(self) -> Mapping[str, MutableMapping[str, str]]:
         """Return all known preferences grouped by scope.
@@ -235,20 +262,12 @@ class Sigil:
         dictionary of preference keys to values.
         """
         with self._lock:
-            core_flat = self._flatten(self._core)
-            default_flat = self._flatten(self._defaults)
-            user_flat = self._flatten(self._user)
-            user_local_flat = self._flatten(self._user_local)
-            project_flat = self._flatten(self._project)
-            project_local_flat = self._flatten(self._project_local)
-            return {
-                "core": core_flat,
-                "default": default_flat,
-                "user": user_flat,
-                "user-local": user_local_flat,
-                "project": project_flat,
-                "project-local": project_local_flat,
-            }
+            out: dict[str, MutableMapping[str, str]] = {}
+            for scope in self.policy.iter_scopes(read=True):
+                if scope == "env":
+                    continue
+                out[scope] = self._flatten(self.policy.get_store(scope))
+            return out
 
     def _flatten(self, data: Mapping[KeyPath, str]) -> MutableMapping[str, str]:
         flat: MutableMapping[str, str] = {}
@@ -262,25 +281,10 @@ class Sigil:
 
     def list_keys(self, scope: str) -> list[KeyPath]:
         """Return all preference keys defined in *scope* sorted alphabetically."""
-        data = self._get_scope_dict(scope)
+        data = self.policy.get_store(scope)
         return sorted(
             self._strip_prefix(k) for k in data if self._is_ours(k)
         )
-
-    def _get_scope_dict(self, scope: str) -> MutableMapping[KeyPath, str]:
-        if scope == "user":
-            return self._user
-        if scope == "user-local":
-            return self._user_local
-        if scope == "project":
-            return self._project
-        if scope == "project-local":
-            return self._project_local
-        if scope == "default":
-            return self._defaults
-        if scope == "core":
-            return self._core
-        raise UnknownScopeError(scope)
 
     def get_pref(self, key: str | KeyPath, *, default: Any = None, cast: Callable[[str], Any] | None = None) -> Any:
         raw_path = parse_key(key)
@@ -291,7 +295,7 @@ class Sigil:
                 return self._cast(val, cast)
         full_path = (self.app_name, *raw_path)
         with self._lock:
-            order = self._order_for(full_path)
+            order = self.policy.precedence("project_over_user")
             for scope in order:
                 val = self._value_from_scope(scope, full_path)
                 if val is not None:
@@ -397,7 +401,7 @@ class Sigil:
 
     def effective_scope_for(self, key: str | KeyPath) -> str:
         kp = parse_key(key)
-        order = self._order_for(kp)
+        order = self.policy.precedence("project_over_user")
         with self._lock:
             for scope in order:
                 if self._value_from_scope(scope, kp) is not None:
@@ -411,18 +415,12 @@ class Sigil:
         is saved in the given *scope*.  It is primarily intended for user
         interfaces that need to communicate the write target clearly.
         """
-        if scope == "user":
-            return self.user_path
-        if scope == "user-local":
-            return self.user_local_path
-        if scope == "project":
-            return self.project_path
-        if scope == "project-local":
-            return self.project_local_path
-
-        if scope == "default" and self.default_path is not None:
-            return self.default_path
-        raise UnknownScopeError(scope)
+        if scope not in self.policy.scopes:
+            raise UnknownScopeError(scope)
+        try:
+            return self._paths[scope]
+        except KeyError as exc:
+            raise UnknownScopeError(scope) from exc
 
     def set_pref(self, key: str | KeyPath, value: Any, *, scope: str | None = None) -> None:
         target_scope = scope or self._default_scope

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pysigil.core import KEY_JOIN_CHAR, Sigil
+from pysigil.policy import policy
 from pysigil.gui import _on_pref_changed, events
 
 
@@ -46,7 +47,7 @@ class DummyLabel:
 
 def test_pref_changed_event_uses_join_char(tmp_path):
     events._handlers.clear()
-    sigil = Sigil("demo", user_scope=tmp_path)
+    sigil = Sigil("demo", user_scope=tmp_path, policy=policy)
     received: list[str] = []
 
     def _cb(k, _v, _s):
