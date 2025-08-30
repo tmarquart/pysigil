@@ -41,6 +41,14 @@ def test_precedence(monkeypatch, tmp_path: Path) -> None:
     data = cfg.load("pkg")
     assert data == {"a": "4"}
 
+    # switch precedence to user-over-project
+    cfg.policy.set_store("user", {("pysigil", "policy"): "user_over_project"})
+    try:
+        data = cfg.load("pkg")
+        assert data == {"a": "2"}
+    finally:
+        cfg.policy._stores.clear()
+
 
 def test_invalid_ini_logs_warning(monkeypatch, tmp_path: Path, caplog) -> None:
     user_dir, _ = _patch_env(monkeypatch, tmp_path)

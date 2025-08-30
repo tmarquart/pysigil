@@ -94,6 +94,23 @@ Each link file is a tiny INI like:
 defaults=/abs/path/to/my_pkg/.sigil/settings.ini
 ```
 
+## Policy API
+
+Advanced authors may extend the configuration policy.  Scopes describe
+where settings live and whether they are writable or bound to a machine.
+
+```python
+from pysigil.policy import Scope, ScopePolicy, policy
+
+# add a scope committed to git
+scopes = [*policy._scopes, Scope("git", writable=True)]
+git_policy = ScopePolicy(scopes)
+
+# add a machine specific scope
+scopes = [*policy._scopes, Scope("ci", writable=True, machine=True)]
+ci_policy = ScopePolicy(scopes)
+```
+
 ## Packaging tip
 
 When you publish, include `.sigil/settings.ini` in your wheel:
