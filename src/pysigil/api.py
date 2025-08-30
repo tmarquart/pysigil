@@ -17,7 +17,7 @@ from .errors import (
     ValidationError,
 )
 from .orchestrator import Orchestrator
-from .config import target_path as cfg_target_path
+from .policy import policy
 from .settings_metadata import FieldSpec, FieldValue, ProviderSpec
 
 __all__ = [
@@ -345,4 +345,4 @@ class ProviderHandle:
     ) -> Path:
 
         """Return the file path used for *scope* writes."""
-        return cfg_target_path(self.provider_id, scope)
+        return policy.path(scope, self.provider_id)

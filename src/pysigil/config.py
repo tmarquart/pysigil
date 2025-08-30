@@ -10,7 +10,7 @@ from .paths import user_config_dir
 
 from .authoring import normalize_provider_id
 from .root import ProjectRootNotFoundError, find_project_root
-from .merge_policy import PRECEDENCE_PROJECT_WINS
+from .policy import policy
 from .io_config import IniIOError
 
 
@@ -75,7 +75,7 @@ def load(provider_id: str, *, auto: bool = True) -> dict[str, Any]:
     h = host_id()
     acc: dict[str, Any] = {}
     root = _project_dir(auto)
-    for scope in reversed(PRECEDENCE_PROJECT_WINS):
+    for scope in reversed(policy.precedence("project_over_user")):
         if scope == "user":
             files = [Path(user_config_dir("sigil")) / pid / "settings.ini"]
         elif scope == "user-local":

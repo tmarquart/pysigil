@@ -42,7 +42,7 @@ from .errors import (
     UnknownProviderError,
 )
 from .io_config import IniIOError, read_sections, write_sections
-from .merge_policy import PRECEDENCE_PROJECT_WINS
+from .policy import policy
 from .paths import user_config_dir
 from .resolver import resolve_defaults
 from .root import ProjectRootNotFoundError, find_project_root
@@ -609,7 +609,7 @@ class IniFileBackend:
 
     def _iter_read_paths(self, provider_id: str) -> Iterable[tuple[str, Path]]:
         dl = get_dev_link(provider_id)
-        for scope in reversed(PRECEDENCE_PROJECT_WINS):
+        for scope in reversed(policy.precedence("project_over_user")):
             if scope in {"env", "core"}:
                 continue
             if scope == "default":
