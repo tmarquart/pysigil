@@ -3,11 +3,13 @@ import pytest
 from pysigil import api
 from pysigil.orchestrator import Orchestrator
 from pysigil.settings_metadata import IniFileBackend, IniSpecBackend
+from tests.utils import DummyPolicy
 
 
 def make_api(tmp_path):
     spec = IniSpecBackend(user_dir=tmp_path / "meta")
-    cfg = IniFileBackend(user_dir=tmp_path / "user", project_dir=tmp_path / "proj")
+    policy = DummyPolicy(tmp_path / "user", tmp_path / "proj", host="host")
+    cfg = IniFileBackend(policy=policy)
     orch = Orchestrator(spec_backend=spec, config_backend=cfg)
     api._ORCH = orch  # type: ignore[attr-defined]
     return api
