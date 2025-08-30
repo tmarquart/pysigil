@@ -8,6 +8,7 @@ from pathlib import Path
 from threading import RLock
 from typing import Any
 
+from .authoring import normalize_provider_id
 from .discovery import pep503_name
 from .errors import (
     ReadOnlyScopeError,
@@ -62,7 +63,11 @@ class Sigil:
         # treated equivalently across all scopes.  This mirrors the
         # normalisation used for provider discovery (PEP 503) and ensures that
         # configuration files using either convention are correctly recognised.
-        self.app_name = pep503_name(app_name)
+        try:
+            normalize_provider_id(app_name)
+            self.app_name = pep503_name(app_name)
+        except ValueError as exc:  # pragma: no cover - defensive
+            raise ValueError(f"invalid application name: {app_name!r}") from exc
         self.settings_filename = settings_filename
 
         self._host = host_id()
