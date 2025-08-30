@@ -123,6 +123,7 @@ def test_field_row_hides_default_when_missing():
     root.destroy()
 
 
+
 class DefaultOnlyAdapter(DummyAdapter):
     def scopes(self):
         return ["default"]
@@ -150,3 +151,4 @@ def test_field_row_default_effective():
     assert pill.color == "#000000"
     assert not pill.clickable
     root.destroy()
+
