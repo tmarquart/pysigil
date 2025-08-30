@@ -295,7 +295,7 @@ class Sigil:
                 return self._cast(val, cast)
         full_path = (self.app_name, *raw_path)
         with self._lock:
-            order = self.policy.precedence("project_over_user")
+            order = self.policy.precedence(read=True)
             for scope in order:
                 val = self._value_from_scope(scope, full_path)
                 if val is not None:
@@ -401,7 +401,7 @@ class Sigil:
 
     def effective_scope_for(self, key: str | KeyPath) -> str:
         kp = parse_key(key)
-        order = self.policy.precedence("project_over_user")
+        order = self.policy.precedence(read=True)
         with self._lock:
             for scope in order:
                 if self._value_from_scope(scope, kp) is not None:

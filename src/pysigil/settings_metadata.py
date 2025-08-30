@@ -609,7 +609,7 @@ class IniFileBackend:
 
     def _iter_read_paths(self, provider_id: str) -> Iterable[tuple[str, Path]]:
         dl = get_dev_link(provider_id)
-        for scope in reversed(policy.precedence("project_over_user")):
+        for scope in reversed(policy.precedence(read=True)):
             if scope in {"env", "core"}:
                 continue
             if scope == "default":
