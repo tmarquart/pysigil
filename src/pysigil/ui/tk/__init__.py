@@ -12,8 +12,6 @@ be shared with other UI layers in the future.
 
 from __future__ import annotations
 
-from typing import Dict
-
 try:  # pragma: no cover - tkinter availability depends on the env
     import tkinter as tk
     from tkinter import ttk
@@ -49,8 +47,8 @@ class App:
         self.adapter = adapter or ProviderAdapter()
         self.events = events or EventBus()
         self.compact = True
-        self.rows: Dict[str, FieldRow] = {}
-        self._edit_buttons: Dict[str, ttk.Button] = {}
+        self.rows: dict[str, FieldRow] = {}
+        self._edit_buttons: dict[str, ttk.Button] = {}
 
         self.root.title("pysigil")
 
