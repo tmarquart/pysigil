@@ -95,3 +95,27 @@ def test_field_row_compact_mode():
     pills = _collect_pills(row)
     assert [p.text for p in pills] == ["Env", "User", "Project·Machine", "Default"]
     root.destroy()
+
+
+class NoDefaultAdapter(DummyAdapter):
+    def values_for_key(self, key):
+        return {"env": ValueInfo("e")}
+
+    def effective_for_key(self, key):
+        return "e", "env"
+
+    def default_for_key(self, key):
+        return None
+
+
+def test_field_row_hides_default_when_missing():
+    if tk is None:
+        pytest.skip("tkinter not available")
+    try:
+        root = tk.Tk()
+    except Exception:
+        pytest.skip("no display available")
+    row = FieldRow(root, NoDefaultAdapter(), "alpha", lambda k, s: None, compact=True)
+    pills = [p.text for p in _collect_pills(row)]
+    assert "Default" not in pills
+    root.destroy()
