@@ -36,7 +36,7 @@ pysigil = "pysigil.cli:main"
 
 [tool.ruff]
 line-length = 88
-exclude = ["tests/manual/**"]
+exclude = ["tests/manual/**","prototypes/**"]
 target-version = "py311"
 fix = true
 unsafe-fixes = false
