@@ -3,51 +3,82 @@ from tkinter import ttk, messagebox
 import tkinter.font as tkfont
 
 # --- Visual constants ---
-SCOPES = ["User", "Machine", "Project", "ProjectMachine"]
+FILE_SCOPES = ["User", "Machine", "Project", "ProjectMachine"]
+ALL_SCOPES = ["Env", *FILE_SCOPES]  # display order for non-compact
 SCOPE_LABEL = {
+    "Env": "Env",
     "User": "User",
     "Machine": "Machine",
     "Project": "Project",
     "ProjectMachine": "Project · Machine",
+    "Def": "Default",  # synthetic (file-only effective)
 }
-# short labels to avoid truncation on pills
 SCOPE_LABEL_SHORT = {
+    "Env": "Env",
     "User": "User",
     "Machine": "Machine",
     "Project": "Project",
     "ProjectMachine": "Proj·Mach",
+    "Def": "Def",
 }
 SCOPE_COLOR = {
-    "User": "#1e40af",          # blue
-    "Machine": "#065f46",       # green
-    "Project": "#6d28d9",       # purple
-    "ProjectMachine": "#c2410c" # orange
+    "Env": "#15803d",            # green-700
+    "User": "#1e40af",          # blue-900
+    "Machine": "#065f46",       # emerald-900
+    "Project": "#6d28d9",       # violet-700
+    "ProjectMachine": "#c2410c",# orange-700
+    "Def": "#334155",           # slate-700
 }
 GREY_BG = "#f3f4f6"
 GREY_TXT = "#6b7280"
 GREY_BORDER = "#e5e7eb"
 
-# --- Minimal in‑memory orchestrator stub (replace with sigil.api.Handle) ---
+# --- Minimal in‑memory orchestrator stub (swap with sigil.api.Handle) ---
 class ProviderHandleStub:
-    def __init__(self, data, policy="all"):
-        # data: { key: {scope: value} }
+    """Stores file-backed scopes separately from Env overlay.
+    data: { key: {scope: value} }  # scopes are from FILE_SCOPES
+    env:  { key: value }           # overlay (read-only in UI)
+    policy: 'all' | 'machine-only'
+    """
+    def __init__(self, data, env=None, policy="all"):
         self.data = data
-        self.policy = policy  # 'all' or 'machine-only'
+        self.env = env or {}
+        self.policy = policy
 
     def fields(self):
-        return list(self.data.keys())
+        # union of keys across file scopes and env
+        keys = set(self.data.keys()) | set(self.env.keys())
+        return sorted(keys)
 
-    def layers(self, key):
-        return {s: self.data.get(key, {}).get(s) for s in SCOPES}
+    # --- reads
+    def layers(self, key, include_env=True):
+        layers = {s: self.data.get(key, {}).get(s) for s in FILE_SCOPES}
+        if include_env:
+            layers["Env"] = self.env.get(key)
+        return layers
 
-    def effective(self, key):
-        lyr = self.layers(key)
-        for s in SCOPES:  # precedence: User > Machine > Project > ProjectMachine
-            if lyr.get(s) is not None:
-                return lyr[s], s
+    def effective(self, key, include_env=True):
+        if include_env and key in self.env:
+            return self.env[key], "Env"
+        # file precedence: User > Machine > Project > ProjectMachine
+        for s in FILE_SCOPES:
+            v = self.data.get(key, {}).get(s)
+            if v is not None:
+                return v, s
         return None, None
 
+    def base_effective(self, key):
+        """Effective ignoring Env (used for the synthetic Def pill)."""
+        for s in FILE_SCOPES:
+            v = self.data.get(key, {}).get(s)
+            if v is not None:
+                return v, s
+        return None, None
+
+    # --- writes
     def can_write(self, scope):
+        if scope == "Env":
+            return False
         if self.policy == "machine-only":
             return scope in ("Machine", "ProjectMachine")
         return True
@@ -63,7 +94,7 @@ class ProviderHandleStub:
         if key in self.data and scope in self.data[key]:
             del self.data[key][scope]
 
-# --- Hover tooltip (reliable, styled) ---
+# --- Hover tooltip ---
 class HoverTip:
     def __init__(self, widget, text_fn, *, delay=250):
         self.widget = widget
@@ -103,46 +134,16 @@ class HoverTip:
             self.tip = None
             tip.after(120, tip.destroy)
 
-    def _schedule(self, _):
-        self._after = self.widget.after(self.delay, self._show)
-
-    def _show(self):
-        if self.tip:
-            return
-        txt = self.text_fn() or ""
-        if not txt:
-            return
-        x = self.widget.winfo_rootx() + 4
-        y = self.widget.winfo_rooty() + self.widget.winfo_height() + 6
-        self.tip = tk.Toplevel(self.widget)
-        self.tip.wm_overrideredirect(True)
-        self.tip.wm_geometry(f"+{x}+{y}")
-        frm = tk.Frame(self.tip, bg="#111827", bd=0)
-        frm.pack()
-        lbl = tk.Label(frm, text=txt, bg="#111827", fg="#ffffff", padx=8, pady=6)
-        lbl.pack()
-        # small rounded effect
-        frm.update_idletasks()
-
-    def _hide(self, _):
-        if self._after:
-            self.widget.after_cancel(self._after)
-            self._after = None
-        if self.tip:
-            self.tip.destroy()
-            self.tip = None
-
-# --- Rounded pill button drawn on Canvas (so it looks like the Edit one) ---
+# --- Rounded pill button ---
 class PillButton(tk.Canvas):
     def __init__(self, master, *, text, color, state, value_provider, clickable=True, on_click=None, tooltip_title=None):
-        """state: 'effective' | 'present' | 'empty' | 'disabled'"""
-        # Don't read ttk parent's background (can raise). Let Canvas default to system.
+        """state: 'effective' | 'present' | 'empty' | 'disabled' | 'synthetic'"""
         super().__init__(master, height=28, highlightthickness=0, bd=0)
         self.text = text
         self.tooltip_title = tooltip_title or text
         self.color = color
         self.state = state
-        self.clickable = clickable and state != 'disabled'
+        self.clickable = clickable and state not in ('disabled',)
         self.on_click = on_click
         self.font = tkfont.Font(size=9, weight="bold")
         self.value_provider = value_provider
@@ -162,28 +163,10 @@ class PillButton(tk.Canvas):
         self.bind('<Key-space>',  lambda e: (self.on_click() if self.clickable and self.on_click else None))
         HoverTip(self, self._tip_text)
         self._draw(initial=True)
-        self.text = text
-        self.color = color
-        self.state = state
-        self.clickable = clickable and state != 'disabled'
-        self.on_click = on_click
-        self.font = tkfont.Font(size=9, weight="bold")
-        self.value_provider = value_provider
-        self.pad_x = 14
-        self.rad = 14
-        self.bind("<Configure>", lambda e: self._draw())
-        if self.clickable:
-            self.bind("<Button-1>", lambda e: on_click() if on_click else None)
-            self.configure(cursor="hand2")
-        else:
-            self.configure(cursor="arrow")
-        HoverTip(self, self._tip_text)
-        # initial width
-        self._draw(initial=True)
 
     def _measure_width(self):
         t = self.font.measure(self.text)
-        return max(48, t + self.pad_x*2)
+        return max(64, t + self.pad_x*2)
 
     def _draw(self, initial=False):
         w = self._measure_width()
@@ -196,6 +179,8 @@ class PillButton(tk.Canvas):
             fill = "#ffffff"; outline = self.color; fg = self.color; width = 2
         elif self.state == 'disabled':
             fill = GREY_BG; outline = GREY_BORDER; fg = GREY_TXT; width = 1
+        elif self.state == 'synthetic':  # 'Def'
+            fill = "#ffffff"; outline = self.color; fg = self.color; width = 1
         else:  # empty
             fill = "#ffffff"; outline = GREY_BORDER; fg = GREY_TXT; width = 1
         r = self.rad
@@ -210,7 +195,7 @@ class PillButton(tk.Canvas):
 
     def _tip_text(self):
         val = self.value_provider()
-        return f"{self.text}: {val if val is not None else '—'}"
+        return f"{self.tooltip_title}: {val if val is not None else '—'}"
 
 # --- Edit dialog (per key) ---
 class EditDialog(tk.Toplevel):
@@ -231,8 +216,8 @@ class EditDialog(tk.Toplevel):
 
         self.entries = {}
         r = 2
-        for scope in SCOPES:
-            val = handle.layers(key).get(scope)
+        for scope in FILE_SCOPES:  # Env is not editable here
+            val = handle.layers(key, include_env=False).get(scope)
             can = handle.can_write(scope)
             ttk.Label(body, text=SCOPE_LABEL[scope]).grid(row=r, column=0, sticky="w", padx=(0,8), pady=4)
             e = ttk.Entry(body)
@@ -251,10 +236,18 @@ class EditDialog(tk.Toplevel):
                 btn_save.state(["disabled"]) ; btn_rm.state(["disabled"])
             r += 1
 
-        body.columnconfigure(1, weight=1)
-        ttk.Separator(body).grid(row=r, column=0, columnspan=4, sticky="ew", pady=8)
-        r += 1
+        # Read-only Env display row (if present)
+        env_val = handle.layers(key).get("Env")
+        ttk.Separator(body).grid(row=r, column=0, columnspan=4, sticky="ew", pady=(8,4)) ; r += 1
+        ttk.Label(body, text="Env (read-only)").grid(row=r, column=0, sticky="w", padx=(0,8), pady=4)
+        e_env = ttk.Entry(body, state='readonly')
+        e_env.grid(row=r, column=1, sticky='ew', pady=4)
+        if env_val is not None:
+            e_env.configure(state='normal')
+            e_env.insert(0, str(env_val))
+            e_env.configure(state='readonly')
         ttk.Button(body, text="Close", command=self.destroy).grid(row=r, column=3, sticky="e")
+        body.columnconfigure(1, weight=1)
 
     def _save_scope(self, scope):
         val = self.entries[scope].get()
@@ -276,10 +269,11 @@ class EditDialog(tk.Toplevel):
 
 # --- FieldRow widget ---
 class FieldRow(ttk.Frame):
-    def __init__(self, master, handle: ProviderHandleStub, key: str):
+    def __init__(self, master, handle: ProviderHandleStub, key: str, *, compact=True):
         super().__init__(master)
         self.handle = handle
         self.key = key
+        self.compact = compact
 
         # Key
         self.lbl_key = ttk.Label(self, text=key, style="Key.TLabel")
@@ -302,90 +296,73 @@ class FieldRow(ttk.Frame):
         self.btn_edit.grid(row=0, column=3, padx=4)
 
         self.columnconfigure(1, weight=1)
-
-        # Listen for refresh requests
         self.bind("<<SigilRowChanged>>", lambda e: self.refresh(), add=True)
         self.refresh()
 
-    def _attach_pill_context(self, pill_widget, scope):
-        # Optional context menu: Edit / Remove
-        menu = tk.Menu(pill_widget, tearoff=0)
-        menu.add_command(label='Edit…', command=lambda: self._open_editor_focus(scope))
-        def popup(e):
-            # Enable/disable Remove dynamically
-            menu.delete(1, 'end')
-            if self.handle.layers(self.key).get(scope) is not None and self.handle.can_write(scope):
-                menu.add_command(label='Remove', command=lambda: self._remove_scope(scope))
-            pill_widget.focus_set()
-            menu.tk_popup(e.x_root, e.y_root)
-        pill_widget.bind('<Button-3>', popup)
-
-    def _remove_scope(self, scope):
-        try:
-            self.handle.clear(self.key, scope)
-        finally:
-            self.refresh()
-
     def refresh(self):
         # Effective value
-        val, src = self.handle.effective(self.key)
-        lock = "🔒 "  # 🔒
-        eff_txt = f"{lock}{val if val is not None else '—'}  ({SCOPE_LABEL[src] if src else '—'})"
+        val_eff, src_eff = self.handle.effective(self.key)
+        lock = "\U0001F512 "
+        eff_txt = f"{lock}{val_eff if val_eff is not None else '—'}  ({SCOPE_LABEL.get(src_eff, '—')})"
         self.var_eff.set(eff_txt)
 
-        # Rebuild pills (always render all 4, with state)
+        # Build pills (compact: only active + synthetic Def)
         for w in self.pills.winfo_children():
             w.destroy()
-        lyr = self.handle.layers(self.key)
-        for scope in SCOPES:
-            present = lyr.get(scope) is not None
-            effective = (src == scope)
-            can = self.handle.can_write(scope)
-            state = 'disabled' if not can else ('effective' if effective else ('present' if present else 'empty'))
+
+        layers_with_env = self.handle.layers(self.key, include_env=True)
+        layers_no_env = self.handle.layers(self.key, include_env=False)
+        base_val, base_src = self.handle.base_effective(self.key)
+
+        def add_pill(scope, state, tooltip_title=None):
+            color = SCOPE_COLOR[scope]
+            label = SCOPE_LABEL_SHORT[scope]
+            can = self.handle.can_write(scope) if scope in FILE_SCOPES else False
             pill = PillButton(
                 self.pills,
-                text=SCOPE_LABEL_SHORT[scope],
-                color=SCOPE_COLOR[scope],
+                text=label,
+                color=color,
                 state=state,
-                value_provider=lambda s=scope: self.handle.layers(self.key).get(s),
-                clickable=can,
-                on_click=lambda s=scope: self._open_editor_focus(s),
-                tooltip_title=SCOPE_LABEL[scope],
+                value_provider=lambda s=scope: (layers_with_env if s=="Env" else layers_no_env).get(s) if s!="Def" else base_val,
+                clickable=can or (scope=="Def" and base_src is not None),
+                on_click=(lambda s=scope: self._open_target_for_def(base_src) if s=="Def" else self._open_editor_focus(s)),
+                tooltip_title=tooltip_title or SCOPE_LABEL[scope],
             )
-            self._attach_pill_context(pill, scope)
             pill.pack(side="left", padx=(0,6))
 
+        # Decide which scopes to show
+        if self.compact:
+            # Show Env (if present), the file scope that wins, any other file scopes that have values, and the synthetic Def
+            if layers_with_env.get("Env") is not None:
+                add_pill("Env", 'effective' if src_eff=="Env" else 'present')
+            shown_file_scopes = [s for s,v in layers_no_env.items() if v is not None]
+            for s in FILE_SCOPES:
+                if s in shown_file_scopes:
+                    state = 'effective' if (src_eff==s) else 'present'
+                    add_pill(s, state)
+            if base_val is not None:
+                # Synthetic Def: means "file-only" effective
+                add_pill("Def", 'synthetic', tooltip_title="File layers (effective)")
+        else:
+            # Non-compact: show all scopes including Env and a Def pill at end
+            for s in ["Env", *FILE_SCOPES]:
+                present = layers_with_env.get(s) if s=="Env" else layers_no_env.get(s)
+                if s=="Env":
+                    st = 'effective' if src_eff=="Env" else ('present' if present is not None else 'empty')
+                else:
+                    st = 'effective' if src_eff==s else ('present' if present is not None else 'empty')
+                add_pill(s, st)
+            add_pill("Def", 'synthetic', tooltip_title="File layers (effective)")
 
-        # Effective value
-        val, src = self.handle.effective(self.key)
-        lock = "🔒 "  # 🔒
-        eff_txt = f"{lock}{val if val is not None else '—'}  ({SCOPE_LABEL[src] if src else '—'})"
-        self.var_eff.set(eff_txt)
-
-        # Rebuild pills (always render all 4, with state)
-        for w in self.pills.winfo_children():
-            w.destroy()
-        lyr = self.handle.layers(self.key)
-        for scope in SCOPES:
-            present = lyr.get(scope) is not None
-            effective = (src == scope)
-            can = self.handle.can_write(scope)
-            state = 'disabled' if not can else ('effective' if effective else ('present' if present else 'empty'))
-            pill = PillButton(
-                self.pills,
-                text=SCOPE_LABEL_SHORT[scope],
-                color=SCOPE_COLOR[scope],
-                state=state,
-                value_provider=lambda s=scope: self.handle.layers(self.key).get(s),
-                clickable=can,
-                on_click=lambda s=scope: self._open_editor_focus(s),
-                tooltip_title=SCOPE_LABEL[scope],
-            )
-            self._attach_pill_context(pill, scope)
-            pill.pack(side="left", padx=(0,6))
-# (side="left", padx=(0,6))
+    def _open_target_for_def(self, base_src):
+        if base_src is None:
+            return
+        # Open editor focused on the underlying winning file scope
+        self._open_editor_focus(base_src)
 
     def _open_editor_focus(self, scope):
+        if scope == "Env":
+            return  # read-only
         dlg = EditDialog(self.winfo_toplevel(), self.handle, self.key)
         e = dlg.entries.get(scope)
         if e:
@@ -400,18 +377,23 @@ class App(ttk.Frame):
         super().__init__(master, padding=12)
         self.pack(fill="both", expand=True)
 
-        # Provider stubs — in real app you would swap in sigil.api.handle(pid)
+        # Provider stub with ENV overlay
         self.handle = ProviderHandleStub(
             data={
                 "Alpha": {"User": "hello"},
                 "Beta": {"User": "3", "Project": "42"},
                 "Gamma": {"Machine": "true", "ProjectMachine": "false"},
                 "Endpoint": {"Project": "https://api.example", "ProjectMachine": "https://api.local"},
+                "Timeout": {"User": "5"},
+            },
+            env={
+                "Beta": "99",                # ENV overrides Beta
+                "Endpoint": "https://env.example",  # ENV overrides Endpoint
             },
             policy="machine-only"  # try "all" to enable all writes
         )
 
-        # Header (very light — mainly to show intent)
+        # Header
         header = ttk.Frame(self)
         header.pack(fill="x", pady=(0,8))
         ttk.Label(header, text="Provider:").pack(side="left")
@@ -419,19 +401,29 @@ class App(ttk.Frame):
         ttk.Label(header, text="Will write to:").pack(side="left", padx=(16,4))
         ttk.Label(header, text="<resolved path>", foreground=GREY_TXT).pack(side="left")
 
+        # Compact toggle
+        self.compact_var = tk.BooleanVar(value=True)
+        ttk.Checkbutton(header, text="Compact (active scopes)", variable=self.compact_var, command=self._rebuild_rows).pack(side="right")
+
         # Table header
         head = ttk.Frame(self)
         head.pack(fill="x")
-        for i, title in enumerate(["Key", "Value (effective)", "Scopes (hover)", ""]):
+        for i, title in enumerate(["Key", "Value (effective)", "Scopes", ""]):
             ttk.Label(head, text=title, font=(None, 10, "bold")).grid(row=0, column=i, sticky="w", padx=(0,8))
         head.columnconfigure(1, weight=1)
 
         # Rows
+        self.rows_container = ttk.Frame(self)
+        self.rows_container.pack(fill="both", expand=True)
         self.rows = []
-        body = ttk.Frame(self)
-        body.pack(fill="both", expand=True)
+        self._rebuild_rows()
+
+    def _rebuild_rows(self):
+        for w in self.rows_container.winfo_children():
+            w.destroy()
+        self.rows = []
         for k in self.handle.fields():
-            row = FieldRow(body, self.handle, k)
+            row = FieldRow(self.rows_container, self.handle, k, compact=self.compact_var.get())
             row.pack(fill="x", pady=6)
             self.rows.append(row)
 
@@ -445,7 +437,7 @@ style.configure("Key.TLabel", font=(None, 10, "bold"))
 
 if __name__ == "__main__":
     root = tk.Tk()
-    root.title("Sigil — Tk Prototype (Scope Pills)")
-    root.geometry("980x500")
+    root.title("Sigil — Tk Prototype (Dynamic + Env)")
+    root.geometry("1040x560")
     App(root)
     root.mainloop()
