@@ -72,56 +72,26 @@ def merge_ini_section(acc: dict[str, Any], ini_path: Path, *, section: str) -> d
 
 def load(provider_id: str, *, auto: bool = True) -> dict[str, Any]:
     pid = normalize_provider_id(provider_id)
-    h = host_id()
     acc: dict[str, Any] = {}
-    root = _project_dir(auto)
-    for scope in reversed(policy.precedence("project_over_user")):
-        if scope == "user":
-            files = [Path(user_config_dir("sigil")) / pid / "settings.ini"]
-        elif scope == "user-local":
-            files = [
-                Path(user_config_dir("sigil"))
-                / pid
-                / f"settings-local-{h}.ini"
-            ]
-        elif scope == "project":
-            if root is None:
-                continue
-            base = root / ".sigil"
-            files = [base / "settings.ini"]
-        elif scope == "project-local":
-            if root is None:
-                continue
-            base = root / ".sigil"
-            files = [base / f"settings-local-{h}.ini"]
-        else:
+    for scope in reversed(policy.precedence(read=True)):
+        if scope not in {"user", "user-local", "project", "project-local"}:
             continue
-        for f in files:
-            if not f.exists():
-                continue
-            try:
-                acc = merge_ini_section(acc, f, section=pid)
-            except IniIOError as exc:
-                logger.warning("Failed to read config %s: %s", f, exc)
+        try:
+            path = policy.path(scope, pid, auto=auto)
+        except ProjectRootNotFoundError:
+            continue
+        if not path.exists():
+            continue
+        try:
+            acc = merge_ini_section(acc, path, section=pid)
+        except IniIOError as exc:
+            logger.warning("Failed to read config %s: %s", path, exc)
     return acc
 
 
 # ---------------------------------------------------------------------------
 # Writing helpers used by CLI and GUI
 # ---------------------------------------------------------------------------
-
-def _scope_dir(scope: str, provider_id: str, *, auto: bool) -> Path:
-    pid = normalize_provider_id(provider_id)
-    if scope in {"user", "user-local"}:
-        base = Path(user_config_dir("sigil")) / pid
-    else:
-        root = _project_dir(auto)
-        if root is None:
-            raise ProjectRootNotFoundError("No project root found")
-        base = root / ".sigil"
-    base.mkdir(parents=True, exist_ok=True)
-    return base
-
 
 def _seed_section(path: Path, section: str, comment: str) -> None:
     if path.exists():
@@ -142,37 +112,24 @@ def _seed_section(path: Path, section: str, comment: str) -> None:
 
 def init_config(provider_id: str, scope: str, *, auto: bool = False) -> Path:
     pid = normalize_provider_id(provider_id)
-    h = host_id()
-    base = _scope_dir(scope, pid, auto=auto)
-    if scope in {"user-local", "project-local"} or pid == "user-custom":
-        path = base / f"settings-local-{h}.ini"
-        comment = "# per-machine settings\n"
-    else:
-        path = base / "settings.ini"
-        comment = "# add keys here\n"
+    path = policy.path(scope, pid, auto=auto)
+    comment = (
+        "# per-machine settings\n"
+        if scope in policy.machine_scopes() or pid == "user-custom"
+        else "# add keys here\n"
+    )
     _seed_section(path, pid, comment)
     return path
 
 
 def target_path(provider_id: str, scope: str, *, auto: bool = False) -> Path:
-    """Return the configuration file path for *provider_id* and *scope*.
+    """Return the configuration file path for *provider_id* and *scope*."""
 
-    Unlike :func:`init_config` this does not seed the file with any content;
-    it merely returns the path where settings would be written.  Directories
-    are created as needed so the returned path is always usable for writes.
-    """
-    pid = normalize_provider_id(provider_id)
-    h = host_id()
-    base = _scope_dir(scope, pid, auto=auto)
-
-    if scope in {"user-local", "project-local"} or pid == "user-custom":
-
-        return base / f"settings-local-{h}.ini"
-    return base / "settings.ini"
+    return policy.path(scope, provider_id, auto=auto)
 
 
 def open_scope(provider_id: str, scope: str, *, auto: bool = False) -> Path:
-    return _scope_dir(scope, provider_id, auto=auto)
+    return policy.path(scope, provider_id, auto=auto).parent
 
 
 def host_file(provider_id: str, scope: str, *, auto: bool = False) -> Path:
@@ -187,13 +144,15 @@ def ensure_gitignore(*, auto: bool = False) -> Path:
     if root is None:
         raise ProjectRootNotFoundError("No project root found")
     gi = root / ".gitignore"
-    rule = ".sigil/settings-local*"
     lines: list[str] = []
     if gi.exists():
         lines = gi.read_text().splitlines()
-    if rule not in lines:
-        lines.append(rule)
-        gi.write_text("\n".join(lines) + "\n")
+    if "project-local" in policy.machine_scopes():
+        path = policy.path("project-local", "user-custom", auto=auto)
+        rule = str(path.relative_to(root).parent / "settings-local*")
+        if rule not in lines:
+            lines.append(rule)
+            gi.write_text("\n".join(lines) + "\n")
     return gi
 
 
