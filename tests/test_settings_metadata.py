@@ -9,6 +9,7 @@ from pysigil.settings_metadata import (
     ProviderSpec,
 )
 from pysigil.io_config import read_sections, write_sections
+from tests.utils import DummyPolicy
 
 
 def test_fieldspec_validates_unknown_type():
@@ -64,7 +65,8 @@ def test_provider_manager_roundtrip():
 def test_ini_file_backend(tmp_path):
     user_dir = tmp_path / "user"
     project_dir = tmp_path / "proj"
-    backend = IniFileBackend(user_dir=user_dir, project_dir=project_dir, host="host")
+    policy = DummyPolicy(user_dir, project_dir, host="host")
+    backend = IniFileBackend(policy=policy)
 
     write_sections(user_dir / "demo" / "settings.ini", {"demo": {"alpha": "u"}})
     write_sections(project_dir / "settings.ini", {"demo": {"alpha": "p", "beta": "p"}})
@@ -73,7 +75,6 @@ def test_ini_file_backend(tmp_path):
     )
 
     raw, src = backend.read_merged("demo")
-    print(raw)
     assert raw == {"alpha": "p", "beta": "pl"}
     assert src == {"alpha": "project", "beta": "project-local"}
 

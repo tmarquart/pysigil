@@ -5,18 +5,16 @@ from pathlib import Path
 import pytest
 
 from pysigil.orchestrator import Orchestrator, PolicyError, ValidationError
-from pysigil.settings_metadata import IniSpecBackend, read_sections, write_sections
+from pysigil.settings_metadata import IniFileBackend, IniSpecBackend, read_sections, write_sections
 import pysigil.settings_metadata as sm
+from tests.utils import DummyPolicy
 
 
 def _make_orch(tmp_path: Path) -> Orchestrator:
     spec_backend = IniSpecBackend(user_dir=tmp_path / "user")
-    return Orchestrator(
-        spec_backend=spec_backend,
-        user_dir=tmp_path / "user",
-        project_dir=tmp_path / "proj",
-        host="host",
-    )
+    policy = DummyPolicy(tmp_path / "user", tmp_path / "proj", host="host")
+    cfg_backend = IniFileBackend(policy=policy)
+    return Orchestrator(spec_backend=spec_backend, config_backend=cfg_backend)
 
 
 def test_register_add_set_get(tmp_path: Path) -> None:
@@ -149,7 +147,9 @@ def test_default_scope_editing_with_dev_link(tmp_path: Path, monkeypatch) -> Non
 
 
 def test_metadata_requires_dev_link(tmp_path: Path) -> None:
-    orch = Orchestrator(user_dir=tmp_path / "user")
+    policy = DummyPolicy(tmp_path / "user", tmp_path / "proj", host="host")
+    cfg_backend = IniFileBackend(policy=policy)
+    orch = Orchestrator(config_backend=cfg_backend)
     with pytest.raises(PolicyError):
         orch.register_provider("pkg")
 
@@ -164,7 +164,9 @@ def test_metadata_stored_in_defaults(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(auth, "user_config_dir", lambda app: str(user_dir))
     auth.link("pkg", dev_defaults, validate=False)
 
-    orch = Orchestrator(user_dir=user_dir)
+    policy = DummyPolicy(user_dir, tmp_path / "proj", host="host")
+    cfg_backend = IniFileBackend(policy=policy)
+    orch = Orchestrator(config_backend=cfg_backend)
     orch.register_provider("pkg")
     orch.add_field("pkg", key="alpha", type="string")
     meta_path = dev_defaults.parent / "metadata.ini"
