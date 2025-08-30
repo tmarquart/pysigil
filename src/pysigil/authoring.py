@@ -29,11 +29,26 @@ class DevLink:
 
 
 _PEP503_RE = re.compile(r"[-_.]+")
+_VALID_RE = re.compile(r"^[a-z0-9-]+$")
 
 
 def normalize_provider_id(name: str) -> str:
-    """PEP 503 normalize ``name``."""
-    return _PEP503_RE.sub("-", name).lower()
+    """PEP 503 normalize ``name``.
+
+    ``name`` is normalised to lowercase with hyphens and must not contain path
+    separators or ``..`` segments.
+    """
+
+    stripped = name.strip().lower()
+    norm = _PEP503_RE.sub("-", stripped)
+    if (
+        "/" in stripped
+        or "\\" in stripped
+        or ".." in stripped
+        or not _VALID_RE.fullmatch(norm)
+    ):
+        raise ValueError(f"invalid provider id: {name!r}")
+    return norm
 
 
 def _dev_dir() -> Path:

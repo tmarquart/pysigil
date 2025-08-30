@@ -7,11 +7,26 @@ from importlib.metadata import Distribution, entry_points
 GROUPS = ("pysigil_providers", "pysigil.providers")
 
 _RE = re.compile(r"[-_.]+")
+_VALID_RE = re.compile(r"^[a-z0-9-]+$")
 
 
 def pep503_name(dist_name: str) -> str:
-    """Return the PEP 503 normalised project name."""
-    return _RE.sub("-", dist_name.strip().lower())
+    """Return the PEP 503 normalised project name.
+
+    ``dist_name`` must normalise to only contain lowercase letters, digits and
+    hyphens.  Names containing path separators or ``..`` are rejected.
+    """
+
+    stripped = dist_name.strip()
+    name = _RE.sub("-", stripped.lower())
+    if (
+        "/" in stripped
+        or "\\" in stripped
+        or ".." in stripped
+        or not _VALID_RE.fullmatch(name)
+    ):
+        raise ValueError(f"invalid project name: {dist_name!r}")
+    return name
 
 
 def _iter_entry_points():
