@@ -16,14 +16,8 @@ from .errors import (
     UnknownScopeError,
 )
 from .gui import events
-from .merge_policy import (
-    CORE_DEFAULTS,
-    KeyPath,
-    PRECEDENCE_PROJECT_WINS,
-    PRECEDENCE_USER_WINS,
-    parse_key,
-    read_env,
-)
+from .merge_policy import KeyPath, parse_key, read_env
+from .policy import CORE_DEFAULTS, policy
 from .root import ProjectRootNotFoundError
 from .resolver import (
     project_settings_file,
@@ -226,7 +220,7 @@ class Sigil:
         return path[1:] if self._is_ours(path) else path
 
     def _order_for(self, keypath: KeyPath) -> tuple[str, ...]:
-        return PRECEDENCE_PROJECT_WINS
+        return policy.precedence("project_over_user")
 
     def _value_from_scope(self, scope: str, key: KeyPath) -> str | None:
         if scope == "env":

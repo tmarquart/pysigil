@@ -28,26 +28,3 @@ def read_env(app_name: str) -> MutableMapping[KeyPath, str]:
             result[parse_key(raw)] = value
     return result
 
-
-CORE_DEFAULTS = {"pysigil": {"policy": "project_over_user"}}
-
-# Precedence orders from highest to lowest scope
-PRECEDENCE_USER_WINS = (
-    "env",
-    "user-local",
-    "user",
-    "project-local",
-    "project",
-    "default",
-    "core",
-)
-PRECEDENCE_PROJECT_WINS = (
-    "env",
-    "project-local",
-    "project",
-    "user-local",
-    "user",
-    "default",
-    "core",
-)
-
