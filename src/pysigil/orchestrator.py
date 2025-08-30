@@ -49,17 +49,11 @@ class Orchestrator:
         self,
         spec_backend: SpecBackend | None = None,
         config_backend: SigilBackend | None = None,
-        *,
-        user_dir: Path | None = None,
-        project_dir: Path | None = None,
-        host: str | None = None,
     ) -> None:
         if spec_backend is None:
             spec_backend = IniSpecBackend()
         if config_backend is None:
-            config_backend = IniFileBackend(
-                user_dir=user_dir, project_dir=project_dir, host=host
-            )
+            config_backend = IniFileBackend()
         self.spec_backend = spec_backend
         self.config_backend = config_backend
 

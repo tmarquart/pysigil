@@ -42,10 +42,9 @@ from .errors import (
     UnknownProviderError,
 )
 from .io_config import IniIOError, read_sections, write_sections
-from .policy import policy
-from .paths import user_config_dir
+from .policy import ScopePolicy, policy as default_policy
 from .resolver import resolve_defaults
-from .root import ProjectRootNotFoundError, find_project_root
+from .root import ProjectRootNotFoundError
 
 ####################
 ##### ADAPTERS #####
@@ -552,52 +551,18 @@ class IniFileBackend:
         <project>/.sigil/settings.ini
         <project>/.sigil/settings-local-<host>.ini
 
-    Parameters
-    ----------
-    user_dir:
-        Base directory for user-level configuration.  Defaults to the current
-        user's configuration directory for ``sigil``.
-    project_dir:
-        Base directory for project-level configuration.  If not supplied an
-        attempt is made to locate the current project root.  When no project
-        root can be found, project configuration is ignored.
-    host:
-        Hostname used for local overrides.  When omitted the normalized current
-        host name is used.
+    Unlike the original implementation the backend no longer performs its own
+    path calculations.  Instead a :class:`~pysigil.policy.ScopePolicy` instance
+    is injected which provides file locations and precedence information.
     """
 
-    def __init__(
-        self,
-        *,
-        user_dir: Path | None = None,
-        project_dir: Path | None = None,
-        host: str | None = None,
-    ) -> None:
-        self.user_dir = Path(user_dir) if user_dir else Path(user_config_dir("sigil"))
-        if project_dir is None:
-            try:
-                root = find_project_root()
-            except ProjectRootNotFoundError:
-                root = None
-            self.project_dir = root / ".sigil" if root is not None else None
-        else:
-            self.project_dir = Path(project_dir)
-        self.host = host or host_id()
+    def __init__(self, *, policy: ScopePolicy | None = None) -> None:
+        self.policy = policy or default_policy
 
     # ------------------------------------------------------------------
     # helpers
     # ------------------------------------------------------------------
     def _scope_path(self, provider_id: str, scope: str, target_kind: str) -> Path:
-        if scope == "user":
-            base = self.user_dir / provider_id
-            base.mkdir(parents=True, exist_ok=True)
-            return base / target_kind
-        if scope == "project":
-            if self.project_dir is None:
-                raise ProjectRootNotFoundError("No project directory configured")
-            base = self.project_dir
-            base.mkdir(parents=True, exist_ok=True)
-            return base / target_kind
         if scope == "default":
             dl = get_dev_link(provider_id)
             if dl is None:
@@ -605,24 +570,21 @@ class IniFileBackend:
             path = dl.defaults_path
             path.parent.mkdir(parents=True, exist_ok=True)
             return path
-        raise ValueError(f"unknown scope {scope!r}")  # pragma: no cover - defensive
+        return self.policy.path(scope, provider_id)
 
     def _iter_read_paths(self, provider_id: str) -> Iterable[tuple[str, Path]]:
         dl = get_dev_link(provider_id)
-        for scope in reversed(policy.precedence(read=True)):
+        for scope in reversed(self.policy.precedence(read=True)):
             if scope in {"env", "core"}:
                 continue
             if scope == "default":
                 if dl is not None and dl.defaults_path.is_file():
                     yield "default", dl.defaults_path
-            elif scope == "user":
-                base = self.user_dir / provider_id
-                yield "user", base / "settings.ini"
-                yield "user-local", base / f"settings-local-{self.host}.ini"
-            elif scope == "project":
-                if self.project_dir is not None:
-                    yield "project", self.project_dir / "settings.ini"
-                    yield "project-local", self.project_dir / f"settings-local-{self.host}.ini"
+                continue
+            try:
+                yield scope, self.policy.path(scope, provider_id)
+            except ProjectRootNotFoundError:
+                continue
 
     def _read_sections(self, path: Path) -> dict[str, dict[str, str]]:
         try:
@@ -698,9 +660,7 @@ class IniFileBackend:
         write_sections(path, data)
 
     def write_target_for(self, provider_id: str) -> str:
-        if provider_id == "user-custom":
-            return f"settings-local-{self.host}.ini"
-        return "settings.ini"
+        return self.policy.path("user", provider_id).name
 
     @contextmanager
     def transaction(
