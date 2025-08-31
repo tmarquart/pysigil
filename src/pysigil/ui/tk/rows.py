@@ -80,15 +80,14 @@ class FieldRow(ttk.Frame):
         if tk is None:  # pragma: no cover - defensive
             return
 
-        # locked effective value -------------------------------------------------
+        # effective value -------------------------------------------------------
         eff_val, eff_src = self.adapter.effective_for_key(self.key)
         val_txt = "—" if eff_val is None else str(eff_val)
         if eff_src is None:
             src_txt = "—"
         else:
             src_txt = self.adapter.scope_label(eff_src)
-        lock = "\U0001F512 "
-        self.var_eff.set(f"{lock}{val_txt}  ({src_txt})")
+        self.var_eff.set(f"{val_txt}  ({src_txt})")
 
         # rebuild pills ----------------------------------------------------------
         for child in list(self.pills.winfo_children()):

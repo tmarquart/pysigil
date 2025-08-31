@@ -87,7 +87,7 @@ def test_field_row_full_mode(monkeypatch):
             break
     assert clicks == [("alpha", "user")]
     lock_txt = row.var_eff.get()
-    assert lock_txt.startswith("\U0001F512 u")
+    assert lock_txt.startswith("u")
     assert "(User)" in lock_txt
     root.destroy()
 
