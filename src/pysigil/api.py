@@ -4,6 +4,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
+import os
 
 from .errors import (
     ConflictError,
@@ -56,7 +57,7 @@ class FieldInfo:
 @dataclass(frozen=True)
 class ValueInfo:
     value: Any | None
-    source: Literal["user", "user-local", "project", "project-local"] | None
+    source: Literal["user", "user-local", "project", "project-local", "env"] | None
     raw: str | None
 
 
@@ -145,6 +146,14 @@ class ProviderHandle:
     def _manager(self):  # pragma: no cover - simple wrapper
         return _ORCH._manager(self.provider_id)  # type: ignore[attr-defined]
 
+    def _env_key(self, key: str) -> str:
+        base = self.provider_id.upper().replace("-", "_")
+        return f"SIGIL_{base}_{key.replace('.', '_').replace('-', '_').upper()}"
+
+    @staticmethod
+    def _normalize_scope(scope: str) -> str:
+        return "env" if scope == "environment" else scope
+
     # -------- Metadata (field catalog) --------
     def info(self) -> ProviderInfo:
         return get_provider(self.provider_id)
@@ -160,7 +169,7 @@ class ProviderHandle:
         label: str | None = None,
         description: str | None = None,
         init_scope: Literal[
-            "user", "user-local", "project", "project-local"
+            "user", "user-local", "project", "project-local", "environment"
         ] | None = "user",
     ) -> FieldInfo:
         try:
@@ -175,7 +184,7 @@ class ProviderHandle:
             raise DuplicateFieldError(key) from exc
         except PolicyError as exc:
             raise PolicyError(str(exc)) from exc
-        if init_scope is not None:
+        if init_scope is not None and init_scope != "environment":
             try:
                 self._manager().init(init_scope)
             except PolicyError as exc:  # pragma: no cover - defensive
@@ -269,8 +278,14 @@ class ProviderHandle:
         key: str,
         value: object,
         *,
-        scope: Literal["user", "user-local", "project", "project-local"] = "user",
+        scope: Literal[
+            "user", "user-local", "project", "project-local", "environment"
+        ] = "user",
     ) -> None:
+        scope = self._normalize_scope(scope)
+        if scope == "env":
+            os.environ[self._env_key(key)] = str(value)
+            return
         try:
             _ORCH.set_value(self.provider_id, key, value, scope=scope)
         except ValidationError as exc:
@@ -284,8 +299,14 @@ class ProviderHandle:
         self,
         key: str,
         *,
-        scope: Literal["user", "user-local", "project", "project-local"] = "user",
+        scope: Literal[
+            "user", "user-local", "project", "project-local", "environment"
+        ] = "user",
     ) -> None:
+        scope = self._normalize_scope(scope)
+        if scope == "env":
+            os.environ.pop(self._env_key(key), None)
+            return
         try:
             _ORCH.clear_value(self.provider_id, key, scope=scope)
         except PolicyError as exc:
@@ -297,7 +318,9 @@ class ProviderHandle:
         self,
         updates: Mapping[str, object],
         *,
-        scope: Literal["user", "user-local", "project", "project-local"] = "user",
+        scope: Literal[
+            "user", "user-local", "project", "project-local", "environment"
+        ] = "user",
         atomic: bool = True,
     ) -> None:
         """Set multiple configuration values.
@@ -305,6 +328,11 @@ class ProviderHandle:
         With ``atomic=True`` (the default) updates are staged and committed
         only if all validations and writes succeed.
         """
+        scope = self._normalize_scope(scope)
+        if scope == "env":
+            for k, v in updates.items():
+                os.environ[self._env_key(k)] = str(v)
+            return
         try:
             _ORCH.set_many(
                 self.provider_id, dict(updates), scope=scope, atomic=atomic
@@ -320,8 +348,15 @@ class ProviderHandle:
 
     # -------- Utilities / ergonomics --------
     def init(
-        self, *, scope: Literal["user", "user-local", "project", "project-local"] = "user"
+        self,
+        *,
+        scope: Literal[
+            "user", "user-local", "project", "project-local", "environment"
+        ] = "user",
     ) -> None:
+        scope = self._normalize_scope(scope)
+        if scope == "env":
+            return
         try:
             self._manager().init(scope)
         except PolicyError as exc:
@@ -341,8 +376,14 @@ class ProviderHandle:
 
 
     def target_path(
-        self, scope: Literal["user", "user-local", "project", "project-local"] = "user"
+        self,
+        scope: Literal[
+            "user", "user-local", "project", "project-local", "environment"
+        ] = "user",
     ) -> Path:
 
         """Return the file path used for *scope* writes."""
+        scope = self._normalize_scope(scope)
+        if scope == "env":
+            raise PolicyError("Environment scope has no path")
         return policy.path(scope, self.provider_id)
