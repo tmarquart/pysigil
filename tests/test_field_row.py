@@ -34,7 +34,7 @@ class DummyAdapter:
         return (short_labels if short else long_labels)[scope_id]
 
     def can_write(self, scope_id):
-        return scope_id not in {"env", "project"}
+        return scope_id not in {"env", "project", "default"}
 
     def values_for_key(self, key):
         return {
@@ -73,6 +73,8 @@ def test_field_row_full_mode(monkeypatch):
         "Project·Machine": "present",
         "Default": "present",
     }
+    default_pill = next(p for p in _collect_pills(row) if p.text == "Default")
+    assert not default_pill.clickable
     for p in _collect_pills(row):
         if p.text == "User":
             p.on_click()
@@ -119,3 +121,34 @@ def test_field_row_hides_default_when_missing():
     pills = [p.text for p in _collect_pills(row)]
     assert "Default" not in pills
     root.destroy()
+
+
+
+class DefaultOnlyAdapter(DummyAdapter):
+    def scopes(self):
+        return ["default"]
+
+    def values_for_key(self, key):
+        return {"default": ValueInfo("d")}
+
+    def effective_for_key(self, key):
+        return "d", "default"
+
+
+def test_field_row_default_effective():
+    if tk is None:
+        pytest.skip("tkinter not available")
+    try:
+        root = tk.Tk()
+    except Exception:
+        pytest.skip("no display available")
+    row = FieldRow(root, DefaultOnlyAdapter(), "alpha", lambda k, s: None, compact=True)
+    pills = _collect_pills(row)
+    assert len(pills) == 1
+    pill = pills[0]
+    assert pill.text == "Default"
+    assert pill.state == "effective"
+    assert pill.color == "#000000"
+    assert not pill.clickable
+    root.destroy()
+

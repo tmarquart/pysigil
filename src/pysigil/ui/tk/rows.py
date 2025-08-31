@@ -103,7 +103,8 @@ class FieldRow(ttk.Frame):
             if self.compact and scope != "default" and not has_value:
                 continue
 
-            if not self.adapter.can_write(scope):
+            can_write = self.adapter.can_write(scope)
+            if not can_write and scope != "default":
                 state = "disabled"
             elif eff_src == scope:
                 state = "effective"
@@ -133,7 +134,7 @@ class FieldRow(ttk.Frame):
                 color=color,
                 state=state,  # type: ignore[arg-type]
                 value_provider=value_provider,
-                clickable=state != "disabled",
+                clickable=can_write,
                 on_click=cb,
                 tooltip_title=long_label,
             )
