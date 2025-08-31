@@ -51,6 +51,7 @@ class App:
         self.rows: dict[str, FieldRow] = {}
         self._edit_buttons: dict[str, ttk.Button] = {}
         self._initial_provider = initial_provider
+        self._align_pending = False
 
         self.root.title("pysigil")
 
@@ -84,9 +85,9 @@ class App:
         ttk.Label(header, text="Project:").pack(side="left", padx=(12, 0))
         self._project_var = tk.StringVar(value="")
         self._project_entry = ttk.Entry(
-            header, textvariable=self._project_var, state="readonly", width=40
+            header, textvariable=self._project_var, state="readonly"
         )
-        self._project_entry.pack(side="left", padx=(4, 0))
+        self._project_entry.pack(side="left", padx=(4, 0), fill="x", expand=True)
 
     def _build_table(self) -> None:
         self._table = ttk.Frame(self.root)
@@ -139,6 +140,7 @@ class App:
             btn.grid(row=idx, column=3, sticky="w", padx=4)
             self.rows[key] = row
             self._edit_buttons[key] = btn
+        self._schedule_align()
 
     def _open_edit_dialog(self, key: str, scope: str | None = None) -> None:
         dlg = EditDialog(
@@ -186,6 +188,7 @@ class App:
         row = self.rows.get(key)
         if row is not None:
             row.refresh()
+            self._schedule_align()
 
     def on_edit_remove(self, key: str, scope: str) -> None:
         try:
@@ -196,11 +199,31 @@ class App:
         row = self.rows.get(key)
         if row is not None:
             row.refresh()
+            self._schedule_align()
 
     def on_toggle_compact(self) -> None:
         self.compact = bool(self._compact_var.get())
         for row in self.rows.values():
             row.set_compact(self.compact)
+        self._schedule_align()
+
+    # -- alignment -----------------------------------------------------
+    def _schedule_align(self) -> None:
+        if getattr(self, "_align_pending", False):
+            return
+        self._align_pending = True
+        self.root.after_idle(self._align_rows)
+
+    def _align_rows(self) -> None:
+        self._align_pending = False
+        if not self.rows:
+            return
+        self.root.update_idletasks()
+        key_w = max(r.lbl_key.winfo_reqwidth() for r in self.rows.values())
+        pills_w = max(r.pills.winfo_reqwidth() for r in self.rows.values())
+        for r in self.rows.values():
+            r.grid_columnconfigure(0, minsize=key_w)
+            r.grid_columnconfigure(2, minsize=pills_w)
 
 
 def launch(initial_provider: str | None = None) -> None:
