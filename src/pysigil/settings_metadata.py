@@ -604,6 +604,12 @@ class IniFileBackend:
             for k, v in data.items():
                 raw[k] = v
                 source[k] = scope
+        prefix = f"SIGIL_{provider_id.upper().replace('-', '_')}_"
+        for key, value in os.environ.items():
+            if key.startswith(prefix):
+                raw_key = key[len(prefix):].lower()
+                raw[raw_key] = value
+                source[raw_key] = "env"
         return raw, source
 
     def read_layers(self, provider_id: str) -> Mapping[str, Mapping[str, str]]:
@@ -611,6 +617,14 @@ class IniFileBackend:
         for scope, path in self._iter_read_paths(provider_id):
             data = self._read_sections(path).get(provider_id, {})
             layers[scope] = data
+        env_map: dict[str, str] = {}
+        prefix = f"SIGIL_{provider_id.upper().replace('-', '_')}_"
+        for key, value in os.environ.items():
+            if key.startswith(prefix):
+                raw_key = key[len(prefix):].lower()
+                env_map[raw_key] = value
+        if env_map:
+            layers["env"] = env_map
         return layers
 
     def write_key(

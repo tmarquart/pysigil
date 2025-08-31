@@ -1,3 +1,4 @@
+import os
 import pytest
 
 from pysigil import api
@@ -35,3 +36,20 @@ def test_unknown_provider(tmp_path):
     a = make_api(tmp_path)
     with pytest.raises(a.UnknownProviderError):
         a.handle("missing")
+
+
+def test_environment_scope(tmp_path, monkeypatch):
+    a = make_api(tmp_path)
+    a.register_provider("pkg")
+    h = a.handle("pkg")
+    h.add_field("api_field", "string")
+    h.set("api_field", "42", scope="environment")
+    assert os.environ["SIGIL_PKG_API_FIELD"] == "42"
+    val = h.get("api_field")
+    assert val.value == "42"
+    assert val.source == "env"
+    h.clear("api_field", scope="environment")
+    assert "SIGIL_PKG_API_FIELD" not in os.environ
+    val2 = h.get("api_field")
+    assert val2.value is None
+    assert val2.source is None
