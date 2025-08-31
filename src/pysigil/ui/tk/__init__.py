@@ -93,12 +93,18 @@ class App:
         self._table = ttk.Frame(self.root)
         self._table.pack(fill="both", expand=True, padx=6, pady=6)
 
-        ttk.Label(self._table, text="Key").grid(row=0, column=0, sticky="w")
-        ttk.Label(self._table, text="Value (effective)").grid(
-            row=0, column=1, sticky="w"
+        style = ttk.Style(self.root)
+        style.configure("Title.TLabel", font=(None, 10, "bold"), anchor="center")
+
+        ttk.Label(self._table, text="Key", style="Title.TLabel").grid(
+            row=0, column=0, sticky="ew"
         )
-        ttk.Label(self._table, text="Scopes").grid(row=0, column=2, sticky="w")
-        ttk.Label(self._table, text="Edit…").grid(row=0, column=3, sticky="w")
+        ttk.Label(
+            self._table, text="Value (effective)", style="Title.TLabel"
+        ).grid(row=0, column=1, sticky="ew")
+        ttk.Label(self._table, text="Scopes", style="Title.TLabel").grid(
+            row=0, column=2, sticky="ew"
+        )
 
         self._table.columnconfigure(1, weight=1)
 
@@ -205,7 +211,7 @@ class App:
         self.compact = bool(self._compact_var.get())
         for row in self.rows.values():
             row.set_compact(self.compact)
-        self._schedule_align()
+        self._align_rows()
 
     # -- alignment -----------------------------------------------------
     def _schedule_align(self) -> None:
