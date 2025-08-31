@@ -36,6 +36,9 @@ class DummyAdapter:
     def can_write(self, scope_id):
         return scope_id not in {"env", "project", "default"}
 
+    def is_overlay(self, scope_id):
+        return scope_id == "env"
+
     def values_for_key(self, key):
         return {
             "env": ValueInfo("e"),
@@ -64,17 +67,20 @@ def test_field_row_full_mode(monkeypatch):
         pytest.skip("no display available")
     clicks = []
     row = FieldRow(root, DummyAdapter(), "alpha", lambda k, s: clicks.append((k, s)), compact=False)
-    states = {p.text: p.state for p in _collect_pills(row)}
+    pills = _collect_pills(row)
+    states = {p.text: p.state for p in pills}
     assert states == {
-        "Env": "disabled",
+        "Env": "present",
         "User": "effective",
         "Machine": "empty",
         "Project": "disabled",
         "Project·Machine": "present",
         "Default": "present",
     }
-    default_pill = next(p for p in _collect_pills(row) if p.text == "Default")
+    default_pill = next(p for p in pills if p.text == "Default")
     assert not default_pill.clickable
+    env_pill = next(p for p in pills if p.text == "Env")
+    assert not env_pill.clickable
     for p in _collect_pills(row):
         if p.text == "User":
             p.on_click()
@@ -120,6 +126,19 @@ def test_field_row_hides_default_when_missing():
     row = FieldRow(root, NoDefaultAdapter(), "alpha", lambda k, s: None, compact=True)
     pills = [p.text for p in _collect_pills(row)]
     assert "Default" not in pills
+    root.destroy()
+
+
+def test_field_row_shows_default_when_missing_in_full_mode():
+    if tk is None:
+        pytest.skip("tkinter not available")
+    try:
+        root = tk.Tk()
+    except Exception:
+        pytest.skip("no display available")
+    row = FieldRow(root, NoDefaultAdapter(), "alpha", lambda k, s: None, compact=False)
+    pills = {p.text: p.state for p in _collect_pills(row)}
+    assert pills["Default"] == "empty"
     root.destroy()
 
 

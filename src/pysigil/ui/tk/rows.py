@@ -98,13 +98,17 @@ class FieldRow(ttk.Frame):
         scopes = self.adapter.scopes()
         for scope in scopes:
             has_value = scope in values
-            if scope == "default" and not has_value:
+            if scope == "default" and not has_value and self.compact:
                 continue
             if self.compact and scope != "default" and not has_value:
                 continue
 
             can_write = self.adapter.can_write(scope)
-            if not can_write and scope != "default":
+            if (
+                not can_write
+                and scope != "default"
+                and not self.adapter.is_overlay(scope)
+            ):
                 state = "disabled"
             elif eff_src == scope:
                 state = "effective"
