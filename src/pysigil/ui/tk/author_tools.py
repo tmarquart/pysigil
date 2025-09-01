@@ -46,7 +46,8 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         search.pack(fill="x", padx=6, pady=(6, 0))
         self._search_var = tk.StringVar()
         entry = ttk.Entry(search, textvariable=self._search_var)
-        entry.pack(fill="x")
+        entry.pack(fill="x", side="left", expand=True)
+        ttk.Button(search, text="Add", command=self._on_add).pack(side="right", padx=(4, 0))
         self._search_var.trace_add("write", lambda *_: self._reload_tree())
 
         self._tree = ttk.Treeview(self._left, show="tree")
@@ -146,6 +147,12 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
             default = uinfo.raw
         self._populate_form(info, default)
 
+    def _on_add(self) -> None:
+        self._tree.selection_remove(self._tree.selection())
+        self._current_key = ""
+        info = FieldInfo(key="", type="string")
+        self._populate_form(info, None)
+
     # ------------------------------------------------------------------
     def _populate_form(self, info: FieldInfo, default: object | None) -> None:
         self._clear_form()
@@ -159,6 +166,9 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         self._label_var = tk.StringVar(value=info.label or "")
         ttk.Label(ident, text="Label:").grid(row=1, column=0, sticky="w")
         ttk.Entry(ident, textvariable=self._label_var).grid(row=1, column=1, sticky="ew")
+        self._desc_var = tk.StringVar(value=info.description or "")
+        ttk.Label(ident, text="Description:").grid(row=2, column=0, sticky="w")
+        ttk.Entry(ident, textvariable=self._desc_var).grid(row=2, column=1, sticky="ew")
         ident.columnconfigure(1, weight=1)
 
         # Type -----------------------------------------------------------
@@ -225,6 +235,7 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         key = self._key_var.get().strip()
         type_name = self._type_var.get().strip()
         label = self._label_var.get().strip() or None
+        description = self._desc_var.get().strip() or None
         options = self._collect_options()
         default = None
         if self._value_widget is not None and hasattr(self._value_widget, "get_value"):
@@ -236,11 +247,14 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         kwargs: dict[str, object] = {}
         if "label" in sig.parameters:
             kwargs["label"] = label
+        if "description" in sig.parameters:
+            kwargs["description"] = description
         if "options" in sig.parameters and options is not None:
             kwargs["options"] = options
         if "default" in sig.parameters and default is not None:
             kwargs["default"] = default
         self.adapter.upsert_field(key, type_name, **kwargs)  # type: ignore[arg-type]
+        self._current_key = key
         self._reload_tree()
 
     def _on_revert(self) -> None:
@@ -252,14 +266,14 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
                 self._populate_form(info, default)
 
     def _on_delete(self) -> None:
-        if self._current_key is not None:
+        if self._current_key:
             try:
                 self.adapter.delete_field(self._current_key)
             except Exception:
                 pass
             self._current_key = None
             self._reload_tree()
-            self._clear_form()
+        self._clear_form()
 
     def _on_adopt(self) -> None:
         # For now adopt simply saves the field

@@ -67,21 +67,32 @@ def _simple_entry(master) -> EditorWidget:
     return frame  # type: ignore[return-value]
 
 
-def _boolean_check(master) -> EditorWidget:
+def _boolean_tristate(master) -> EditorWidget:
     if tk is None or ttk is None:  # pragma: no cover - tkinter missing
         raise RuntimeError("tkinter is required for widgets")
     frame = ttk.Frame(master)
-    var = tk.BooleanVar()
-    widget = ttk.Checkbutton(frame, variable=var)
-    widget.pack(side="left")
+    var = tk.StringVar(value="unset")
+    btns = ttk.Frame(frame)
+    btns.pack(side="left")
+    ttk.Radiobutton(btns, text="True", variable=var, value="true").pack(side="left")
+    ttk.Radiobutton(btns, text="False", variable=var, value="false").pack(side="left")
+    ttk.Radiobutton(btns, text="Unset", variable=var, value="unset").pack(side="left")
     badge = ttk.Label(frame, text="")
     badge.pack(side="left", padx=4)
 
     def get_value() -> object | None:
-        return var.get()
+        val = var.get()
+        if val == "unset":
+            return None
+        return val == "true"
 
     def set_value(value: object | None) -> None:
-        var.set(bool(value))
+        if value is True:
+            var.set("true")
+        elif value is False:
+            var.set("false")
+        else:
+            var.set("unset")
 
     def set_error(_msg: str | None) -> None:  # pragma: no cover - placeholder
         pass
@@ -100,7 +111,7 @@ def _boolean_check(master) -> EditorWidget:
 TYPE_REGISTRY["string"] = replace(TYPE_REGISTRY["string"], value_widget=_simple_entry)
 TYPE_REGISTRY["integer"] = replace(TYPE_REGISTRY["integer"], value_widget=_simple_entry)
 TYPE_REGISTRY["number"] = replace(TYPE_REGISTRY["number"], value_widget=_simple_entry)
-TYPE_REGISTRY["boolean"] = replace(TYPE_REGISTRY["boolean"], value_widget=_boolean_check)
+TYPE_REGISTRY["boolean"] = replace(TYPE_REGISTRY["boolean"], value_widget=_boolean_tristate)
 TYPE_REGISTRY["string_list"] = replace(TYPE_REGISTRY["string_list"], value_widget=_simple_entry)
 
 
