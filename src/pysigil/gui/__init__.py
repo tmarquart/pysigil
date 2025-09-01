@@ -19,7 +19,7 @@ except Exception:  # pragma: no cover - fallback for headless tests
 from ..config import available_providers, init_config
 from ..merge_policy import KeyPath
 from . import events, gui_state
-from .config_gui import launch as launch_config_gui
+from ..ui.tk.config_gui import launch as launch_config_gui
 from .widgets import widget_for
 
 if TYPE_CHECKING:
