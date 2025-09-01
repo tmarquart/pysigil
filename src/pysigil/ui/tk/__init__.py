@@ -211,7 +211,7 @@ class App:
         self.compact = bool(self._compact_var.get())
         for row in self.rows.values():
             row.set_compact(self.compact)
-        self._align_rows()
+        self._schedule_align()
 
     # -- alignment -----------------------------------------------------
     def _schedule_align(self) -> None:
@@ -224,6 +224,12 @@ class App:
         self._align_pending = False
         if not self.rows:
             return
+        # reset previous alignment so widths can shrink when necessary
+        for r in self.rows.values():
+            r.grid_columnconfigure(0, minsize=0)
+            r.grid_columnconfigure(2, minsize=0)
+            r.pills.configure(width=0)
+
         self.root.update_idletasks()
         key_w = max(r.lbl_key.winfo_reqwidth() for r in self.rows.values())
         pills_w = max(r.pills.winfo_reqwidth() for r in self.rows.values())
