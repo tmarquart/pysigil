@@ -15,7 +15,7 @@ which is used instead of the automatic dataclass based rendering.
 from __future__ import annotations
 
 from dataclasses import asdict, fields, is_dataclass
-from typing import Any, Mapping, get_args, get_origin, Union
+from typing import Any, Mapping, get_args, get_origin, get_type_hints, Union
 from types import UnionType
 
 from ..settings_metadata import TYPE_REGISTRY, FieldType
@@ -50,8 +50,10 @@ class OptionsForm(ttk.Frame):
     # ------------------------------------------------------------------
     def _build_from_model(self) -> None:
         assert self._option_model is not None
+        hints = get_type_hints(self._option_model, include_extras=True)
         for row, f in enumerate(fields(self._option_model)):
-            key, optional = self._field_key(f.type)
+            tp = hints.get(f.name, f.type)
+            key, optional = self._field_key(tp)
             ft = TYPE_REGISTRY[key]
             if ft.value_widget is None:
                 raise TypeError(f"no widget for option field type {key}")
