@@ -19,7 +19,7 @@ except Exception:  # pragma: no cover - fallback when tkinter missing
     tk = None  # type: ignore
     ttk = None  # type: ignore
 
-from ..core import EventBus
+from ..core import EventBus, AppCore
 from ..provider_adapter import ProviderAdapter
 from .dialogs import EditDialog
 from .rows import FieldRow
@@ -49,6 +49,7 @@ class App:
         self.adapter = adapter or ProviderAdapter(author_mode=author_mode)
         self.events = events or EventBus()
         self.author_mode = author_mode
+        self.core: AppCore | None = AppCore(author_mode=author_mode) if author_mode else None
         self.compact = True
         self.rows: dict[str, FieldRow] = {}
         self._edit_buttons: dict[str, ttk.Button] = {}
@@ -56,6 +57,7 @@ class App:
         self._align_pending = False
         self._key_col_width: int | None = None
         self._pill_col_width: int | None = None
+        self._author_tools: tk.Toplevel | None = None
 
         self.root.title("pysigil")
 
@@ -93,9 +95,9 @@ class App:
         )
         self._project_entry.pack(side="left", padx=(4, 0), fill="x", expand=True)
         if self.author_mode:
-            ttk.Button(header, text="Author Tools…", command=self._open_author).pack(
-                side="right"
-            )
+            ttk.Button(
+                header, text="Author Tools…", command=self._open_author_tools
+            ).pack(side="right")
 
     def _build_table(self) -> None:
         self._table = ttk.Frame(self.root)
@@ -128,13 +130,25 @@ class App:
             self._provider_var.set(initial)
             self.on_provider_change()
 
-    def _open_author(self) -> None:  # pragma: no cover - GUI interactions
-        from .author import main as author_main
+    def _open_author_tools(self) -> None:  # pragma: no cover - GUI interactions
+        if not (self.author_mode and self.core):
+            raise RuntimeError("author tools require author mode")
+        if self._author_tools is not None and bool(self._author_tools.winfo_exists()):
+            try:
+                self._author_tools.lift()
+            except Exception:
+                pass
+            return
+        from .author_tools import AuthorTools
 
-        try:
-            author_main()
-        except Exception as exc:  # pragma: no cover - defensive
-            self.events.emit_error(str(exc))
+        self._author_tools = AuthorTools(self.root, self.core)
+        def _on_close() -> None:
+            if self._author_tools is not None:
+                try:
+                    self._author_tools.destroy()
+                finally:
+                    self._author_tools = None
+        self._author_tools.protocol("WM_DELETE_WINDOW", _on_close)
 
     # ------------------------------------------------------------------
     # Row handling
@@ -194,6 +208,8 @@ class App:
         if pid:
             try:
                 self.adapter.set_provider(pid)
+                if self.core is not None:
+                    self.core.select_provider(pid).result()
             except Exception as exc:  # pragma: no cover - defensive
                 self.events.emit_error(str(exc))
                 return
