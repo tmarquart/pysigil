@@ -206,12 +206,14 @@ def export_cmd(args: argparse.Namespace) -> int:
 
 
 def gui_cmd(args: argparse.Namespace) -> int:  # pragma: no cover - GUI interactions
-    if author_mode_enabled(args):
-        from .ui.tk.author import main as author_main
+    launch_gui(initial_provider=args.app, author_mode=author_mode_enabled(args))
+    return 0
 
-        author_main()
-    else:
-        launch_gui(initial_provider=args.app, author_mode=False)
+
+def setup_cmd(_: argparse.Namespace) -> int:  # pragma: no cover - GUI interactions
+    from .ui.tk.author import main as author_main
+
+    author_main()
     return 0
 
 
@@ -419,6 +421,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_gui.add_argument("--include-sigil", action="store_true")
     p_gui.add_argument("--no-remember", action="store_true")
     p_gui.set_defaults(func=gui_cmd)
+
+    # setup command
+    p_setup = subparsers.add_parser("setup", help="Launch the defaults registration GUI.")
+    p_setup.set_defaults(func=setup_cmd)
 
     # author group
     p_author = subparsers.add_parser("author", help="Package author helpers.")

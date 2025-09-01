@@ -14,7 +14,7 @@ host = localhost
 port = 5432
 ``` | Becomes the base layer of the preference chain. |
 | 2 | Register the package during development | ```bash
-sigil author register --auto  # or `sigil gui --author`
+sigil author register --auto  # or `sigil setup`
 ``` | Dev links let Sigil find your defaults without installing the package. |
 | 3 | Ship settings and metadata files | ```toml
 # pyproject.toml
