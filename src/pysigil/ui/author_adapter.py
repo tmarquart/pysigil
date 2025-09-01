@@ -208,6 +208,13 @@ class AuthorAdapter:
         handle = self._require_handle()
         handle.delete_field(key, remove_values=remove_values, scopes=tuple(scopes))
 
+    def adopt_untracked(self, mapping: Mapping[str, str]) -> list[FieldInfo]:
+        """Adopt untracked configuration keys as field specifications."""
+
+        handle = self._require_handle()
+        specs = handle.adopt_untracked(mapping)
+        return [FieldInfo(s.key, s.type, s.label, s.description, s.options) for s in specs]
+
     # ------------------------------------------------------------------
     # Validation helpers
     # ------------------------------------------------------------------
