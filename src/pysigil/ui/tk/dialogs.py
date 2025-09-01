@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Dict
 
 try:  # pragma: no cover - importing tkinter is environment dependent
     import tkinter as tk
@@ -44,9 +43,11 @@ class EditDialog(tk.Toplevel):  # type: ignore[misc]
         ttk.Label(body, text=key, font=(None, 12, "bold")).grid(
             row=0, column=0, columnspan=4, sticky="w", pady=(0, 6)
         )
-        ttk.Separator(body).grid(row=1, column=0, columnspan=4, sticky="ew", pady=(0, 8))
+        ttk.Separator(body).grid(
+            row=1, column=0, columnspan=4, sticky="ew", pady=(0, 8)
+        )
 
-        self.entries: Dict[str, ttk.Entry] = {}
+        self.entries: dict[str, ttk.Entry] = {}
 
         values = adapter.values_for_key(key)
         scopes = list(adapter.scopes())
@@ -113,7 +114,33 @@ class EditDialog(tk.Toplevel):  # type: ignore[misc]
     def _save_scope(self, scope: str) -> None:
         if self.on_edit_save is None:
             return
-        value = self.entries[scope].get()
+
+        raw = self.entries[scope].get()
+        type_name = self.adapter.field_info(self.key).type
+        value: object = raw
+
+        try:
+            if type_name == "integer":
+                value = int(raw)
+            elif type_name == "number":
+                value = float(raw)
+            elif type_name == "boolean":
+                lower = raw.strip().lower()
+                if lower in {"true", "1"}:
+                    value = True
+                elif lower in {"false", "0"}:
+                    value = False
+                else:
+                    raise ValueError("expected boolean")
+        except ValueError:
+            if messagebox is not None:
+                if type_name == "boolean":
+                    msg = "Value must be true/false or 1/0"
+                else:
+                    msg = f"Value must be a {type_name}"
+                messagebox.showerror("Invalid value", msg, parent=self)
+            return
+
         try:
             self.on_edit_save(self.key, scope, value)
         except PermissionError as exc:
