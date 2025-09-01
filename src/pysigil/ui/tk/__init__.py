@@ -19,10 +19,10 @@ except Exception:  # pragma: no cover - fallback when tkinter missing
     tk = None  # type: ignore
     ttk = None  # type: ignore
 
-from ..provider_adapter import ProviderAdapter
 from ..core import EventBus
-from .rows import FieldRow
+from ..provider_adapter import ProviderAdapter
 from .dialogs import EditDialog
+from .rows import FieldRow
 
 
 class App:
@@ -107,9 +107,9 @@ class App:
         ttk.Label(self._table, text="Key", style="Title.TLabel").grid(
             row=0, column=0, sticky="ew"
         )
-        ttk.Label(
-            self._table, text="Value (effective)", style="Title.TLabel"
-        ).grid(row=0, column=1, sticky="ew")
+        ttk.Label(self._table, text="Value (effective)", style="Title.TLabel").grid(
+            row=0, column=1, sticky="ew"
+        )
         ttk.Label(self._table, text="Scopes", style="Title.TLabel").grid(
             row=0, column=2, sticky="ew"
         )
@@ -120,7 +120,11 @@ class App:
         providers = self.adapter.list_providers()
         self._provider_box["values"] = providers
         if providers:
-            initial = self._initial_provider if self._initial_provider in providers else providers[0]
+            initial = (
+                self._initial_provider
+                if self._initial_provider in providers
+                else providers[0]
+            )
             self._provider_var.set(initial)
             self.on_provider_change()
 
@@ -208,7 +212,7 @@ class App:
             self.adapter.set_value(key, scope, value)
         except Exception as exc:  # pragma: no cover - defensive
             self.events.emit_error(str(exc))
-            return
+            raise
         row = self.rows.get(key)
         if row is not None:
             row.refresh()
@@ -260,4 +264,3 @@ def launch(initial_provider: str | None = None, *, author_mode: bool = False) ->
 
 
 __all__ = ["App", "launch"]
-
