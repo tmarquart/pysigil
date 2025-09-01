@@ -1,3 +1,5 @@
+"""Authoring tools UI."""
+
 from __future__ import annotations
 
 try:  # pragma: no cover - tkinter availability depends on environment
@@ -8,19 +10,13 @@ except Exception:  # pragma: no cover - fallback when tkinter missing
     ttk = None  # type: ignore
 
 from ...settings_metadata import TYPE_REGISTRY, FieldType
+from ..author_adapter import AuthorAdapter, FieldInfo
 from ..options_form import OptionsForm
-from ..author_adapter import AuthorAdapter
 from ..core import AppCore
 
 
 class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
-    """Toplevel window exposing authoring tools.
-
-    The implementation intentionally keeps the interface minimal.  It
-    presents a tabbed notebook with three placeholder tabs: *Fields*,
-    *Defaults* and *Untracked*.  Content is read-only for now and pulled
-    from :class:`~pysigil.ui.core.AppCore`.
-    """
+    """Toplevel window exposing authoring helpers for provider authors."""
 
     def __init__(self, master: tk.Misc, core: AppCore) -> None:
         super().__init__(master)
@@ -31,96 +27,186 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         self._value_widget: object | None = None
         self._options_widget: object | None = None
         self._build()
-        self._populate_fields()
+        self._reload_tree()
 
+    # ------------------------------------------------------------------
+    # UI construction
     # ------------------------------------------------------------------
     def _build(self) -> None:
-        self.geometry("640x480")
-        nb = ttk.Notebook(self)
-        self._tab_fields = ttk.Frame(nb)
-        self._tab_defaults = ttk.Frame(nb)
-        self._tab_untracked = ttk.Frame(nb)
-        nb.add(self._tab_fields, text="Fields")
-        nb.add(self._tab_defaults, text="Defaults")
-        nb.add(self._tab_untracked, text="Untracked")
-        nb.pack(fill="both", expand=True)
+        self.geometry("800x600")
+        pw = ttk.PanedWindow(self, orient="horizontal")
+        self._left = ttk.Frame(pw)
+        self._right = ttk.Frame(pw)
+        pw.add(self._left, weight=1)
+        pw.add(self._right, weight=3)
+        pw.pack(fill="both", expand=True)
 
-        fields_body = ttk.Frame(self._tab_fields)
-        fields_body.pack(fill="both", expand=True)
-        self._fields_list = tk.Listbox(fields_body)
-        self._fields_list.pack(side="left", fill="both", expand=True, padx=6, pady=6)
-        self._fields_list.bind("<<ListboxSelect>>", self._on_field_select)
-        self._detail = ttk.Frame(fields_body)
-        self._detail.pack(side="left", fill="both", expand=True, padx=(6, 6), pady=6)
+        # -- left: search + tree -------------------------------------------------
+        search = ttk.Frame(self._left)
+        search.pack(fill="x", padx=6, pady=(6, 0))
+        self._search_var = tk.StringVar()
+        entry = ttk.Entry(search, textvariable=self._search_var)
+        entry.pack(fill="x")
+        self._search_var.trace_add("write", lambda *_: self._reload_tree())
+
+        self._tree = ttk.Treeview(self._left, show="tree")
+        self._tree.pack(fill="both", expand=True, padx=6, pady=6)
+        self._tree.bind("<<TreeviewSelect>>", self._on_select)
+
+        # -- right: placeholder frame for form -----------------------------------
+        self._form = ttk.Frame(self._right)
+        self._form.pack(fill="both", expand=True, padx=6, pady=6)
 
     # ------------------------------------------------------------------
-    def _build_type_section(self, field_type: FieldType) -> None:
-        for child in self._type_frame.winfo_children():
+    def _clear_form(self) -> None:
+        for child in self._form.winfo_children():
             child.destroy()
         self._value_widget = None
         self._options_widget = None
-        row = 0
-        if field_type.value_widget is not None:
-            ttk.Label(self._type_frame, text="Default:").grid(row=row, column=0, sticky="w")
-            widget = field_type.value_widget(self._type_frame)  # type: ignore[assignment]
-            widget.grid(row=row, column=1, sticky="ew")
-            self._value_widget = widget
-            row += 1
+
+    # ------------------------------------------------------------------
+    def _reload_tree(self) -> None:
+        """Populate tree with defined and undiscovered fields."""
+
+        pattern = self._search_var.get().strip().lower()
+        self._tree.delete(*self._tree.get_children(""))
+        defined_id = self._tree.insert("", "end", text="Defined", iid="defined")
+        for info in self.adapter.list_defined():
+            if pattern and pattern not in info.key.lower():
+                continue
+            self._tree.insert(defined_id, "end", text=info.key, iid=f"defined:{info.key}")
+        undis_id = self._tree.insert("", "end", text="Undiscovered", iid="undiscovered")
+        for info in self.adapter.list_undiscovered():
+            if pattern and pattern not in info.key.lower():
+                continue
+            self._tree.insert(undis_id, "end", text=info.key, iid=f"undiscovered:{info.key}")
+        self._tree.item(defined_id, open=True)
+        self._tree.item(undis_id, open=True)
+
+    # ------------------------------------------------------------------
+    def _build_type_section(self, field_type: FieldType | None, default: object | None = None) -> None:
+        for child in self._opts_frame.winfo_children():
+            child.destroy()
+        for child in self._default_frame.winfo_children():
+            child.destroy()
+        self._value_widget = None
+        self._options_widget = None
+        if field_type is None:
+            return
+        # Options
         if field_type.option_widget is not None:
-            self._options_widget = field_type.option_widget(self._type_frame)
-            self._options_widget.grid(row=row, column=0, columnspan=2, sticky="ew", pady=(4, 0))
+            self._options_widget = field_type.option_widget(self._opts_frame)
+            self._options_widget.pack(fill="x")
         elif field_type.option_model is not None:
-            self._options_widget = OptionsForm(self._type_frame, field_type)
-            self._options_widget.grid(row=row, column=0, columnspan=2, sticky="ew", pady=(4, 0))
-        self._type_frame.columnconfigure(1, weight=1)
+            self._options_widget = OptionsForm(self._opts_frame, field_type)
+            self._options_widget.pack(fill="x")
+        # Default editor
+        if field_type.value_widget is not None:
+            widget = field_type.value_widget(self._default_frame)  # type: ignore[assignment]
+            widget.pack(fill="x")
+            self._value_widget = widget
+            if default is not None and hasattr(widget, "set_value"):
+                try:  # best effort
+                    widget.set_value(default)  # type: ignore[attr-defined]
+                except Exception:
+                    pass
 
     # ------------------------------------------------------------------
     def _on_type_change(self, _event: object | None = None) -> None:
-        type_name = self._type_var.get()
-        ft = TYPE_REGISTRY.get(type_name)
-        if ft is None:
-            return
-        self._build_type_section(ft)
+        ft = TYPE_REGISTRY.get(self._type_var.get())
+        default = None
+        if self._value_widget is not None and hasattr(self._value_widget, "get_value"):
+            try:
+                default = self._value_widget.get_value()  # type: ignore[attr-defined]
+            except Exception:
+                default = None
+        self._build_type_section(ft, default)
 
     # ------------------------------------------------------------------
-    def _on_field_select(self, _event: object | None = None) -> None:
-        cur = self._fields_list.curselection()
-        if not cur:
+    def _on_select(self, _event: object | None = None) -> None:
+        sel = self._tree.selection()
+        if not sel:
             return
-        key = self._fields_list.get(cur[0])
-        info = next((f for f in self.core.state.fields if f.key == key), None)
-        if info is None:
+        node = sel[0]
+        if ":" not in node:
             return
+        _, key = node.split(":", 1)
         self._current_key = key
-        for child in self._detail.winfo_children():
-            child.destroy()
-        ttk.Label(self._detail, text="Key:").grid(row=0, column=0, sticky="w")
+        defined = {f.key: f for f in self.adapter.list_defined()}
+        info: FieldInfo | None = defined.get(key)
+        default: object | None = None
+        if info is not None:
+            default = self.adapter.default_for_key(key)
+        else:
+            und = {u.key: u for u in self.adapter.list_undiscovered()}
+            uinfo = und.get(key)
+            if uinfo is None:
+                return
+            info = FieldInfo(key=key, type=uinfo.guessed_type)
+            default = uinfo.raw
+        self._populate_form(info, default)
+
+    # ------------------------------------------------------------------
+    def _populate_form(self, info: FieldInfo, default: object | None) -> None:
+        self._clear_form()
+
+        # Identity -------------------------------------------------------
+        ident = ttk.LabelFrame(self._form, text="Identity")
+        ident.pack(fill="x", pady=(0, 6))
         self._key_var = tk.StringVar(value=info.key)
-        ttk.Entry(self._detail, textvariable=self._key_var).grid(row=0, column=1, sticky="ew")
-        ttk.Label(self._detail, text="Label:").grid(row=1, column=0, sticky="w")
+        ttk.Label(ident, text="Key:").grid(row=0, column=0, sticky="w")
+        ttk.Entry(ident, textvariable=self._key_var).grid(row=0, column=1, sticky="ew")
         self._label_var = tk.StringVar(value=info.label or "")
-        ttk.Entry(self._detail, textvariable=self._label_var).grid(row=1, column=1, sticky="ew")
-        ttk.Label(self._detail, text="Type:").grid(row=2, column=0, sticky="w")
+        ttk.Label(ident, text="Label:").grid(row=1, column=0, sticky="w")
+        ttk.Entry(ident, textvariable=self._label_var).grid(row=1, column=1, sticky="ew")
+        ident.columnconfigure(1, weight=1)
+
+        # Type -----------------------------------------------------------
+        type_fr = ttk.LabelFrame(self._form, text="Type")
+        type_fr.pack(fill="x", pady=(0, 6))
         self._type_var = tk.StringVar(value=info.type)
+        ttk.Label(type_fr, text="Type:").grid(row=0, column=0, sticky="w")
         type_combo = ttk.Combobox(
-            self._detail,
+            type_fr,
             textvariable=self._type_var,
             state="readonly",
             values=sorted(TYPE_REGISTRY.keys()),
         )
-        type_combo.grid(row=2, column=1, sticky="ew")
+        type_combo.grid(row=0, column=1, sticky="ew")
         type_combo.bind("<<ComboboxSelected>>", self._on_type_change)
-        ttk.Label(self._detail, text="Description:").grid(row=3, column=0, sticky="w")
-        self._desc_var = tk.StringVar(value=info.description or "")
-        ttk.Entry(self._detail, textvariable=self._desc_var).grid(row=3, column=1, sticky="ew")
-        self._type_frame = ttk.Frame(self._detail)
-        self._type_frame.grid(row=4, column=0, columnspan=2, sticky="nsew", pady=(8, 0))
-        ft = TYPE_REGISTRY.get(info.type)
-        if ft is not None:
-            self._build_type_section(ft)
-        ttk.Button(self._detail, text="Save", command=self._on_save).grid(row=5, column=1, sticky="e", pady=8)
-        self._detail.columnconfigure(1, weight=1)
+        type_fr.columnconfigure(1, weight=1)
 
+        self._opts_frame = ttk.LabelFrame(self._form, text="Type Options")
+        self._opts_frame.pack(fill="x", pady=(0, 6))
+        self._default_frame = ttk.LabelFrame(self._form, text="Default")
+        self._default_frame.pack(fill="x", pady=(0, 6))
+        ft = TYPE_REGISTRY.get(info.type)
+        self._build_type_section(ft, default)
+
+        # Actions --------------------------------------------------------
+        actions = ttk.Frame(self._form)
+        actions.pack(fill="x", pady=(0, 6))
+        ttk.Button(actions, text="Save", command=self._on_save).pack(side="right")
+        ttk.Button(actions, text="Revert", command=self._on_revert).pack(side="right")
+        ttk.Button(actions, text="Delete", command=self._on_delete).pack(side="right")
+        ttk.Button(actions, text="Adopt", command=self._on_adopt).pack(side="right")
+
+        # Diff drawer ----------------------------------------------------
+        self._diff_shown = tk.BooleanVar(value=False)
+        toggle = ttk.Checkbutton(
+            self._form,
+            text="Show Diff",
+            variable=self._diff_shown,
+            command=self._toggle_diff,
+            style="Toolbutton",
+        )
+        toggle.pack(anchor="w")
+        self._diff_frame = ttk.Frame(self._form)
+        self._diff_text = tk.Text(self._diff_frame, height=6)
+        self._diff_text.pack(fill="both", expand=True)
+
+    # ------------------------------------------------------------------
+    # Action handlers
     # ------------------------------------------------------------------
     def _collect_options(self) -> dict | None:
         ow = self._options_widget
@@ -133,14 +219,12 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
             return val if isinstance(val, dict) else {}
         return None
 
-    # ------------------------------------------------------------------
     def _on_save(self) -> None:
         if self._current_key is None:
             return
         key = self._key_var.get().strip()
         type_name = self._type_var.get().strip()
         label = self._label_var.get().strip() or None
-        desc = self._desc_var.get().strip() or None
         options = self._collect_options()
         default = None
         if self._value_widget is not None and hasattr(self._value_widget, "get_value"):
@@ -152,16 +236,38 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         kwargs: dict[str, object] = {}
         if "label" in sig.parameters:
             kwargs["label"] = label
-        if "description" in sig.parameters:
-            kwargs["description"] = desc
         if "options" in sig.parameters and options is not None:
             kwargs["options"] = options
         if "default" in sig.parameters and default is not None:
             kwargs["default"] = default
         self.adapter.upsert_field(key, type_name, **kwargs)  # type: ignore[arg-type]
-        self._populate_fields()
+        self._reload_tree()
 
-    def _populate_fields(self) -> None:
-        self._fields_list.delete(0, tk.END)
-        for info in self.core.state.fields:
-            self._fields_list.insert(tk.END, info.key)
+    def _on_revert(self) -> None:
+        if self._current_key is not None:
+            defined = {f.key: f for f in self.adapter.list_defined()}
+            info = defined.get(self._current_key)
+            default = self.adapter.default_for_key(self._current_key)
+            if info is not None:
+                self._populate_form(info, default)
+
+    def _on_delete(self) -> None:
+        if self._current_key is not None:
+            try:
+                self.adapter.delete_field(self._current_key)
+            except Exception:
+                pass
+            self._current_key = None
+            self._reload_tree()
+            self._clear_form()
+
+    def _on_adopt(self) -> None:
+        # For now adopt simply saves the field
+        self._on_save()
+
+    def _toggle_diff(self) -> None:
+        if self._diff_shown.get():
+            self._diff_frame.pack(fill="both", expand=True)
+        else:
+            self._diff_frame.pack_forget()
+

@@ -142,6 +142,15 @@ class AuthorAdapter:
             infos.append(UntrackedInfo(key=key, raw=raw, guessed_type=guessed))
         return infos
 
+    def default_for_key(self, key: str) -> Any | None:
+        """Return the value from the ``default`` scope for *key*."""
+
+        handle = self._require_handle()
+        layers = handle.layers()
+        per_scope = layers.get(key, {})
+        val = per_scope.get("default")
+        return None if val is None else val.value
+
     # ------------------------------------------------------------------
     # Mutations
     # ------------------------------------------------------------------
