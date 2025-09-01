@@ -210,6 +210,15 @@ def gui_cmd(args: argparse.Namespace) -> int:  # pragma: no cover - GUI interact
     return 0
 
 
+def author_gui_cmd(_: argparse.Namespace) -> int:  # pragma: no cover - GUI interactions
+    from .ui.tk import App
+
+    app = App(author_mode=True, initial_provider="sigil-dummy")
+    app._open_author_tools()
+    app.root.mainloop()
+    return 0
+
+
 def setup_cmd(_: argparse.Namespace) -> int:  # pragma: no cover - GUI interactions
     from .ui.tk.author import main as author_main
 
@@ -426,9 +435,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_setup = subparsers.add_parser("setup", help="Launch the defaults registration GUI.")
     p_setup.set_defaults(func=setup_cmd)
 
-    # author group
-    p_author = subparsers.add_parser("author", help="Package author helpers.")
-    sp_author = p_author.add_subparsers(dest="author_cmd", required=True)
+    # author command / group
+    p_author = subparsers.add_parser(
+        "author", help="Launch the author tools GUI or manage development links."
+    )
+    p_author.set_defaults(func=author_gui_cmd)
+    sp_author = p_author.add_subparsers(dest="author_cmd")
 
     p_reg = sp_author.add_parser("register", help="Register package defaults for development.")
     p_reg.add_argument("--package-dir", type=Path, help="Package directory")
