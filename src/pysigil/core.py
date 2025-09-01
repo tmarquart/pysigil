@@ -471,13 +471,26 @@ class Sigil:
 
     @contextmanager
     def project(self, path: Path):
-        old_path = self.project_path
+        new_path = Path(path)
+        if new_path.suffix == "" or new_path.name != self.settings_filename:
+            new_path = new_path / self.settings_filename
+
+        old_project = self.project_path
+        old_project_local = self.project_local_path
         old_default = self._default_scope
-        self.project_path = path
+
+        self.project_path = new_path
+        self.project_local_path = new_path.parent / f"settings-local-{self._host}.ini"
+        self._paths["project"] = self.project_path
+        self._paths["project-local"] = self.project_local_path
         self._default_scope = "project"
+        self.invalidate_cache()
         try:
             yield self
         finally:
-            self.project_path = old_path
+            self.project_path = old_project
+            self.project_local_path = old_project_local
+            self._paths["project"] = self.project_path
+            self._paths["project-local"] = self.project_local_path
             self._default_scope = old_default
             self.invalidate_cache()
