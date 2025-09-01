@@ -218,7 +218,8 @@ class App:
                 proj_path = self.adapter.target_path("project")
             except Exception:
                 proj_path = ""
-            self._project_var.set(proj_path.as_posix())
+            #self._project_var.set(proj_path.as_posix())
+            self._project_var.set(str(proj_path))
 
     def on_pill_click(self, key: str, scope: str) -> None:
         self._open_edit_dialog(key, scope)
