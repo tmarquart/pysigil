@@ -6,6 +6,9 @@ import pytest
 
 from pysigil.cli import build_parser, author_mode_enabled
 from pysigil.ui.provider_adapter import ProviderAdapter
+from pysigil.ui.author_adapter import AuthorAdapter
+from pysigil.ui.value_parser import parse_field_value
+from pysigil.errors import ValidationError
 from pysigil import api, authoring
 from pysigil.settings_metadata import IniFileBackend, IniSpecBackend
 from pysigil.orchestrator import Orchestrator
@@ -61,3 +64,12 @@ def test_default_scope_requires_author_mode(tmp_path, monkeypatch):
     adapter.clear_value("alpha", "default")
     val, src = adapter.effective_for_key("alpha")
     assert val is None and src is None
+
+
+def test_upsert_field_parses_default(tmp_path, monkeypatch):
+    _adapter_with_default(tmp_path, monkeypatch, author_mode=True)
+    author = AuthorAdapter("demo-auth")
+    with pytest.raises(ValidationError):
+        author.upsert_field("beta", "integer", default="1")
+    author.upsert_field("beta", "integer", default=parse_field_value("integer", "1"))
+    assert author.default_for_key("beta") == 1
