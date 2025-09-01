@@ -1,15 +1,15 @@
 from __future__ import annotations
 
+import json
 import logging
 import os
 from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
-import json
 
 try:
     import tkinter as tk
-    from tkinter import simpledialog, ttk, messagebox
+    from tkinter import messagebox, simpledialog, ttk
 except Exception:  # pragma: no cover - fallback for headless tests
     tk = None  # type: ignore
     simpledialog = None  # type: ignore
@@ -352,7 +352,7 @@ def launch_gui(
                 int(val)
             elif isinstance(current, float):
                 float(val)
-            elif isinstance(current, (list, dict)):
+            elif isinstance(current, list | dict):
                 json.loads(val)
         except Exception as exc:
             if messagebox is not None:
