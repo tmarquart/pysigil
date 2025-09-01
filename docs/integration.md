@@ -30,6 +30,12 @@ get_pref = _sigil.get_pref
 set_pref = _sigil.set_pref
 ``` | • One-line access:<br>`get_pref("db.host")`<br>• Handles env ▶ project ▶ user ▶ defaults without extra code. |
 
+Launch authoring tools without starting the main editor:
+
+```bash
+sigil author
+```
+
 ## What you get immediately
 
 Fully merged prefs:

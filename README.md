@@ -95,6 +95,12 @@ Package authors can register development defaults via:
 sigil setup
 ```
 
+Launch authoring tools without the editor:
+
+```bash
+sigil author
+```
+
 Or launch it programmatically:
 
 ```python
