@@ -24,12 +24,12 @@ def test_register_and_set(tmp_path):
     info2 = a.register_provider("my-pkg")
     assert info2.provider_id == "my-pkg"
     h = a.handle("my-pkg")
-    h.add_field("retries", "integer", options={"min": 0})
+    h.add_field("retries", "integer", options={"minimum": 0})
     h.set("retries", 5)
     val = h.get("retries")
     assert val.value == 5
     assert val.source == "user"
-    assert h.fields()[0].options == {"min": 0}
+    assert h.fields()[0].options == {"minimum": 0}
     assert "my-pkg" in a.providers()
 
 

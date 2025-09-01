@@ -17,9 +17,9 @@ def test_upsert_field_sets_options_and_default(tmp_path, monkeypatch):
     api.register_provider("demo", title="Demo")
 
     adapter = AuthorAdapter("demo")
-    adapter.upsert_field("alpha", "integer", options={"min": 0}, default=5)
+    adapter.upsert_field("alpha", "integer", options={"minimum": 0}, default=5)
 
     fields = {f.key: f for f in adapter.list_defined()}
-    assert fields["alpha"].options == {"min": 0}
+    assert fields["alpha"].options == {"minimum": 0}
     assert adapter.default_for_key("alpha") == 5
 
