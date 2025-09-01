@@ -15,6 +15,7 @@ import configparser
 import json
 import os
 import re
+from importlib.metadata import distributions
 
 from contextlib import contextmanager
 from dataclasses import dataclass, field as dataclass_field
@@ -45,6 +46,7 @@ from .io_config import IniIOError, read_sections, write_sections
 from .policy import ScopePolicy, policy as default_policy
 from .resolver import resolve_defaults
 from .root import ProjectRootNotFoundError
+from .discovery import pep503_name
 
 ####################
 ##### ADAPTERS #####
@@ -474,17 +476,27 @@ class IniSpecBackend:
         return spec
 
     # -------------------------------------------------------------- API
-    def get_provider_ids(self) -> list[str]:  # pragma: no cover - trivial
-        ids: set[str] = set()
+    def get_provider_ids(self) -> list[str]:
+        ids: dict[str, str] = {}
         if self.user_dir is not None and self.user_dir.exists():
-            ids.update(
-                p.name
-                for p in self.user_dir.iterdir()
-                if (p / "metadata.ini").exists()
-            )
+            for p in self.user_dir.iterdir():
+                if (p / "metadata.ini").exists():
+                    ids.setdefault(p.name, "user")
         for pid, defaults in list_links(must_exist_on_disk=True).items():
             if (defaults.parent / "metadata.ini").exists():
-                ids.add(pid)
+                ids[pid] = "dev"
+        for dist in distributions():
+            files = getattr(dist, "files", None)
+            if not files:
+                continue
+            if not any(f.parts[-2:] == (".sigil", "metadata.ini") for f in files):
+                continue
+            meta = getattr(dist, "metadata", None)
+            name = meta.get("Name") if meta is not None else dist.name
+            if not name:
+                continue
+            provider_id = pep503_name(name)
+            ids.setdefault(provider_id, "dist")
         return sorted(ids)
 
     def get_spec(self, provider_id: str) -> ProviderSpec:
