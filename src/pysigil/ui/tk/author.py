@@ -7,14 +7,14 @@ import webbrowser
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
-from ..authoring import DevLinkError, _dev_dir, link, normalize_provider_id
-from ..resolver import (
+from ...authoring import DevLinkError, _dev_dir, link, normalize_provider_id
+from ...resolver import (
     default_provider_id,
     ensure_defaults_file,
     find_package_dir,
     read_dist_name_from_pyproject,
 )
-from ..root import ProjectRootNotFoundError, find_project_root
+from ...root import ProjectRootNotFoundError, find_project_root
 
 APP_TITLE = "Sigil – Register Package Defaults"
 
