@@ -2,9 +2,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterator
-from importlib.metadata import Distribution, entry_points
-
-GROUPS = ("pysigil_providers", "pysigil.providers")
+from importlib.metadata import Distribution, distributions
 
 _RE = re.compile(r"[-_.]+")
 _VALID_RE = re.compile(r"^[a-z0-9-]+$")
@@ -29,30 +27,31 @@ def pep503_name(dist_name: str) -> str:
     return name
 
 
-def _iter_entry_points():
-    eps = entry_points()
-    if hasattr(eps, "select"):
-        for group in GROUPS:
-            for ep in eps.select(group=group):
-                yield ep
-    else:  # pragma: no cover - legacy API
-        for group in GROUPS:
-            for ep in eps.get(group, []):  # type: ignore[call-arg]
-                yield ep
+def iter_installed_providers() -> Iterator[tuple[str, str, Distribution]]:
+    """Yield unique providers from installed distributions.
 
-
-def iter_providers() -> Iterator[tuple[str, str, Distribution]]:
-    """Yield unique providers discovered via entry points.
-
-    Each item is ``(provider_id, display_name, dist)``.  Duplicate provider IDs
-    are skipped with first-come wins semantics.
+    A distribution is considered a provider if it contains a
+    ``.sigil/metadata.ini`` resource.  Each item yielded is
+    ``(provider_id, display_name, dist)`` with duplicates skipped using
+    first-come wins semantics.
     """
+
     seen: set[str] = set()
-    for ep in _iter_entry_points():
-        dist: Distribution = ep.dist  # type: ignore[attr-defined]
-        name = getattr(dist, "metadata", {}).get("Name") or dist.name
+    for dist in distributions():
+        files = getattr(dist, "files", None)
+        if not files:
+            continue
+
+        if not any(p.parts[-2:] == (".sigil", "metadata.ini") for p in files):
+            continue
+
+        metadata = getattr(dist, "metadata", None)
+        name = metadata.get("Name") if metadata is not None else dist.name
+        if not name:
+            name = dist.name
         if not name:
             continue
+
         provider_id = pep503_name(name)
         if provider_id in seen:
             continue
