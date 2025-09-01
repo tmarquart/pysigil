@@ -27,6 +27,8 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         self._current_key: str | None = None
         self._value_widget: object | None = None
         self._options_widget: object | None = None
+        # Undiscovered fields are loaded on demand
+        self._undiscovered_loaded = False
         self._build()
         self._reload_tree()
 
@@ -54,6 +56,7 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         self._tree = ttk.Treeview(self._left, show="tree")
         self._tree.pack(fill="both", expand=True, padx=6, pady=6)
         self._tree.bind("<<TreeviewSelect>>", self._on_select)
+        self._tree.bind("<<TreeviewOpen>>", self._on_tree_open)
 
         # -- right: placeholder frame for form -----------------------------------
         self._form = ttk.Frame(self._right)
@@ -68,22 +71,43 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
 
     # ------------------------------------------------------------------
     def _reload_tree(self) -> None:
-        """Populate tree with defined and undiscovered fields."""
+        """Populate tree with defined fields and a collapsible undiscovered section."""
 
         pattern = self._search_var.get().strip().lower()
         self._tree.delete(*self._tree.get_children(""))
-        defined_id = self._tree.insert("", "end", text="Defined", iid="defined")
+
+        # Defined fields appear directly at the root
         for info in self.adapter.list_defined():
             if pattern and pattern not in info.key.lower():
                 continue
-            self._tree.insert(defined_id, "end", text=info.key, iid=f"defined:{info.key}")
-        undis_id = self._tree.insert("", "end", text="Undiscovered", iid="undiscovered")
-        for info in self.adapter.list_undiscovered():
-            if pattern and pattern not in info.key.lower():
-                continue
-            self._tree.insert(undis_id, "end", text=info.key, iid=f"undiscovered:{info.key}")
-        self._tree.item(defined_id, open=True)
-        self._tree.item(undis_id, open=True)
+            self._tree.insert("", "end", text=info.key, iid=f"defined:{info.key}")
+
+        # Undiscovered fields live under a lazily populated node at the bottom
+        undiscovered = list(self.adapter.list_undiscovered())
+        if undiscovered:
+            undis_id = self._tree.insert(
+                "", "end", text="Undiscovered", iid="undiscovered", open=self._undiscovered_loaded
+            )
+            if self._undiscovered_loaded:
+                for info in undiscovered:
+                    if pattern and pattern not in info.key.lower():
+                        continue
+                    self._tree.insert(
+                        undis_id, "end", text=info.key, iid=f"undiscovered:{info.key}"
+                    )
+            else:
+                # insert a placeholder so the node is expandable before loading
+                self._tree.insert(undis_id, "end")
+        else:
+            # Reset flag so the node stays collapsed if undiscovered fields later appear
+            self._undiscovered_loaded = False
+
+    # ------------------------------------------------------------------
+    def _on_tree_open(self, _event: object | None = None) -> None:
+        node = self._tree.focus()
+        if node == "undiscovered" and not self._undiscovered_loaded:
+            self._undiscovered_loaded = True
+            self._reload_tree()
 
     # ------------------------------------------------------------------
     def _build_type_section(
