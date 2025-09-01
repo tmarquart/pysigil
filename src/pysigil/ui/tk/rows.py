@@ -4,10 +4,11 @@ from typing import Callable, Dict, Any
 
 try:  # pragma: no cover - tkinter may be missing
     import tkinter as tk
-    from tkinter import ttk
+    from tkinter import ttk, messagebox
 except Exception:  # pragma: no cover
     tk = None  # type: ignore
     ttk = None  # type: ignore
+    messagebox = None  # type: ignore
 
 from ..provider_adapter import ProviderAdapter, ValueInfo
 from .widgets import PillButton, SCOPE_COLOR, GREY_BG
@@ -137,6 +138,7 @@ class FieldRow(ttk.Frame):
                 pill.pack_forget()
             return
 
+        locked = not can_write
         if (not can_write and name != "default" and not self.adapter.is_overlay(name)):
             state = "disabled"
         elif effective:
@@ -150,11 +152,16 @@ class FieldRow(ttk.Frame):
         long_label = self.adapter.scope_label(name, short=False)
         color = _SCOPE_COLORS.get(name, "#888888")
 
-        clickable = can_write and state != "disabled"
-
         def cb() -> None:
-            if clickable and self._on_pill_click:
+            if not locked and self._on_pill_click:
                 self._on_pill_click(self.key, name)
+            elif locked:
+                hint = self.adapter.scope_hint(name)
+                if messagebox is not None and hint:
+                    try:
+                        messagebox.showinfo("Read-only", hint)
+                    except Exception:
+                        pass
 
         pill = self._pill_widgets.get(name)
         if pill is None:
@@ -164,25 +171,23 @@ class FieldRow(ttk.Frame):
                 color=color,
                 state=state,  # type: ignore[arg-type]
                 value_provider=value_provider,
-                clickable=clickable,
+                clickable=True,
                 on_click=cb,
                 tooltip_title=long_label,
+                locked=locked,
             )
             self._pill_widgets[name] = pill
         else:
             pill.text = short_label
             pill.color = color
             pill.state = state  # type: ignore[assignment]
-            pill.clickable = clickable
+            pill.locked = locked
+            pill.clickable = True
             pill.value_provider = value_provider
             pill.tooltip_title = long_label
             pill.on_click = cb
-            if clickable:
-                pill.bind("<Button-1>", lambda e: cb())
-                pill.configure(cursor="hand2")
-            else:
-                pill.unbind("<Button-1>")
-                pill.configure(cursor="arrow")
+            pill.bind("<Button-1>", lambda e: cb())
+            pill.configure(cursor="hand2")
             pill._draw()
 
         if not pill.winfo_ismapped():

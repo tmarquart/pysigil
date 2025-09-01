@@ -20,16 +20,17 @@ def _setup_adapter(tmp_path, monkeypatch):
     cfg = IniFileBackend(policy=pol)
     orch = Orchestrator(spec_backend=spec, config_backend=cfg)
     monkeypatch.setattr(api, "_ORCH", orch, raising=False)
+    monkeypatch.setattr("pysigil.ui.provider_adapter.policy", pol, raising=False)
     adapter = ProviderAdapter()
     api.register_provider("demo", title="Demo")
     handle = api.handle("demo")
     handle.add_field("alpha", "integer")
     adapter.set_provider("demo")
-    return adapter
+    return adapter, pol
 
 
 def test_adapter_writes_and_effective(tmp_path, monkeypatch):
-    adapter = _setup_adapter(tmp_path, monkeypatch)
+    adapter, _ = _setup_adapter(tmp_path, monkeypatch)
     assert adapter.list_providers() == ["demo"]
     assert adapter.fields() == ["alpha"]
 
@@ -61,7 +62,7 @@ def test_field_row_pill_click(tmp_path, monkeypatch):
     except Exception:
         pytest.skip("no display available")
 
-    adapter = _setup_adapter(tmp_path, monkeypatch)
+    adapter, _ = _setup_adapter(tmp_path, monkeypatch)
     adapter.set_value("alpha", "user", 1)
 
     clicks = []
@@ -75,3 +76,13 @@ def test_field_row_pill_click(tmp_path, monkeypatch):
             break
     assert clicks == [("alpha", "user")]
     root.destroy()
+
+
+def test_policy_respected(tmp_path, monkeypatch):
+    adapter, pol = _setup_adapter(tmp_path, monkeypatch)
+    # Disallow project scope
+    monkeypatch.setattr(pol, "allows", lambda scope: scope != "project")
+    with pytest.raises(PermissionError):
+        adapter.set_value("alpha", "project", 1)
+    hint = adapter.scope_hint("project")
+    assert "Author" in hint

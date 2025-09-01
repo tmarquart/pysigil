@@ -94,6 +94,20 @@ class ProviderAdapter:
         except Exception:  # pragma: no cover - defensive
             return False
 
+    # -- helpers -------------------------------------------------------------
+    def scope_hint(self, scope_id: str) -> str | None:
+        """Return a user facing hint for attempts to edit *scope_id*.
+
+        The message directs users to the authoring tools when the scope is
+        read-only.  ``None`` is returned when the scope is writable.
+        """
+        if scope_id == "default":
+            return "Default scope is read-only. Use Author Tools to change it."
+        if not self.can_write(scope_id):
+            label = self.scope_label(scope_id)
+            return f"{label} scope is read-only. Use Author Tools to change it."
+        return None
+
     def is_overlay(self, scope_id: str) -> bool:
         """Return ``True`` if *scope_id* represents an overlay (e.g. env)."""
         return scope_id == "env"
@@ -137,18 +151,24 @@ class ProviderAdapter:
         handle = self._require_handle()
         if scope_id == "default":
             if not (self.author_mode and self._default_writable):
-                raise PermissionError("default scope is read-only")
+                raise PermissionError(self.scope_hint("default") or "default scope is read-only")
             handle._manager().set(key, value, scope="default")  # type: ignore[attr-defined]
             return
+        if not self.can_write(scope_id):
+            hint = self.scope_hint(scope_id) or f"{scope_id} scope is read-only"
+            raise PermissionError(hint)
         handle.set(key, value, scope=scope_id)
 
     def clear_value(self, key: str, scope_id: str) -> None:
         handle = self._require_handle()
         if scope_id == "default":
             if not (self.author_mode and self._default_writable):
-                raise PermissionError("default scope is read-only")
+                raise PermissionError(self.scope_hint("default") or "default scope is read-only")
             handle._manager().clear(key, scope="default")  # type: ignore[attr-defined]
             return
+        if not self.can_write(scope_id):
+            hint = self.scope_hint(scope_id) or f"{scope_id} scope is read-only"
+            raise PermissionError(hint)
         handle.clear(key, scope=scope_id)
 
     # ------------------------------------------------------------------

@@ -1,10 +1,12 @@
 import pytest
+import types
 
 try:
     import tkinter as tk
 except Exception:  # pragma: no cover - tkinter missing
     tk = None  # type: ignore
 
+import pysigil.ui.tk.rows as tk_rows
 from pysigil.ui.tk.rows import FieldRow
 from pysigil.ui.tk.widgets import PillButton
 from pysigil.ui.provider_adapter import ValueInfo
@@ -78,9 +80,9 @@ def test_field_row_full_mode(monkeypatch):
         "Default": "present",
     }
     default_pill = next(p for p in pills if p.text == "Default")
-    assert not default_pill.clickable
+    assert default_pill.locked
     env_pill = next(p for p in pills if p.text == "Env")
-    assert not env_pill.clickable
+    assert env_pill.locked
     for p in _collect_pills(row):
         if p.text == "User":
             p.on_click()
@@ -102,6 +104,23 @@ def test_field_row_compact_mode():
     row = FieldRow(root, DummyAdapter(), "alpha", lambda k, s: None, compact=True)
     pills = _collect_pills(row)
     assert [p.text for p in pills] == ["Env", "User", "Project·Machine", "Default"]
+    root.destroy()
+
+
+def test_locked_pill_shows_hint(monkeypatch):
+    if tk is None:
+        pytest.skip("tkinter not available")
+    try:
+        root = tk.Tk()
+    except Exception:
+        pytest.skip("no display available")
+    calls = []
+    dummy_box = types.SimpleNamespace(showinfo=lambda *a, **k: calls.append(a))
+    monkeypatch.setattr(tk_rows, "messagebox", dummy_box)
+    row = FieldRow(root, DummyAdapter(), "alpha", lambda k, s: None, compact=False)
+    env_pill = next(p for p in _collect_pills(row) if p.text == "Env")
+    env_pill.on_click()
+    assert calls and "Author" in calls[0][1]
     root.destroy()
 
 
@@ -168,6 +187,6 @@ def test_field_row_default_effective():
     assert pill.text == "Default"
     assert pill.state == "effective"
     assert pill.color == "#000000"
-    assert not pill.clickable
+    assert pill.locked
     root.destroy()
 

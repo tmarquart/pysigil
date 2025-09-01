@@ -70,7 +70,10 @@ class EditDialog(tk.Toplevel):  # type: ignore[misc]
                 entry.insert(0, str(vinfo.value))
 
             can_write = adapter.can_write(scope)
-            if scope == "env" or adapter.is_overlay(scope):
+            if scope == "default":
+                entry.state(["readonly"])
+                can_write = False
+            elif scope == "env" or adapter.is_overlay(scope):
                 entry.state(["readonly"])
                 can_write = False
             elif not can_write:
@@ -113,6 +116,9 @@ class EditDialog(tk.Toplevel):  # type: ignore[misc]
         value = self.entries[scope].get()
         try:
             self.on_edit_save(self.key, scope, value)
+        except PermissionError as exc:
+            if messagebox is not None:
+                messagebox.showinfo("Read-only", str(exc), parent=self)
         except Exception as exc:  # pragma: no cover - defensive
             if messagebox is not None:
                 messagebox.showerror("Error", str(exc), parent=self)
@@ -122,6 +128,10 @@ class EditDialog(tk.Toplevel):  # type: ignore[misc]
             return
         try:
             self.on_edit_remove(self.key, scope)
+        except PermissionError as exc:
+            if messagebox is not None:
+                messagebox.showinfo("Read-only", str(exc), parent=self)
+            return
         except Exception as exc:  # pragma: no cover - defensive
             if messagebox is not None:
                 messagebox.showerror("Error", str(exc), parent=self)
