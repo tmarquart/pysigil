@@ -243,9 +243,9 @@ class AuthorAdapter:
 
         if raw is None:
             return "string"
-        for typ, adapter in TYPE_REGISTRY.items():
+        for typ, field_type in TYPE_REGISTRY.items():
             try:
-                adapter.parse(raw)
+                field_type.adapter.parse(raw)
                 return typ
             except Exception:
                 continue

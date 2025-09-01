@@ -8,7 +8,10 @@ implementations for other GUI toolkits.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Callable, Protocol, Dict, Any
+
+from ..settings_metadata import TYPE_REGISTRY
 
 try:  # pragma: no cover - importing tkinter is environment dependent
     import tkinter as tk
@@ -93,11 +96,18 @@ def _boolean_check(master) -> EditorWidget:
     return frame  # type: ignore[return-value]
 
 
+# Register widget implementations with the type registry
+TYPE_REGISTRY["string"] = replace(TYPE_REGISTRY["string"], value_widget=_simple_entry)
+TYPE_REGISTRY["integer"] = replace(TYPE_REGISTRY["integer"], value_widget=_simple_entry)
+TYPE_REGISTRY["number"] = replace(TYPE_REGISTRY["number"], value_widget=_simple_entry)
+TYPE_REGISTRY["boolean"] = replace(TYPE_REGISTRY["boolean"], value_widget=_boolean_check)
+
+
 FIELD_WIDGETS: Dict[str, Callable[[Any], EditorWidget]] = {
-    "string": _simple_entry,
-    "integer": _simple_entry,
-    "number": _simple_entry,
-    "boolean": _boolean_check,
+    key: ft.value_widget  # type: ignore[assignment]
+    for key, ft in TYPE_REGISTRY.items()
+    if ft.value_widget is not None
 }
+
 
 __all__ = ["EditorWidget", "FIELD_WIDGETS"]

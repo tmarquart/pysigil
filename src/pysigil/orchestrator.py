@@ -240,7 +240,7 @@ class Orchestrator:
             new_raw = raw
             if nt != old_field.type:
                 if on_type_change == "convert":
-                    adapter = TYPE_REGISTRY[nt]
+                    adapter = TYPE_REGISTRY[nt].adapter
                     try:
                         value = adapter.parse(raw)
                         new_raw = adapter.serialize(value)
@@ -489,7 +489,7 @@ Set multiple values for *provider_id* at once.
                 field = fields.get(key)
                 if field is None:
                     raise UnknownFieldError(key)
-                adapter = TYPE_REGISTRY[field.type]
+                adapter = TYPE_REGISTRY[field.type].adapter
                 try:
                     adapter.validate(value, field)
                 except (TypeError, ValueError) as exc:
@@ -515,7 +515,7 @@ Set multiple values for *provider_id* at once.
         """
         mgr = self._manager(provider_id)
         field = mgr._field_for(key)  # pylint: disable=protected-access
-        adapter = TYPE_REGISTRY[field.type]
+        adapter = TYPE_REGISTRY[field.type].adapter
         try:
             adapter.validate(value, field)
         except (TypeError, ValueError) as exc:
@@ -536,7 +536,7 @@ Set multiple values for *provider_id* at once.
         raw_map, _ = self.config_backend.read_merged(pid)
         result: dict[str, str | None] = {}
         for field in spec.fields:
-            adapter = TYPE_REGISTRY[field.type]
+            adapter = TYPE_REGISTRY[field.type].adapter
             raw = raw_map.get(field.key)
             try:
                 adapter.parse(raw)
