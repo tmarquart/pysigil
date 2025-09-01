@@ -47,6 +47,19 @@ from .resolver import (
 from .root import ProjectRootNotFoundError, find_project_root
 
 
+AUTHOR_FLAG_ENV = "SIGIL_AUTHOR"
+
+
+def author_mode_enabled(args: argparse.Namespace | None = None) -> bool:
+    """Return True if author mode should be enabled."""
+    if args and getattr(args, "author", False):
+        return True
+    if os.environ.get(AUTHOR_FLAG_ENV):
+        return True
+    cfg = Path.home() / ".sigil" / "author.toml"
+    return cfg.is_file()
+
+
 def _launch(path: Path) -> None:  # pragma: no cover - best effort
     try:
         if sys.platform.startswith("win"):
@@ -193,7 +206,7 @@ def export_cmd(args: argparse.Namespace) -> int:
 
 
 def gui_cmd(args: argparse.Namespace) -> int:  # pragma: no cover - GUI interactions
-    launch_gui(initial_provider=args.app)
+    launch_gui(initial_provider=args.app, author_mode=author_mode_enabled(args))
     return 0
 
 
@@ -316,6 +329,7 @@ def author_list_links(args: argparse.Namespace) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="sigil", description="Sigil command line interface.")
+    parser.add_argument("--author", action="store_true", help="Enable author mode")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     # paths command

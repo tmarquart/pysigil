@@ -1,0 +1,63 @@
+import os
+from types import SimpleNamespace
+from pathlib import Path
+
+import pytest
+
+from pysigil.cli import build_parser, author_mode_enabled
+from pysigil.ui.provider_adapter import ProviderAdapter
+from pysigil import api, authoring
+from pysigil.settings_metadata import IniFileBackend, IniSpecBackend
+from pysigil.orchestrator import Orchestrator
+from tests.utils import DummyPolicy
+
+def test_author_mode_detection(tmp_path, monkeypatch):
+    parser = build_parser()
+    args = parser.parse_args(["--author", "paths"])
+    assert author_mode_enabled(args)
+    monkeypatch.delenv("SIGIL_AUTHOR", raising=False)
+    args = parser.parse_args(["paths"])
+    monkeypatch.setenv("SIGIL_AUTHOR", "1")
+    assert author_mode_enabled(args)
+    monkeypatch.delenv("SIGIL_AUTHOR")
+    author_file = tmp_path / ".sigil" / "author.toml"
+    author_file.parent.mkdir(parents=True)
+    author_file.write_text("1")
+    monkeypatch.setattr(Path, "home", lambda: tmp_path)
+    assert author_mode_enabled(args)
+
+
+def _adapter_with_default(tmp_path, monkeypatch, *, author_mode: bool) -> ProviderAdapter:
+    monkeypatch.setattr(authoring, "user_config_dir", lambda app="sigil": tmp_path / "cfg")
+    spec = IniSpecBackend(user_dir=tmp_path / "meta")
+    pol = DummyPolicy(tmp_path / "user", tmp_path / "proj")
+    cfg = IniFileBackend(policy=pol)
+    orch = Orchestrator(spec_backend=spec, config_backend=cfg)
+    monkeypatch.setattr(api, "_ORCH", orch, raising=False)
+    pid = "demo-auth"
+    api.register_provider(pid, title="Demo")
+    handle = api.handle(pid)
+    handle.add_field("alpha", "integer")
+    defaults_dir = tmp_path / "pkg" / ".sigil"
+    defaults_dir.mkdir(parents=True)
+    defaults_ini = defaults_dir / "settings.ini"
+    defaults_ini.write_text(f"[{pid}]\n")
+    authoring.link(pid, defaults_ini, validate=False)
+    adapter = ProviderAdapter(author_mode=author_mode)
+    adapter.set_provider(pid)
+    return adapter
+
+
+def test_default_scope_requires_author_mode(tmp_path, monkeypatch):
+    adapter = _adapter_with_default(tmp_path, monkeypatch, author_mode=False)
+    assert not adapter.can_write("default")
+    with pytest.raises(PermissionError):
+        adapter.set_value("alpha", "default", 1)
+    adapter.author_mode = True
+    assert adapter.can_write("default")
+    adapter.set_value("alpha", "default", 1)
+    val, src = adapter.effective_for_key("alpha")
+    assert val == 1 and src == "default"
+    adapter.clear_value("alpha", "default")
+    val, src = adapter.effective_for_key("alpha")
+    assert val is None and src is None
