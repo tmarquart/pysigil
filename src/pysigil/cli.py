@@ -198,7 +198,7 @@ def gui_cmd(args: argparse.Namespace) -> int:  # pragma: no cover - GUI interact
 
 
 def setup_cmd(_: argparse.Namespace) -> int:  # pragma: no cover - GUI interactions
-    from .gui.author import main as author_main
+    from .ui.tk.author import main as author_main
 
     author_main()
     return 0
