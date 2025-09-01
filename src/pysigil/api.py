@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field as dataclass_field
 from pathlib import Path
 from typing import Any, Literal
 import os
@@ -52,6 +52,7 @@ class FieldInfo:
     type: str
     label: str | None
     description: str | None
+    options: dict[str, Any] = dataclass_field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -75,6 +76,7 @@ def _field_info(spec: FieldSpec) -> FieldInfo:
         type=spec.type,
         label=spec.label,
         description=spec.description,
+        options=spec.options,
     )
 
 
@@ -168,6 +170,7 @@ class ProviderHandle:
         *,
         label: str | None = None,
         description: str | None = None,
+        options: Mapping[str, Any] | None = None,
         init_scope: Literal[
             "user", "user-local", "project", "project-local", "environment"
         ] | None = "user",
@@ -179,6 +182,7 @@ class ProviderHandle:
                 type=type,
                 label=label,
                 description=description,
+                options=dict(options) if options is not None else None,
             )
         except DuplicateFieldError as exc:
             raise DuplicateFieldError(key) from exc
@@ -199,6 +203,7 @@ class ProviderHandle:
         new_type: str | None = None,
         label: str | None = None,
         description: str | None = None,
+        options: Mapping[str, Any] | None = None,
         on_type_change: Literal["convert", "clear"] = "convert",
         migrate_scopes: tuple[
             Literal["user", "user-local", "project", "project-local"], ...
@@ -212,6 +217,7 @@ class ProviderHandle:
                 new_type=new_type,
                 label=label,
                 description=description,
+                options=dict(options) if options is not None else None,
                 on_type_change=on_type_change,
             )
         except UnknownFieldError as exc:

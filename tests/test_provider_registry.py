@@ -17,9 +17,15 @@ def test_register_and_add_field(tmp_path):
     assert spec.title == "Demo"
     assert spec.fields == ()
 
-    field = FieldSpec(key="retries", type="integer", label="Retries")
+    field = FieldSpec(
+        key="retries",
+        type="integer",
+        label="Retries",
+        options={"min": 0},
+    )
     add_field_spec(path, field)
     spec2 = load_provider_spec(path)
     assert len(spec2.fields) == 1
     assert spec2.fields[0].key == "retries"
     assert spec2.fields[0].type == "integer"
+    assert spec2.fields[0].options == {"min": 0}

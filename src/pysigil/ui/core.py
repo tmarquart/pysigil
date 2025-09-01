@@ -117,6 +117,7 @@ class ProvidersService:
         *,
         label: str | None = None,
         description: str | None = None,
+        options: Dict[str, Any] | None = None,
         init_scope: Literal["user", "project"] | None = "user",
     ) -> api.FieldInfo:
         return api.handle(pid).add_field(
@@ -124,6 +125,7 @@ class ProvidersService:
             type,
             label=label,
             description=description,
+            options=options,
             init_scope=init_scope,
         )
 
@@ -172,6 +174,7 @@ class ProvidersService:
         new_type: str | None = None,
         label: str | None = None,
         description: str | None = None,
+        options: Dict[str, Any] | None = None,
         on_type_change: Literal["convert", "clear"] = "convert",
         migrate_scopes: tuple[Literal["user", "project"], ...] = ("user",),
     ) -> api.FieldInfo:
@@ -181,6 +184,7 @@ class ProvidersService:
             new_type=new_type,
             label=label,
             description=description,
+            options=options,
             on_type_change=on_type_change,
             migrate_scopes=migrate_scopes,
         )

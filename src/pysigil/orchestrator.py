@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Mapping
 
 from .authoring import normalize_provider_id
 from .errors import (
@@ -143,6 +143,7 @@ class Orchestrator:
         type: str,
         label: str | None = None,
         description: str | None = None,
+        options: Mapping[str, object] | None = None,
     ) -> FieldSpec:
         """Add a new field to a provider specification.
 
@@ -160,7 +161,13 @@ class Orchestrator:
         spec = self.spec_backend.get_spec(pid)
         if key in {f.key for f in spec.fields}:
             raise DuplicateFieldError(key)
-        field = FieldSpec(key=key, type=type, label=label, description=description)
+        field = FieldSpec(
+            key=key,
+            type=type,
+            label=label,
+            description=description,
+            options=dict(options) if options is not None else {},
+        )
         new_spec = replace(spec, fields=tuple(spec.fields) + (field,))
         etag = self.spec_backend.etag(pid)
         try:
@@ -183,6 +190,7 @@ class Orchestrator:
         new_type: str | None = None,
         label: str | None = None,
         description: str | None = None,
+        options: Mapping[str, object] | None = None,
         on_type_change: Literal["convert", "clear"] = "convert",
     ) -> FieldSpec:
         """Modify an existing field definition.
@@ -220,6 +228,7 @@ class Orchestrator:
             type=nt,
             label=old_field.label if label is None else label,
             description=old_field.description if description is None else description,
+            options=old_field.options if options is None else dict(options),
         )
 
         raw_map, source_map = self.config_backend.read_merged(pid)
