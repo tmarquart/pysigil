@@ -40,13 +40,15 @@ class App:
         adapter: ProviderAdapter | None = None,
         events: EventBus | None = None,
         initial_provider: str | None = None,
+        author_mode: bool = False,
     ) -> None:
         if tk is None:  # pragma: no cover - environment without tkinter
             raise RuntimeError("tkinter is required for App")
 
         self.root = master if master is not None else tk.Tk()
-        self.adapter = adapter or ProviderAdapter()
+        self.adapter = adapter or ProviderAdapter(author_mode=author_mode)
         self.events = events or EventBus()
+        self.author_mode = author_mode
         self.compact = True
         self.rows: dict[str, FieldRow] = {}
         self._edit_buttons: dict[str, ttk.Button] = {}
@@ -90,6 +92,10 @@ class App:
             header, textvariable=self._project_var, state="readonly"
         )
         self._project_entry.pack(side="left", padx=(4, 0), fill="x", expand=True)
+        if self.author_mode:
+            ttk.Button(header, text="Author Tools…", command=self._open_author).pack(
+                side="right"
+            )
 
     def _build_table(self) -> None:
         self._table = ttk.Frame(self.root)
@@ -117,6 +123,14 @@ class App:
             initial = self._initial_provider if self._initial_provider in providers else providers[0]
             self._provider_var.set(initial)
             self.on_provider_change()
+
+    def _open_author(self) -> None:  # pragma: no cover - GUI interactions
+        from .author import main as author_main
+
+        try:
+            author_main()
+        except Exception as exc:  # pragma: no cover - defensive
+            self.events.emit_error(str(exc))
 
     # ------------------------------------------------------------------
     # Row handling
@@ -239,9 +253,9 @@ class App:
             self._pill_col_width = pills_w
 
 
-def launch(initial_provider: str | None = None) -> None:
+def launch(initial_provider: str | None = None, *, author_mode: bool = False) -> None:
     """Convenience helper to launch the tkinter UI."""
-    app = App(initial_provider=initial_provider)
+    app = App(initial_provider=initial_provider, author_mode=author_mode)
     app.root.mainloop()
 
 

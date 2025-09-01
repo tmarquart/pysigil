@@ -43,6 +43,7 @@ class AppState:
     is_dirty_spec: bool = False
     is_dirty_values: bool = False
     project_detected: bool = True
+    author_mode: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -90,6 +91,9 @@ class ProvidersService:
     :class:`AppState` if necessary.
     """
 
+    def __init__(self, *, author_mode: bool = False) -> None:
+        self.author_mode = author_mode
+
     def list_providers(self) -> list[str]:
         return api.providers()
 
@@ -129,8 +133,15 @@ class ProvidersService:
         key: str,
         value: Any,
         *,
-        scope: Literal["user", "project"] = "user",
+        scope: Literal["user", "project", "default"] = "user",
     ) -> None:
+        if scope == "default":
+            if not self.author_mode:
+                raise PermissionError("default scope is read-only")
+            api.handle(pid)._manager().set(  # type: ignore[attr-defined]
+                key, value, scope="default"
+            )
+            return
         api.handle(pid).set(key, value, scope=scope)
 
     def clear_value(
@@ -138,8 +149,15 @@ class ProvidersService:
         pid: str,
         key: str,
         *,
-        scope: Literal["user", "project"] = "user",
+        scope: Literal["user", "project", "default"] = "user",
     ) -> None:
+        if scope == "default":
+            if not self.author_mode:
+                raise PermissionError("default scope is read-only")
+            api.handle(pid)._manager().clear(  # type: ignore[attr-defined]
+                key, scope="default"
+            )
+            return
         api.handle(pid).clear(key, scope=scope)
 
     def init(self, pid: str, scope: Literal["user", "project"]) -> None:
@@ -234,9 +252,10 @@ class AppCore:
         service: ProvidersService | None = None,
         *,
         executor: ThreadPoolExecutor | None = None,
+        author_mode: bool = False,
     ) -> None:
-        self.state = AppState()
-        self.service = service or ProvidersService()
+        self.state = AppState(author_mode=author_mode)
+        self.service = service or ProvidersService(author_mode=author_mode)
         self.events = EventBus()
         self._executor = executor or ThreadPoolExecutor(max_workers=4)
         self._lock = threading.Lock()

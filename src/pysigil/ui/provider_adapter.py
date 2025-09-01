@@ -20,7 +20,8 @@ class ValueInfo:
 class ProviderAdapter:
     """Adapter exposing provider data and configuration values for the UI."""
 
-    def __init__(self) -> None:
+    def __init__(self, *, author_mode: bool = False) -> None:
+        self.author_mode = author_mode
         self._handle: api.ProviderHandle | None = None
         self._default_path: Path | None = None
         self._default_writable = False
@@ -87,7 +88,7 @@ class ProviderAdapter:
     def can_write(self, scope_id: str) -> bool:
         """Return ``True`` if *scope_id* is writable according to policy."""
         if scope_id == "default":
-            return self._default_writable
+            return self.author_mode and self._default_writable
         try:
             return policy.allows(scope_id)
         except Exception:  # pragma: no cover - defensive
@@ -134,14 +135,18 @@ class ProviderAdapter:
     # ------------------------------------------------------------------
     def set_value(self, key: str, scope_id: str, value: object) -> None:
         handle = self._require_handle()
-        if scope_id == "default" and self._default_writable:
+        if scope_id == "default":
+            if not (self.author_mode and self._default_writable):
+                raise PermissionError("default scope is read-only")
             handle._manager().set(key, value, scope="default")  # type: ignore[attr-defined]
-        else:
-            handle.set(key, value, scope=scope_id)
+            return
+        handle.set(key, value, scope=scope_id)
 
     def clear_value(self, key: str, scope_id: str) -> None:
         handle = self._require_handle()
-        if scope_id == "default" and self._default_writable:
+        if scope_id == "default":
+            if not (self.author_mode and self._default_writable):
+                raise PermissionError("default scope is read-only")
             handle._manager().clear(key, scope="default")  # type: ignore[attr-defined]
             return
         handle.clear(key, scope=scope_id)
