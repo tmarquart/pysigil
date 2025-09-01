@@ -1,23 +1,23 @@
-from __future__ import annotations
-
 """Authoring adapter.
 
-This module exposes a thin layer used by the authoring tools.  The
-implementation purposely mirrors :class:`~pysigil.ui.provider_adapter.ProviderAdapter`
-but focuses on manipulating provider specifications and defaults.  Only a
-minimal feature set required by the tests is implemented; the API is kept
-simple so additional capabilities can be bolted on in the future without the
-UI reaching directly into :mod:`pysigil.api` or
-:mod:`pysigil.settings_metadata`.
+This module exposes a thin layer used by the authoring tools. The
+implementation purposely mirrors
+:class:`~pysigil.ui.provider_adapter.ProviderAdapter` but focuses on
+manipulating provider specifications and defaults. Only a minimal feature set
+required by the tests is implemented; the API is kept simple so additional
+capabilities can be bolted on in the future without the UI reaching directly
+into :mod:`pysigil.api` or :mod:`pysigil.settings_metadata`.
 """
 
-from dataclasses import dataclass
-from typing import Any, Dict, Iterable, List, Mapping
+from __future__ import annotations
+
 import re
+from collections.abc import Iterable
+from dataclasses import dataclass
+from typing import Any
 
 from .. import api
 from ..settings_metadata import TYPE_REGISTRY
-
 
 # ---------------------------------------------------------------------------
 # Data classes exposed to the UI layer
@@ -70,8 +70,8 @@ class RenamePreview:
 
     key: str
     new_key: str
-    existing: Dict[str, str]
-    conflicts: Dict[str, str]
+    existing: dict[str, str]
+    conflicts: dict[str, str]
 
 
 @dataclass(frozen=True)
@@ -80,7 +80,7 @@ class RenamePlan:
 
     key: str
     new_key: str
-    layers: Dict[str, str]
+    layers: dict[str, str]
 
 
 @dataclass(frozen=True)
@@ -88,7 +88,7 @@ class DeletePreview:
     """Preview information for deleting a field."""
 
     key: str
-    layers: Dict[str, str]
+    layers: dict[str, str]
 
 
 # ---------------------------------------------------------------------------
@@ -122,20 +122,20 @@ class AuthorAdapter:
     # ------------------------------------------------------------------
     # Queries
     # ------------------------------------------------------------------
-    def list_defined(self) -> List[FieldInfo]:
+    def list_defined(self) -> list[FieldInfo]:
         """Return field specifications defined for the current provider."""
 
         handle = self._require_handle()
         return [FieldInfo(f.key, f.type, f.label, f.description) for f in handle.fields()]
 
-    def list_undiscovered(self) -> List[UntrackedInfo]:
+    def list_undiscovered(self) -> list[UntrackedInfo]:
         """Return keys that exist in configuration but lack field metadata."""
 
         handle = self._require_handle()
         assert self._provider_id is not None
         keys = handle.untracked_keys()
         raw_map, _ = api._ORCH.config_backend.read_merged(self._provider_id)  # type: ignore[attr-defined]
-        infos: List[UntrackedInfo] = []
+        infos: list[UntrackedInfo] = []
         for key in keys:
             raw = raw_map.get(key)
             guessed = self._guess_type(raw)
