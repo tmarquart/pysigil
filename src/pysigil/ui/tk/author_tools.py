@@ -152,6 +152,7 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         defined = {f.key: f for f in self.adapter.list_defined()}
         info: FieldInfo | None = defined.get(key)
         default: object | None = None
+        undiscovered = False
         if info is not None:
             default = self.adapter.default_for_key(key)
         else:
@@ -161,16 +162,17 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
                 return
             info = FieldInfo(key=key, type=uinfo.guessed_type)
             default = uinfo.raw
-        self._populate_form(info, default)
+            undiscovered = True
+        self._populate_form(info, default, undiscovered=undiscovered)
 
     def _on_add(self) -> None:
         self._tree.selection_remove(self._tree.selection())
         self._current_key = ""
         info = FieldInfo(key="", type="string")
-        self._populate_form(info, None)
+        self._populate_form(info, None, undiscovered=False)
 
     # ------------------------------------------------------------------
-    def _populate_form(self, info: FieldInfo, default: object | None) -> None:
+    def _populate_form(self, info: FieldInfo, default: object | None, *, undiscovered: bool) -> None:
         self._clear_form()
 
         # Identity -------------------------------------------------------
@@ -215,7 +217,8 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         ttk.Button(actions, text="Save", command=self._on_save).pack(side="right")
         ttk.Button(actions, text="Revert", command=self._on_revert).pack(side="right")
         ttk.Button(actions, text="Delete", command=self._on_delete).pack(side="right")
-        ttk.Button(actions, text="Adopt", command=self._on_adopt).pack(side="right")
+        if undiscovered:
+            ttk.Button(actions, text="Adopt", command=self._on_adopt).pack(side="right")
 
         # Diff drawer ----------------------------------------------------
         self._diff_shown = tk.BooleanVar(value=False)
@@ -290,7 +293,7 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
             info = defined.get(self._current_key)
             default = self.adapter.default_for_key(self._current_key)
             if info is not None:
-                self._populate_form(info, default)
+                self._populate_form(info, default, undiscovered=False)
 
     def _on_delete(self) -> None:
         if self._current_key:
@@ -303,8 +306,16 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         self._clear_form()
 
     def _on_adopt(self) -> None:
-        # For now adopt simply saves the field
-        self._on_save()
+        if self._current_key is None:
+            return
+        key = self._key_var.get().strip()
+        type_name = self._type_var.get().strip()
+        try:
+            self.adapter.adopt_untracked({key: type_name})
+        except Exception:
+            return
+        self._current_key = key
+        self._reload_tree()
 
     def _toggle_diff(self) -> None:
         if self._diff_shown.get():
