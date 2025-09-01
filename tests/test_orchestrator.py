@@ -25,14 +25,27 @@ def test_register_add_set_get(tmp_path: Path) -> None:
         key="retries",
         type="integer",
         label="Retries",
-        options={"min": 0},
+        options={"minimum": 0},
     )
     orch.set_value("my-pkg", "retries", 5)
     eff = orch.get_effective("my-pkg")
     assert eff["retries"].value == 5
     assert eff["retries"].source == "user"
     spec = orch.reload_spec("my-pkg")
-    assert spec.fields[0].options == {"min": 0}
+    assert spec.fields[0].options == {"minimum": 0}
+
+
+def test_set_value_respects_minimum(tmp_path: Path) -> None:
+    orch = _make_orch(tmp_path)
+    orch.register_provider("pkg")
+    orch.add_field(
+        "pkg",
+        key="retries",
+        type="integer",
+        options={"minimum": 1},
+    )
+    with pytest.raises(ValidationError):
+        orch.set_value("pkg", "retries", 0)
 
 
 def test_edit_field_rename_migrates_value(tmp_path: Path) -> None:
