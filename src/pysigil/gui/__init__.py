@@ -331,7 +331,7 @@ def launch_gui(
                 iid=key,
                 values=(
                     key,
-                    val,
+                    "" if val is None else str(val),
                     label_map.get(src, src),
                     "Override \u25BE   Reset \u25BE",
                 ),
@@ -354,8 +354,10 @@ def launch_gui(
     def _on_override(key: str, scope: str) -> None:
         if _sigil_instance is None:
             return
-        current = _sigil_instance.get_pref(key) or ""
-        res = _open_value_dialog("edit", scope, key=key, value=str(current))
+        current = _sigil_instance.get_pref(key)
+        res = _open_value_dialog(
+            "edit", scope, key=key, value="" if current is None else str(current)
+        )
 
         if not res:
             return
