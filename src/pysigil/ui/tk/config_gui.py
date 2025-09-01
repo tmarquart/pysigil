@@ -7,7 +7,7 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import messagebox, ttk
 
-from ..config import host_id, init_config, open_scope
+from ...config import host_id, init_config, open_scope
 
 
 def _launch(path: Path) -> None:  # pragma: no cover - best effort
