@@ -13,6 +13,7 @@ except Exception:  # pragma: no cover - fallback when tkinter missing
     ttk = None  # type: ignore
 
 from ..provider_adapter import ProviderAdapter, ValueInfo
+from ..value_parser import parse_field_value
 
 
 class EditDialog(tk.Toplevel):  # type: ignore[misc]
@@ -117,22 +118,10 @@ class EditDialog(tk.Toplevel):  # type: ignore[misc]
 
         raw = self.entries[scope].get()
         type_name = self.adapter.field_info(self.key).type
-        value: object = raw
 
         try:
-            if type_name == "integer":
-                value = int(raw)
-            elif type_name == "number":
-                value = float(raw)
-            elif type_name == "boolean":
-                lower = raw.strip().lower()
-                if lower in {"true", "1"}:
-                    value = True
-                elif lower in {"false", "0"}:
-                    value = False
-                else:
-                    raise ValueError("expected boolean")
-        except ValueError:
+            value = parse_field_value(type_name, raw)
+        except (TypeError, ValueError):
             if messagebox is not None:
                 if type_name == "boolean":
                     msg = "Value must be true/false or 1/0"

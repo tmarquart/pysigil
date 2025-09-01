@@ -4,7 +4,7 @@ from __future__ import annotations
 
 try:  # pragma: no cover - tkinter availability depends on environment
     import tkinter as tk
-    from tkinter import ttk
+    from tkinter import messagebox, ttk
 except Exception:  # pragma: no cover - fallback when tkinter missing
     tk = None  # type: ignore
     ttk = None  # type: ignore
@@ -13,6 +13,7 @@ from ...settings_metadata import TYPE_REGISTRY, FieldType
 from ..author_adapter import AuthorAdapter, FieldInfo
 from ..options_form import OptionsForm
 from ..core import AppCore
+from ..value_parser import parse_field_value
 
 
 class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
@@ -255,6 +256,17 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         default = None
         if self._value_widget is not None and hasattr(self._value_widget, "get_value"):
             default = self._value_widget.get_value()  # type: ignore[attr-defined]
+        if default is not None:
+            try:
+                default = parse_field_value(type_name, default)
+            except (TypeError, ValueError):
+                if messagebox is not None:
+                    if type_name == "boolean":
+                        msg = "Default must be true/false or 1/0"
+                    else:
+                        msg = f"Default must be a {type_name}"
+                    messagebox.showerror("Invalid default", msg, parent=self)
+                return
         # Build kwargs dynamically to match adapter signature
         import inspect
 
