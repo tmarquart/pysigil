@@ -352,9 +352,12 @@ def launch_gui(
                 int(val)
             elif isinstance(current, float):
                 float(val)
-            elif isinstance(current, list | dict):
-                json.loads(val)
+            elif isinstance(current, (list, dict)):
+                data = json.loads(val)
+                if not isinstance(data, type(current)):
+                    raise ValueError(f"Expected {type(current).__name__} for {key}")
         except Exception as exc:
+            logger.error("invalid value %r for %s: %s", val, key, exc)
             if messagebox is not None:
                 messagebox.showerror("Invalid value", str(exc), parent=root)
             return False
