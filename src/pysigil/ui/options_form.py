@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, fields, is_dataclass
 from typing import Any, Mapping, get_args, get_origin, Union
+from types import UnionType
 
 from ..settings_metadata import TYPE_REGISTRY, FieldType
 from .widgets import EditorWidget
@@ -66,7 +67,7 @@ class OptionsForm(ttk.Frame):
     @staticmethod
     def _unwrap_optional(tp: Any) -> tuple[bool, Any]:
         origin = get_origin(tp)
-        if origin is Union:
+        if origin in (Union, UnionType):
             args = [a for a in get_args(tp) if a is not type(None)]
             if len(args) == 1:
                 return True, args[0]

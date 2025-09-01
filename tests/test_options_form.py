@@ -22,6 +22,11 @@ class DemoOptions:
     tags: list[str]
 
 
+@dataclass
+class IntOptOptional:
+    minimum: int | None = None
+
+
 def _make_form(root):
     ft = FieldType(TYPE_REGISTRY["string"].adapter, option_model=DemoOptions)
     return OptionsForm(root, ft)
@@ -93,4 +98,19 @@ def test_custom_option_widget():
     form = OptionsForm(root, ft)
     form.set_values({"value": "foo"})
     assert form.get_values()["value"] == "foo"
+    root.destroy()
+
+
+@pytest.mark.skipif(tk is None, reason="tkinter not available")
+def test_optional_field_type():
+    try:
+        root = tk.Tk()
+    except Exception:
+        pytest.skip("no display available")
+    ft = FieldType(TYPE_REGISTRY["integer"].adapter, option_model=IntOptOptional)
+    form = OptionsForm(root, ft)
+    form.set_values(IntOptOptional(7))
+    assert form.get_values()["minimum"] == 7
+    form.set_values(IntOptOptional())
+    assert form.get_values()["minimum"] is None
     root.destroy()
