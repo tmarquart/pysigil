@@ -4,7 +4,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
-from .. import api, policy
+from .. import api
+from ..policy import policy
 from ..authoring import get as get_dev_link, list_links
 
 
