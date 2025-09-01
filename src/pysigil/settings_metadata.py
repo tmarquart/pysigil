@@ -103,6 +103,14 @@ class IntegerAdapter:
     def validate(self, value: Any, spec: FieldSpec) -> None:
         if value is not None and not isinstance(value, int):
             raise TypeError("expected int")
+        if value is None:
+            return
+        minimum = spec.options.get("minimum")
+        if minimum is not None:
+            if not isinstance(minimum, int):
+                raise TypeError("minimum option must be int")
+            if value < minimum:
+                raise ValueError(f"value {value} < minimum {minimum}")
 
 
 class NumberAdapter:
@@ -165,6 +173,14 @@ class StringListAdapter:
         ):
             raise TypeError("expected list[str]")
 
+
+@dataclass
+class IntegerOptions:
+    """Configuration options for integer fields."""
+
+    minimum: int | None = None
+
+
 @dataclass(frozen=True)
 class FieldType:
     """Metadata describing a supported field type."""
@@ -177,7 +193,7 @@ class FieldType:
 
 TYPE_REGISTRY: dict[str, FieldType] = {
     "string": FieldType(StringAdapter()),
-    "integer": FieldType(IntegerAdapter()),
+    "integer": FieldType(IntegerAdapter(), option_model=IntegerOptions),
     "number": FieldType(NumberAdapter()),
     "boolean": FieldType(BooleanAdapter()),
     "string_list": FieldType(StringListAdapter()),
@@ -945,6 +961,7 @@ __all__ = [
     "FieldValue",
     "FieldType",
     "IntegerAdapter",
+    "IntegerOptions",
     "IniFileBackend",
     "NumberAdapter",
     "ProviderManager",
