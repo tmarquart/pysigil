@@ -1,5 +1,6 @@
 import pytest
-
+from pathlib import PurePosixPath
+import pysigil.settings_metadata as settings_metadata
 from pysigil.errors import ConflictError
 from pysigil.settings_metadata import (
     FieldSpec,
@@ -134,5 +135,58 @@ def test_spec_backend_detects_external_change(tmp_path):
     path.write_text(path.read_text() + "\n# external\n")
     with pytest.raises(ConflictError):
         backend.save_spec(loaded)
+
+
+def test_ini_spec_backend_get_provider_ids_installed(monkeypatch):
+    backend = IniSpecBackend()
+    monkeypatch.setattr(settings_metadata, "list_links", lambda **kw: {})
+
+    class DummyDist:
+        def __init__(self, name, files, meta_name=None):
+            self.name = name
+            self._files = [PurePosixPath(p) for p in files]
+            if meta_name is None:
+                self.metadata = {}
+            else:
+                self.metadata = {"Name": meta_name}
+
+        @property
+        def files(self):  # pragma: no cover - simple
+            return self._files
+
+    dists = [
+        DummyDist("pkg_a", [".sigil/metadata.ini"], "Foo"),
+        DummyDist("pkg_b", ["other.txt"], "Bar"),
+    ]
+    monkeypatch.setattr(settings_metadata, "distributions", lambda: dists)
+
+    ids = backend.get_provider_ids()
+    assert ids == ["foo"]
+
+
+def test_ini_spec_backend_prefers_dev_link(monkeypatch, tmp_path):
+    defaults = tmp_path / "foo" / "defaults.ini"
+    defaults.parent.mkdir(parents=True)
+    defaults.write_text("")
+    (defaults.parent / "metadata.ini").write_text("[__meta__]\nschema_version=1\n")
+
+    monkeypatch.setattr(settings_metadata, "list_links", lambda **kw: {"foo": defaults})
+
+    class DummyDist:
+        def __init__(self, name):
+            self.name = name
+            self._files = [PurePosixPath(".sigil/metadata.ini")]
+            self.metadata = {"Name": name}
+
+        @property
+        def files(self):  # pragma: no cover - simple
+            return self._files
+
+    dists = [DummyDist("Foo"), DummyDist("Bar")]
+    monkeypatch.setattr(settings_metadata, "distributions", lambda: dists)
+
+    backend = IniSpecBackend()
+    ids = backend.get_provider_ids()
+    assert ids == ["bar", "foo"]
 
 

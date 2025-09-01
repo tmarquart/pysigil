@@ -24,6 +24,9 @@ We use your **PEP 503 normalized** distribution name as the provider id (lowerca
 Sigil can auto-detect your package from the current directory using
 `pyprojroot` and your `pyproject.toml`.
 
+At runtime, providers are now discovered automatically by scanning installed
+distributions for `.sigil/metadata.ini`. No Python entry points are required.
+
 ```bash
 # From your repo root
 sigil author register --auto
@@ -113,12 +116,13 @@ ci_policy = ScopePolicy(scopes)
 
 ## Packaging tip
 
-When you publish, include `.sigil/settings.ini` in your wheel:
+When you publish, include `.sigil/settings.ini` and `.sigil/metadata.ini` in your
+wheel:
 
 ```toml
 # pyproject.toml (example)
 [tool.setuptools.package-data]
-"my_pkg" = [".sigil/settings.ini"]
+"my_pkg" = [".sigil/settings.ini", ".sigil/metadata.ini"]
 ```
 
 ## Troubleshooting

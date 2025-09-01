@@ -98,6 +98,7 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
             else:
                 # insert a placeholder so the node is expandable before loading
                 self._tree.insert(undis_id, "end")
+
         else:
             # Reset flag so the node stays collapsed if undiscovered fields later appear
             self._undiscovered_loaded = False
