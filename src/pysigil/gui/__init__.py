@@ -352,7 +352,7 @@ def launch_gui(
                 int(val)
             elif isinstance(current, float):
                 float(val)
-            elif isinstance(current, (list, dict)):
+            elif isinstance(current, list | dict):
                 data = json.loads(val)
                 if not isinstance(data, type(current)):
                     raise ValueError(f"Expected {type(current).__name__} for {key}")
