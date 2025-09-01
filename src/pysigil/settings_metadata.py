@@ -145,6 +145,26 @@ class BooleanAdapter:
         if value is not None and not isinstance(value, bool):
             raise TypeError("expected bool")
 
+
+class StringListAdapter:
+    """Adapter for lists of strings."""
+
+    def parse(self, raw: str | None) -> list[str]:
+        if not raw:
+            return []
+        return [p.strip() for p in raw.split(",") if p.strip()]
+
+    def serialize(self, value: Any) -> str:
+        if not isinstance(value, list) or not all(isinstance(p, str) for p in value):
+            raise TypeError("expected list[str]")
+        return ", ".join(value)
+
+    def validate(self, value: Any, spec: FieldSpec) -> None:
+        if value is not None and (
+            not isinstance(value, list) or not all(isinstance(p, str) for p in value)
+        ):
+            raise TypeError("expected list[str]")
+
 @dataclass(frozen=True)
 class FieldType:
     """Metadata describing a supported field type."""
@@ -160,6 +180,7 @@ TYPE_REGISTRY: dict[str, FieldType] = {
     "integer": FieldType(IntegerAdapter()),
     "number": FieldType(NumberAdapter()),
     "boolean": FieldType(BooleanAdapter()),
+    "string_list": FieldType(StringListAdapter()),
 }
 
 _PEP503_RE = re.compile(r"^[a-z0-9]+(?:[._-][a-z0-9]+)*$")
@@ -936,6 +957,7 @@ __all__ = [
     "DuplicateProviderError",
     "ConflictError",
     "StringAdapter",
+    "StringListAdapter",
     "TYPE_REGISTRY",
     "TypeAdapter",
     "add_field_spec",

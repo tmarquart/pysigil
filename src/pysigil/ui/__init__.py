@@ -8,4 +8,4 @@ changes to the core logic.
 
 from __future__ import annotations
 
-__all__ = ["core", "tk", "widgets"]
+__all__ = ["core", "tk", "widgets", "options_form"]
