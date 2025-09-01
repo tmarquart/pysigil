@@ -48,7 +48,7 @@ def test_provider_manager_roundtrip():
                 key="retries",
                 type="integer",
                 label="Retries",
-                options={"min": 0},
+                options={"minimum": 0},
             )
         ],
     )
@@ -58,7 +58,7 @@ def test_provider_manager_roundtrip():
     state = mgr.effective()
     assert state["retries"].value == 3
     assert state["retries"].source == "project"
-    assert mgr.spec.fields[0].options == {"min": 0}
+    assert mgr.spec.fields[0].options == {"minimum": 0}
 
     mgr.set("retries", 5)
     assert backend.writes == [("demo", "retries", "5", "user", "settings.ini")]
@@ -68,6 +68,18 @@ def test_provider_manager_roundtrip():
 
     mgr.init("user")
     assert backend.sections == [("demo", "user", "settings.ini")]
+
+
+def test_integer_minimum_enforced():
+    spec = ProviderSpec(
+        provider_id="demo",
+        schema_version="0.1",
+        fields=[FieldSpec(key="count", type="integer", options={"minimum": 1})],
+    )
+    backend = DummyBackend()
+    mgr = ProviderManager(spec, backend)
+    with pytest.raises(ValueError):
+        mgr.set("count", 0)
 
 
 def test_ini_spec_backend_persists_options(tmp_path):
