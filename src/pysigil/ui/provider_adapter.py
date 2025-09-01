@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 from .. import api, policy
+from ..authoring import get as get_dev_link, list_links
 
 
 @dataclass(frozen=True)
@@ -19,17 +21,32 @@ class ProviderAdapter:
 
     def __init__(self) -> None:
         self._handle: api.ProviderHandle | None = None
+        self._default_path: Path | None = None
+        self._default_writable = False
 
     # ------------------------------------------------------------------
     # Provider / scope discovery
     # ------------------------------------------------------------------
     def list_providers(self) -> List[str]:
-        """Return all known provider ids."""
-        return api.providers()
+        """Return all known provider ids, including dev-link only ones."""
+        providers = set(api.providers())
+        try:
+            providers.update(list_links(must_exist_on_disk=True))
+        except Exception:  # pragma: no cover - defensive
+            pass
+        return sorted(providers)
 
     def set_provider(self, provider_id: str) -> None:
         """Bind the adapter to *provider_id*."""
         self._handle = api.handle(provider_id)
+        dl = get_dev_link(provider_id)
+        if dl and dl.defaults_path.exists():
+            self._default_path = dl.defaults_path
+            self._default_writable = True
+        else:
+            links = list_links(must_exist_on_disk=True)
+            self._default_path = links.get(provider_id)
+            self._default_writable = self._default_path is not None
 
     # internal ----------------------------------------------------------
     def _require_handle(self) -> api.ProviderHandle:
@@ -68,6 +85,8 @@ class ProviderAdapter:
 
     def can_write(self, scope_id: str) -> bool:
         """Return ``True`` if *scope_id* is writable according to policy."""
+        if scope_id == "default":
+            return self._default_writable
         try:
             return policy.allows(scope_id)
         except Exception:  # pragma: no cover - defensive
@@ -114,10 +133,16 @@ class ProviderAdapter:
     # ------------------------------------------------------------------
     def set_value(self, key: str, scope_id: str, value: object) -> None:
         handle = self._require_handle()
-        handle.set(key, value, scope=scope_id)
+        if scope_id == "default" and self._default_writable:
+            handle._manager().set(key, value, scope="default")  # type: ignore[attr-defined]
+        else:
+            handle.set(key, value, scope=scope_id)
 
     def clear_value(self, key: str, scope_id: str) -> None:
         handle = self._require_handle()
+        if scope_id == "default" and self._default_writable:
+            handle._manager().clear(key, scope="default")  # type: ignore[attr-defined]
+            return
         handle.clear(key, scope=scope_id)
 
     # ------------------------------------------------------------------
@@ -126,6 +151,8 @@ class ProviderAdapter:
     def target_path(self, scope_id: str) -> str:
         """Return filesystem path for *scope_id* writes."""
         handle = self._require_handle()
+        if scope_id == "default" and self._default_path is not None:
+            return str(self._default_path)
         return str(handle.target_path(scope_id))
 
     def fields(self) -> List[str]:
