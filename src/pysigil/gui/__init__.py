@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 import os
 from collections.abc import Callable
@@ -8,11 +9,12 @@ from typing import TYPE_CHECKING, Literal
 
 try:
     import tkinter as tk
-    from tkinter import simpledialog, ttk
+    from tkinter import messagebox, simpledialog, ttk
 except Exception:  # pragma: no cover - fallback for headless tests
     tk = None  # type: ignore
     simpledialog = None  # type: ignore
     ttk = None  # type: ignore
+    messagebox = None  # type: ignore
 
 from ..config import available_providers, init_config
 from ..merge_policy import KeyPath
@@ -338,13 +340,35 @@ def launch_gui(
             )
 
 
+    def _validate(key: str, val: str) -> bool:
+        if _sigil_instance is None:
+            return False
+        current = _sigil_instance.get_pref(key)
+        try:
+            if isinstance(current, bool):
+                if val.lower() not in {"true", "false", "1", "0"}:
+                    raise ValueError(f"Expected true/false or 1/0 for {key}")
+            elif isinstance(current, int) and not isinstance(current, bool):
+                int(val)
+            elif isinstance(current, float):
+                float(val)
+            elif isinstance(current, list | dict):
+                json.loads(val)
+        except Exception as exc:
+            if messagebox is not None:
+                messagebox.showerror("Invalid value", str(exc), parent=root)
+            return False
+        return True
+
+
     def _on_add() -> None:
         res = _open_value_dialog("add", scope_var.get())
-        if not res or _sigil_instance is None:
+        if res is None or _sigil_instance is None:
             return
         key, value = res
-        _sigil_instance.set_pref(key, value, scope=scope_var.get())
-        _refresh()
+        if _validate(key, value):
+            _sigil_instance.set_pref(key, value, scope=scope_var.get())
+            _refresh()
 
 
     def _on_init() -> None:
@@ -359,11 +383,12 @@ def launch_gui(
             "edit", scope, key=key, value="" if current is None else str(current)
         )
 
-        if not res:
+        if res is None:
             return
         new_key, new_val = res
+        if not _validate(new_key, new_val):
+            return
         if new_key != key:
-
             _sigil_instance.set_pref(key, None, scope=scope)
             key = new_key
         _sigil_instance.set_pref(key, new_val, scope=scope)
