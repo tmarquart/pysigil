@@ -85,7 +85,12 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         self._tree.item(undis_id, open=True)
 
     # ------------------------------------------------------------------
-    def _build_type_section(self, field_type: FieldType | None, default: object | None = None) -> None:
+    def _build_type_section(
+        self,
+        field_type: FieldType | None,
+        default: object | None = None,
+        options: object | None = None,
+    ) -> None:
         for child in self._opts_frame.winfo_children():
             child.destroy()
         for child in self._default_frame.winfo_children():
@@ -98,9 +103,19 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         if field_type.option_widget is not None:
             self._options_widget = field_type.option_widget(self._opts_frame)
             self._options_widget.pack(fill="x")
+            if options is not None and hasattr(self._options_widget, "set_value"):
+                try:  # best effort
+                    self._options_widget.set_value(options)  # type: ignore[attr-defined]
+                except Exception:
+                    pass
         elif field_type.option_model is not None:
             self._options_widget = OptionsForm(self._opts_frame, field_type)
             self._options_widget.pack(fill="x")
+            if options is not None and hasattr(self._options_widget, "set_values"):
+                try:  # best effort
+                    self._options_widget.set_values(options)
+                except Exception:
+                    pass
         # Default editor
         if field_type.value_widget is not None:
             widget = field_type.value_widget(self._default_frame)  # type: ignore[assignment]
@@ -191,7 +206,7 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         self._default_frame = ttk.LabelFrame(self._form, text="Default")
         self._default_frame.pack(fill="x", pady=(0, 6))
         ft = TYPE_REGISTRY.get(info.type)
-        self._build_type_section(ft, default)
+        self._build_type_section(ft, default, info.options)
 
         # Actions --------------------------------------------------------
         actions = ttk.Frame(self._form)

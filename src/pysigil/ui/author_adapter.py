@@ -12,8 +12,8 @@ into :mod:`pysigil.api` or :mod:`pysigil.settings_metadata`.
 from __future__ import annotations
 
 import re
-from collections.abc import Iterable
-from dataclasses import dataclass
+from collections.abc import Iterable, Mapping
+from dataclasses import dataclass, field as dataclass_field
 from typing import Any
 
 from .. import api
@@ -32,6 +32,7 @@ class FieldInfo:
     type: str
     label: str | None = None
     description: str | None = None
+    options: dict[str, Any] = dataclass_field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -126,7 +127,7 @@ class AuthorAdapter:
         """Return field specifications defined for the current provider."""
 
         handle = self._require_handle()
-        return [FieldInfo(f.key, f.type, f.label, f.description) for f in handle.fields()]
+        return [FieldInfo(f.key, f.type, f.label, f.description, f.options) for f in handle.fields()]
 
     def list_undiscovered(self) -> list[UntrackedInfo]:
         """Return keys that exist in configuration but lack field metadata."""
@@ -161,6 +162,8 @@ class AuthorAdapter:
         *,
         label: str | None = None,
         description: str | None = None,
+        options: Mapping[str, Any] | None = None,
+        default: Any | None = None,
         init_scope: str | None = "user",
         new_key: str | None = None,
     ) -> FieldInfo:
@@ -174,6 +177,7 @@ class AuthorAdapter:
                 new_type=type,
                 label=label,
                 description=description,
+                options=options,
             )
         elif key in existing and new_key is not None:
             res = handle.edit_field(
@@ -182,6 +186,7 @@ class AuthorAdapter:
                 new_type=type,
                 label=label,
                 description=description,
+                options=options,
             )
         else:
             res = handle.add_field(
@@ -189,9 +194,13 @@ class AuthorAdapter:
                 type,
                 label=label,
                 description=description,
+                options=options,
                 init_scope=init_scope,  # type: ignore[arg-type]
             )
-        return FieldInfo(res.key, res.type, res.label, res.description)
+        info = FieldInfo(res.key, res.type, res.label, res.description, res.options)
+        if default is not None:
+            api._ORCH.set_value(self._provider_id or "", res.key, default, scope="default")  # type: ignore[arg-type]
+        return info
 
     def delete_field(self, key: str, *, remove_values: bool = False, scopes: Iterable[str] = ("user", "project")) -> None:
         """Remove a field from the provider specification."""
@@ -233,7 +242,7 @@ class AuthorAdapter:
 
         handle = self._require_handle()
         res = handle.edit_field(plan.key, new_key=plan.new_key)
-        return FieldInfo(res.key, res.type, res.label, res.description)
+        return FieldInfo(res.key, res.type, res.label, res.description, res.options)
 
     def preview_delete(self, key: str) -> DeletePreview:
         """Return scopes containing values for *key* prior to deletion."""
