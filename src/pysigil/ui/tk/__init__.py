@@ -228,6 +228,7 @@ class App:
         for r in self.rows.values():
             r.grid_columnconfigure(0, minsize=0)
             r.grid_columnconfigure(2, minsize=0)
+
             r.pills.configure(width=0)
 
         self.root.update_idletasks()
