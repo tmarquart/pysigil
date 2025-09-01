@@ -15,8 +15,11 @@ defaults = "prefs/defaults.ini"
 ``` | pysigil-Hub auto-discovers your package during import. |
 | 3 | (Optional but recommended) Expose helpers so callers never touch pysigil APIs | ```python
 # mypkg/__init__.py
-from pysigil.gui.hub import get_preferences as _gp
-get_pref, set_pref = _gp(__name__)  # __name__ == "mypkg"
+from pysigil.core import Sigil
+
+_sigil = Sigil(__name__)  # __name__ == "mypkg"
+get_pref = _sigil.get_pref
+set_pref = _sigil.set_pref
 ``` | • One-line access:<br>`get_pref("db.host")`<br>• Handles env ▶ project ▶ user ▶ defaults without extra code. |
 | 4 | (Optional) ship metadata later | Add `prefs/defaults.meta.json` and set `meta = "prefs/defaults.meta.json"` under `[tool.pysigil]` | When the GUI arrives, titles, tool-tips and “secret” flags will show automatically. No impact on MVP. |
 

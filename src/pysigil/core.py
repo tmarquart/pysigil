@@ -16,7 +16,6 @@ from .errors import (
     SigilWriteError,
     UnknownScopeError,
 )
-from .gui import events
 from .merge_policy import KeyPath, parse_key, read_env
 from .policy import CORE_DEFAULTS, ScopePolicy, policy as default_policy
 from .root import ProjectRootNotFoundError
@@ -449,12 +448,6 @@ class Sigil:
             backend = _backend_for(path_file)
             backend.save(path_file, data)
             self.invalidate_cache()
-        events.emit(
-            "pref_changed",
-            KEY_JOIN_CHAR.join(raw_path),
-            str(value) if value is not None else None,
-            target_scope,
-        )
 
     def _get_scope_storage(self, scope: str) -> tuple[MutableMapping[KeyPath, str], Path]:
         if scope == "user":
