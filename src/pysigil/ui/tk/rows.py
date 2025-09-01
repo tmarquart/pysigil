@@ -65,6 +65,8 @@ class FieldRow(ttk.Frame):
 
         self.columnconfigure(1, weight=1)
 
+        self._pill_widgets: Dict[str, PillButton] = {}
+
         self.refresh()
 
     # ------------------------------------------------------------------
@@ -76,7 +78,7 @@ class FieldRow(ttk.Frame):
 
     # ------------------------------------------------------------------
     def refresh(self) -> None:
-        """Refresh the effective value and rebuild scope pills."""
+        """Refresh the effective value and update scope pills."""
         if tk is None:  # pragma: no cover - defensive
             return
 
@@ -89,58 +91,101 @@ class FieldRow(ttk.Frame):
             src_txt = self.adapter.scope_label(eff_src)
         self.var_eff.set(f"{val_txt}  ({src_txt})")
 
-        # rebuild pills ----------------------------------------------------------
-        for child in list(self.pills.winfo_children()):
-            child.destroy()
-
         values: Dict[str, ValueInfo] = self.adapter.values_for_key(self.key)
         scopes = self.adapter.scopes()
         for scope in scopes:
             has_value = scope in values
-            if scope == "default" and not has_value and self.compact:
-                continue
-            if self.compact and scope != "default" and not has_value:
-                continue
-
-            can_write = self.adapter.can_write(scope)
-            if (
-                not can_write
-                and scope != "default"
-                and not self.adapter.is_overlay(scope)
-            ):
-                state = "disabled"
-            elif eff_src == scope:
-                state = "effective"
-            elif has_value:
-                state = "present"
-            else:
-                state = "empty"
-
-            short_label = self.adapter.scope_label(scope, short=True)
-            long_label = self.adapter.scope_label(scope, short=False)
-            color = _SCOPE_COLORS.get(scope, "#888888")
-
             def value_provider(s=scope) -> Any:
                 if s in values:
                     return values[s].value
                 if s == "default":
                     return self.adapter.default_for_key(self.key)
                 return None
+            can_write = self.adapter.can_write(scope)
+            self.update_pill(
+                scope,
+                effective=(eff_src == scope),
+                present=has_value,
+                can_write=can_write,
+                value_provider=value_provider,
+            )
 
-            def cb(s=scope, st=state) -> None:
-                if st != "disabled" and self._on_pill_click:
-                    self._on_pill_click(self.key, s)
+    def update_pill(
+        self,
+        name: str,
+        *,
+        effective: bool,
+        present: bool,
+        can_write: bool,
+        value_provider: Callable[[], Any],
+    ) -> None:
+        """Update or create a single pill widget.
 
+        ``effective`` indicates whether the pill represents the effective
+        scope while ``present`` reports if the scope has an explicit value.
+        ``can_write`` controls the clickable state and ``value_provider`` is
+        used for tooltip display.
+        """
+        if tk is None:  # pragma: no cover - defensive
+            return
+
+        if (
+            name == "default" and not present and self.compact
+        ) or (self.compact and name != "default" and not present):
+            pill = self._pill_widgets.get(name)
+            if pill and pill.winfo_ismapped():
+                pill.pack_forget()
+            return
+
+        if (not can_write and name != "default" and not self.adapter.is_overlay(name)):
+            state = "disabled"
+        elif effective:
+            state = "effective"
+        elif present:
+            state = "present"
+        else:
+            state = "empty"
+
+        short_label = self.adapter.scope_label(name, short=True)
+        long_label = self.adapter.scope_label(name, short=False)
+        color = _SCOPE_COLORS.get(name, "#888888")
+
+        clickable = can_write and state != "disabled"
+
+        def cb() -> None:
+            if clickable and self._on_pill_click:
+                self._on_pill_click(self.key, name)
+
+        pill = self._pill_widgets.get(name)
+        if pill is None:
             pill = PillButton(
                 self.pills,
                 text=short_label,
                 color=color,
                 state=state,  # type: ignore[arg-type]
                 value_provider=value_provider,
-                clickable=can_write,
+                clickable=clickable,
                 on_click=cb,
                 tooltip_title=long_label,
             )
+            self._pill_widgets[name] = pill
+        else:
+            pill.text = short_label
+            pill.color = color
+            pill.state = state  # type: ignore[assignment]
+            pill.clickable = clickable
+            pill.value_provider = value_provider
+            pill.tooltip_title = long_label
+            pill.on_click = cb
+            if clickable:
+                pill.bind("<Button-1>", lambda e: cb())
+                pill.configure(cursor="hand2")
+            else:
+                pill.unbind("<Button-1>")
+                pill.configure(cursor="arrow")
+            pill._draw()
+
+        if not pill.winfo_ismapped():
             pill.pack(side="left", padx=(0, 6))
 
 

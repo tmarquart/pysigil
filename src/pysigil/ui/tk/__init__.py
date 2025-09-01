@@ -52,6 +52,8 @@ class App:
         self._edit_buttons: dict[str, ttk.Button] = {}
         self._initial_provider = initial_provider
         self._align_pending = False
+        self._key_col_width: int | None = None
+        self._pill_col_width: int | None = None
 
         self.root.title("pysigil")
 
@@ -146,6 +148,8 @@ class App:
             btn.grid(row=idx, column=3, sticky="w", padx=4)
             self.rows[key] = row
             self._edit_buttons[key] = btn
+        self._key_col_width = None
+        self._pill_col_width = None
         self._schedule_align()
 
     def _open_edit_dialog(self, key: str, scope: str | None = None) -> None:
@@ -209,9 +213,7 @@ class App:
 
     def on_toggle_compact(self) -> None:
         self.compact = bool(self._compact_var.get())
-        for row in self.rows.values():
-            row.set_compact(self.compact)
-        self._schedule_align()
+        self._rebuild_rows()
 
     # -- alignment -----------------------------------------------------
     def _schedule_align(self) -> None:
@@ -224,19 +226,17 @@ class App:
         self._align_pending = False
         if not self.rows:
             return
-        # reset previous alignment so widths can shrink when necessary
-        for r in self.rows.values():
-            r.grid_columnconfigure(0, minsize=0)
-            r.grid_columnconfigure(2, minsize=0)
-
-            r.pills.configure(width=0)
-
         self.root.update_idletasks()
         key_w = max(r.lbl_key.winfo_reqwidth() for r in self.rows.values())
         pills_w = max(r.pills.winfo_reqwidth() for r in self.rows.values())
-        for r in self.rows.values():
-            r.grid_columnconfigure(0, minsize=key_w)
-            r.grid_columnconfigure(2, minsize=pills_w)
+        if key_w != self._key_col_width:
+            for r in self.rows.values():
+                r.grid_columnconfigure(0, minsize=key_w)
+            self._key_col_width = key_w
+        if pills_w != self._pill_col_width:
+            for r in self.rows.values():
+                r.grid_columnconfigure(2, minsize=pills_w)
+            self._pill_col_width = pills_w
 
 
 def launch(initial_provider: str | None = None) -> None:
