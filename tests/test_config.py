@@ -110,15 +110,3 @@ def test_cli_roundtrip(monkeypatch, tmp_path: Path, capsys) -> None:
     res = _run_cli(["config", "show", "--provider", "pkg", "--as", "json", "--auto"], capsys)
     assert res.exit_code == 0
     assert json.loads(res.output) == {"key": "project"}
-
-
-def test_gui_lists_user_custom(monkeypatch, tmp_path: Path) -> None:
-    user_dir, _ = _patch_env(monkeypatch, tmp_path)
-    (user_dir / "user-custom").mkdir()
-    (user_dir / "user-custom" / "settings-local-host.ini").write_text(
-        "[user-custom]\nfoo=bar\n"
-    )
-    from pysigil.gui import launch_gui
-
-    gui = launch_gui(run_mainloop=False, state_path=tmp_path / "state.json")
-    assert "user-custom" in gui.packages

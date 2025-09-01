@@ -10,8 +10,9 @@ sigil gui --app myapp
 Alternatively, launch it from Python:
 
 ```
-from pysigil.gui import launch_gui
-launch_gui(package="myapp")
+from pysigil.ui.tk import launch
+
+launch(initial_provider="myapp")
 ```
 
 This opens a window showing all user-level preferences defined for *myapp*.
