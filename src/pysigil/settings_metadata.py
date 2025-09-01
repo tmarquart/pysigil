@@ -28,7 +28,7 @@ else:  # pragma: no cover - platform specific
 from collections.abc import Iterable, Mapping, MutableMapping
 
 from types import SimpleNamespace
-from typing import Any, Iterator, Literal, Protocol
+from typing import Any, Callable, Iterator, Literal, Protocol
 from uuid import uuid4
 
 
@@ -145,12 +145,21 @@ class BooleanAdapter:
         if value is not None and not isinstance(value, bool):
             raise TypeError("expected bool")
 
+@dataclass(frozen=True)
+class FieldType:
+    """Metadata describing a supported field type."""
 
-TYPE_REGISTRY: dict[str, TypeAdapter] = {
-    "string": StringAdapter(),
-    "integer": IntegerAdapter(),
-    "number": NumberAdapter(),
-    "boolean": BooleanAdapter(),
+    adapter: TypeAdapter
+    option_model: type | None = None
+    value_widget: Callable[[Any], Any] | None = None
+    option_widget: Callable[[Any], Any] | None = None
+
+
+TYPE_REGISTRY: dict[str, FieldType] = {
+    "string": FieldType(StringAdapter()),
+    "integer": FieldType(IntegerAdapter()),
+    "number": FieldType(NumberAdapter()),
+    "boolean": FieldType(BooleanAdapter()),
 }
 
 _PEP503_RE = re.compile(r"^[a-z0-9]+(?:[._-][a-z0-9]+)*$")
@@ -722,7 +731,7 @@ class ProviderManager:
         result: dict[str, FieldValue] = {}
         for field in self.spec.fields:
             raw = raw_map.get(field.key)
-            adapter = TYPE_REGISTRY[field.type]
+            adapter = TYPE_REGISTRY[field.type].adapter
             value = adapter.parse(raw)
             result[field.key] = FieldValue(
                 value=value, source=source_map.get(field.key), raw=raw
@@ -740,7 +749,7 @@ class ProviderManager:
                 if raw is None:
                     per_scope[scope] = None
                 else:
-                    adapter = TYPE_REGISTRY[field.type]
+                    adapter = TYPE_REGISTRY[field.type].adapter
                     value = adapter.parse(raw)
                     per_scope[scope] = FieldValue(value=value, source=scope, raw=raw)
             result[field.key] = per_scope
@@ -754,7 +763,7 @@ class ProviderManager:
         ) as section:
             def set_value(key: str, python_value: Any) -> None:
                 field = self._field_for(key)
-                adapter = TYPE_REGISTRY[field.type]
+                adapter = TYPE_REGISTRY[field.type].adapter
                 adapter.validate(python_value, field)
                 section[key] = adapter.serialize(python_value)
 
@@ -766,7 +775,7 @@ class ProviderManager:
 
     def set(self, key: str, python_value: Any, *, scope: str = "user") -> None:
         field = self._field_for(key)
-        adapter = TYPE_REGISTRY[field.type]
+        adapter = TYPE_REGISTRY[field.type].adapter
         adapter.validate(python_value, field)
         raw_value = adapter.serialize(python_value)
         target = self.backend.write_target_for(self.spec.provider_id)
@@ -913,6 +922,7 @@ __all__ = [
     "BooleanAdapter",
     "FieldSpec",
     "FieldValue",
+    "FieldType",
     "IntegerAdapter",
     "IniFileBackend",
     "NumberAdapter",
