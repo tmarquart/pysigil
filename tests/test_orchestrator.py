@@ -20,11 +20,19 @@ def _make_orch(tmp_path: Path) -> Orchestrator:
 def test_register_add_set_get(tmp_path: Path) -> None:
     orch = _make_orch(tmp_path)
     orch.register_provider("my-pkg", title="My Package")
-    orch.add_field("my-pkg", key="retries", type="integer", label="Retries")
+    orch.add_field(
+        "my-pkg",
+        key="retries",
+        type="integer",
+        label="Retries",
+        options={"min": 0},
+    )
     orch.set_value("my-pkg", "retries", 5)
     eff = orch.get_effective("my-pkg")
     assert eff["retries"].value == 5
     assert eff["retries"].source == "user"
+    spec = orch.reload_spec("my-pkg")
+    assert spec.fields[0].options == {"min": 0}
 
 
 def test_edit_field_rename_migrates_value(tmp_path: Path) -> None:

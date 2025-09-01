@@ -199,6 +199,7 @@ class FieldSpec:
     type: str
     label: str | None = None
     description: str | None = None
+    options: dict[str, Any] = dataclass_field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if self.type not in TYPE_REGISTRY:
@@ -212,6 +213,7 @@ class FieldSpec:
             "type": self.type,
             "label": self.label,
             "description": self.description,
+            "options": self.options,
         }
 
 
@@ -382,6 +384,8 @@ class IniSpecBackend:
                 parser.set(section, "label", field.label)
             if field.description is not None:
                 parser.set(section, "description", field.description)
+            if field.options:
+                parser.set(section, "options", json.dumps(field.options, sort_keys=True))
         path.parent.mkdir(parents=True, exist_ok=True)
         tmp = path.with_suffix(path.suffix + ".tmp")
         with tmp.open("w") as fh:
@@ -410,6 +414,7 @@ class IniSpecBackend:
                     type=data.get("type", "string"),
                     label=data.get("label"),
                     description=data.get("description"),
+                    options=json.loads(data.get("options", "{}")),
                 )
             )
         spec = ProviderSpec(

@@ -43,7 +43,14 @@ def test_provider_manager_roundtrip():
     spec = ProviderSpec(
         provider_id="demo",
         schema_version="0.1",
-        fields=[FieldSpec(key="retries", type="integer", label="Retries")],
+        fields=[
+            FieldSpec(
+                key="retries",
+                type="integer",
+                label="Retries",
+                options={"min": 0},
+            )
+        ],
     )
     backend = DummyBackend()
     mgr = ProviderManager(spec, backend)
@@ -51,6 +58,7 @@ def test_provider_manager_roundtrip():
     state = mgr.effective()
     assert state["retries"].value == 3
     assert state["retries"].source == "project"
+    assert mgr.spec.fields[0].options == {"min": 0}
 
     mgr.set("retries", 5)
     assert backend.writes == [("demo", "retries", "5", "user", "settings.ini")]
@@ -60,6 +68,20 @@ def test_provider_manager_roundtrip():
 
     mgr.init("user")
     assert backend.sections == [("demo", "user", "settings.ini")]
+
+
+def test_ini_spec_backend_persists_options(tmp_path):
+    backend = IniSpecBackend(user_dir=tmp_path)
+    spec = ProviderSpec(
+        provider_id="demo",
+        schema_version="1",
+        fields=[
+            FieldSpec(key="mode", type="string", options={"choices": ["a", "b"]})
+        ],
+    )
+    backend.create_spec(spec)
+    loaded = backend.get_spec("demo")
+    assert loaded.fields[0].options == {"choices": ["a", "b"]}
 
 
 def test_ini_file_backend(tmp_path):
