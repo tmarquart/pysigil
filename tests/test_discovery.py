@@ -1,6 +1,7 @@
 import pytest
 
 import pysigil.discovery as discovery
+from pathlib import PurePosixPath
 
 
 @pytest.mark.parametrize(
@@ -15,33 +16,30 @@ def test_pep503_name(name, expected):
     assert discovery.pep503_name(name) == expected
 
 
-def test_iter_providers_dedup_and_groups(monkeypatch):
+def test_iter_installed_providers_dedup(monkeypatch):
     class DummyDist:
-        def __init__(self, name, meta_name=None):
+        def __init__(self, name, files, meta_name=None):
             self.name = name
+            self._files = [PurePosixPath(p) for p in files]
             if meta_name is None:
                 self.metadata = {}
             else:
-                self.metadata = {'Name': meta_name}
+                self.metadata = {"Name": meta_name}
 
-    class DummyEP:
-        def __init__(self, dist, group):
-            self.dist = dist
-            self.group = group
+        @property
+        def files(self):
+            return self._files
 
-    eps = [
-        DummyEP(DummyDist('pkg_a', 'Foo'), 'pysigil_providers'),
-        DummyEP(DummyDist('pkg_b', 'Foo'), 'pysigil.providers'),  # duplicate provider id
-        DummyEP(DummyDist('pkg_c', 'Bar'), 'pysigil.providers'),
+    dists = [
+        DummyDist('pkg_a', ['.sigil/metadata.ini'], 'Foo'),
+        DummyDist('pkg_b', ['.sigil/metadata.ini'], 'Foo'),  # duplicate provider id
+        DummyDist('pkg_c', ['.sigil/metadata.ini'], 'Bar'),
+        DummyDist('pkg_d', ['other.txt'], 'Baz'),  # not a provider
     ]
 
-    class DummyEPs:
-        def select(self, *, group):
-            return [ep for ep in eps if ep.group == group]
+    monkeypatch.setattr(discovery, 'distributions', lambda: dists)
 
-    monkeypatch.setattr(discovery, 'entry_points', lambda: DummyEPs())
-
-    providers = list(discovery.iter_providers())
+    providers = list(discovery.iter_installed_providers())
     assert [(pid, name) for pid, name, _ in providers] == [
         ('foo', 'Foo'),
         ('bar', 'Bar'),
