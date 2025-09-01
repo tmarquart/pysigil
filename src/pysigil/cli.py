@@ -131,7 +131,7 @@ def config_gitignore(args: argparse.Namespace) -> int:
 
 
 def config_gui(_: argparse.Namespace) -> int:  # pragma: no cover - GUI interactions
-    from .gui import launch_config_gui
+    from .ui.tk.config_gui import launch as launch_config_gui
 
     launch_config_gui()
     return 0
