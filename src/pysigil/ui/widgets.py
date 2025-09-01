@@ -101,6 +101,7 @@ TYPE_REGISTRY["string"] = replace(TYPE_REGISTRY["string"], value_widget=_simple_
 TYPE_REGISTRY["integer"] = replace(TYPE_REGISTRY["integer"], value_widget=_simple_entry)
 TYPE_REGISTRY["number"] = replace(TYPE_REGISTRY["number"], value_widget=_simple_entry)
 TYPE_REGISTRY["boolean"] = replace(TYPE_REGISTRY["boolean"], value_widget=_boolean_check)
+TYPE_REGISTRY["string_list"] = replace(TYPE_REGISTRY["string_list"], value_widget=_simple_entry)
 
 
 FIELD_WIDGETS: Dict[str, Callable[[Any], EditorWidget]] = {
