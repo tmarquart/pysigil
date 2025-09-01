@@ -92,13 +92,13 @@ A confirmation dialog appears and the folder opens (e.g.
 Package authors can register development defaults via:
 
 ```bash
-sigil gui --author
+sigil setup
 ```
 
 Or launch it programmatically:
 
 ```python
-from pysigil.ui.tk.author import main as launch_author
+from pysigil.ui.tk import launch
 
-launch_author()
+launch()
 ```
