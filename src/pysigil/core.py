@@ -430,7 +430,11 @@ class Sigil:
         target_scope = scope or self._default_scope
         if target_scope == "core":
             raise ReadOnlyScopeError("Core defaults are read-only")
-        if target_scope == "default" and not self._defaults_writable:
+        if (
+            target_scope == "default"
+            and self._default_source != "explicit"
+            and self._default_source != "dev-link"
+        ):
             raise ReadOnlyScopeError("Default scope is read-only")
         raw_path = parse_key(key)
         if raw_path and raw_path[0] == "secret":
