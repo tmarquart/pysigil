@@ -23,10 +23,12 @@ sigil author register --auto  # or `sigil setup`
 ``` | Installed distributions are scanned for these files—no Python entry points needed. |
 | 4 | (Optional) Expose helpers so callers never touch pysigil APIs | ```python
 # mypkg/__init__.py
+
 from pysigil import helpers_for
 
 get_setting, set_setting = helpers_for(__name__)
 __all__ = ["get_setting", "set_setting"]
+
 ``` | • One-line access:<br>`get_setting("db.host")`<br>• Handles env ▶ project ▶ user ▶ defaults without extra code. |
 
 Launch authoring tools without starting the main editor:

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+
 from pysigil import helpers_for
 
 
@@ -19,3 +20,4 @@ def test_helpers_for_isolated_apps(monkeypatch, tmp_path: Path) -> None:
 
     # original demo settings remain unchanged
     assert get_a("section.value", cast=int) == 1
+

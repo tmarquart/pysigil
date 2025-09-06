@@ -23,6 +23,7 @@ python -m pysigil --help
 from pysigil import helpers_for
 
 get_setting, set_setting = helpers_for("pysigil")
+
 get_setting("ui.color")
 set_setting("ui.color", "blue")
 ```
