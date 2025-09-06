@@ -93,7 +93,7 @@ A confirmation dialog appears and the folder opens (e.g.
 Package authors can register development defaults via:
 
 ```bash
-sigil setup
+sigil register  # alias: `sigil setup`
 ```
 
 Launch authoring tools without the editor:

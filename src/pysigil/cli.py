@@ -232,7 +232,10 @@ def author_gui_cmd(_: argparse.Namespace) -> int:  # pragma: no cover - GUI inte
     try:
         core.select_provider(provider_id).result()
     except UnknownProviderError:
-        print(f"Provider '{provider_id}' is not registered. Run sigil setup to register", file=sys.stderr)
+        print(
+            f"Provider '{provider_id}' is not registered. Run sigil register to register",
+            file=sys.stderr,
+        )
         return 2
     except Exception as exc:
         print(f"Failed to load provider '{provider_id}': {exc}", file=sys.stderr)
@@ -459,8 +462,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_gui.add_argument("--no-remember", action="store_true")
     p_gui.set_defaults(func=gui_cmd)
 
-    # setup command
-    p_setup = subparsers.add_parser("setup", help="Launch the defaults registration GUI.")
+    # setup command (alias: register)
+    p_setup = subparsers.add_parser(
+        "setup", help="Launch the defaults registration GUI.", aliases=["register"]
+    )
     p_setup.set_defaults(func=setup_cmd)
 
     # author command / group
