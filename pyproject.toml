@@ -14,10 +14,10 @@ include = ["pysigil*"]
 
 [project]
 name = "pysigil"
-description = "Preferences & secrets manager with layered scopes and tuple-key internals"
+description = "Settings manager with layered scopes and tuple-key internals"
 readme = "README.md"
 requires-python = ">=3.10"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
   "platformdirs>=4.0",
   "tomlkit",
