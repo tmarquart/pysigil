@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 try:  # pragma: no cover - tkinter availability depends on environment
     import tkinter as tk
     from tkinter import messagebox, ttk
@@ -22,7 +24,8 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
     def __init__(self, master: tk.Misc, core: AppCore) -> None:
         super().__init__(master)
         pid = core.state.provider_id or ""
-        project = str(core.state.project_root) if core.state.project_root else ""
+        project_root: Path | None = core.state.project_root
+        project = project_root.as_posix() if project_root else ""
         title = "Sigil – Author Tools"
         if pid:
             title += f" – {pid}"
