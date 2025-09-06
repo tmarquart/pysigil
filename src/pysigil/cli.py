@@ -45,7 +45,7 @@ from .resolver import (
     read_dist_name_from_pyproject,
 )
 from .root import ProjectRootNotFoundError, find_project_root
-from .errors import UnknownProviderError
+from .errors import DevLinkNotFound, UnknownProviderError
 
 
 AUTHOR_FLAG_ENV = "SIGIL_AUTHOR"
@@ -211,11 +211,13 @@ def gui_cmd(args: argparse.Namespace) -> int:  # pragma: no cover - GUI interact
     return 0
 
 
+def launch_author_ui(_ctx: object) -> int:  # pragma: no cover - GUI interactions
+    return 0
+
+
 def author_gui_cmd(_: argparse.Namespace) -> int:  # pragma: no cover - GUI interactions
     import sys
     from .ui.core import AppCore
-    from .ui.tk.author_tools import AuthorTools
-    import tkinter as tk
 
     try:
         proj_root = find_project_root()
@@ -229,25 +231,21 @@ def author_gui_cmd(_: argparse.Namespace) -> int:  # pragma: no cover - GUI inte
     provider_id = default_provider_id(pkg, dist_name)
 
     core = AppCore(author_mode=True)
+    pid = normalize_provider_id(provider_id)
     try:
-        core.select_provider(provider_id).result()
-    except UnknownProviderError:
-        print(
-            f"Provider '{provider_id}' is not registered. Run sigil register to register",
-            file=sys.stderr,
+        ctx = core.orchestrator.load_author_context(pid)
+    except DevLinkNotFound:
+        err = (
+            f"No development link for '{pid}'.\n"
+            f"Create one:\n  sigil link --dev /path/to/pkg --provider {pid}"
         )
+        print(err, file=sys.stderr)
         return 2
     except Exception as exc:
-        print(f"Failed to load provider '{provider_id}': {exc}", file=sys.stderr)
+        print(f"Failed to prepare authoring for '{pid}': {exc}", file=sys.stderr)
         return 2
 
-
-    root = tk.Tk()
-    root.withdraw()
-    tools = AuthorTools(root, core)
-    tools.protocol("WM_DELETE_WINDOW", root.destroy)
-    root.mainloop()
-    return 0
+    return launch_author_ui(ctx)
 
 
 def setup_cmd(_: argparse.Namespace) -> int:  # pragma: no cover - GUI interactions

@@ -10,11 +10,11 @@ the accompanying user request so that it can grow organically.
 
 from __future__ import annotations
 
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Literal, Mapping
 
-from .authoring import normalize_provider_id
+from .authoring import get as _get_dev_link, normalize_provider_id
 from .errors import (
     DuplicateFieldError,
     PolicyError,
@@ -22,6 +22,7 @@ from .errors import (
     UnknownFieldError,
     UnknownProviderError,
     ValidationError,
+    DevLinkNotFound,
 )
 from .root import ProjectRootNotFoundError
 from .settings_metadata import (
@@ -36,6 +37,14 @@ from .settings_metadata import (
     SpecBackend,
     save_provider_spec,
 )
+
+
+@dataclass
+class AuthorContext:
+    provider_id: str
+    dev_root: Path
+    mode: Literal["bootstrap", "edit"]
+    spec: ProviderSpec | None = None
 
 # ---------------------------------------------------------------------------
 # orchestrator implementation
@@ -56,6 +65,33 @@ class Orchestrator:
             config_backend = IniFileBackend()
         self.spec_backend = spec_backend
         self.config_backend = config_backend
+
+    # ---- Development links ----
+    def has_dev_link(self, provider_id: str) -> bool:
+        pid = normalize_provider_id(provider_id)
+        return _get_dev_link(pid) is not None
+
+    def get_dev_link(self, provider_id: str) -> Path:
+        pid = normalize_provider_id(provider_id)
+        dl = _get_dev_link(pid)
+        if dl is None:
+            raise DevLinkNotFound(pid)
+        return dl.defaults_path.parent.parent
+
+    def spec_exists(self, provider_id: str) -> bool:
+        pid = normalize_provider_id(provider_id)
+        return self.spec_backend.exists(pid)
+
+    def load_author_context(self, provider_id: str) -> AuthorContext:
+        pid = normalize_provider_id(provider_id)
+        dl = _get_dev_link(pid)
+        if dl is None:
+            raise DevLinkNotFound(pid)
+        dev_root = dl.defaults_path.parent.parent
+        if self.spec_backend.exists(pid):
+            spec = self.spec_backend.get_spec(pid)
+            return AuthorContext(provider_id=pid, dev_root=dev_root, mode="edit", spec=spec)
+        return AuthorContext(provider_id=pid, dev_root=dev_root, mode="bootstrap", spec=None)
 
     # ---- Provider / package metadata ----
     def register_provider(

@@ -261,6 +261,7 @@ class AppCore:
         self.state = AppState(author_mode=author_mode)
         self.service = service or ProvidersService(author_mode=author_mode)
         self.events = EventBus()
+        self.orchestrator = api._ORCH
         self._executor = executor or ThreadPoolExecutor(max_workers=4)
         self._lock = threading.Lock()
 
