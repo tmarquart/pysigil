@@ -17,7 +17,7 @@ name = "pysigil"
 description = "Settings manager with layered scopes and tuple-key internals"
 readme = "README.md"
 requires-python = ">=3.10"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
   "platformdirs>=4.0",
   "tomlkit",
