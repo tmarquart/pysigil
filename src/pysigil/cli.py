@@ -26,7 +26,7 @@ from .config import (
 )
 from .core import Sigil
 from .discovery import pep503_name
-from .ui.tk import launch as launch_gui
+from .errors import DevLinkNotFoundError
 from .paths import (
     default_config_dir,
     default_data_dir,
@@ -45,8 +45,7 @@ from .resolver import (
     read_dist_name_from_pyproject,
 )
 from .root import ProjectRootNotFoundError, find_project_root
-from .errors import DevLinkNotFound, UnknownProviderError
-
+from .ui.tk import launch as launch_gui
 
 AUTHOR_FLAG_ENV = "SIGIL_AUTHOR"
 
@@ -217,6 +216,7 @@ def launch_author_ui(_ctx: object) -> int:  # pragma: no cover - GUI interaction
 
 def author_gui_cmd(_: argparse.Namespace) -> int:  # pragma: no cover - GUI interactions
     import sys
+
     from .ui.core import AppCore
 
     try:
@@ -234,7 +234,7 @@ def author_gui_cmd(_: argparse.Namespace) -> int:  # pragma: no cover - GUI inte
     pid = normalize_provider_id(provider_id)
     try:
         ctx = core.orchestrator.load_author_context(pid)
-    except DevLinkNotFound:
+    except DevLinkNotFoundError:
         err = (
             f"No development link for '{pid}'.\n"
             f"Create one:\n  sigil link --dev /path/to/pkg --provider {pid}"

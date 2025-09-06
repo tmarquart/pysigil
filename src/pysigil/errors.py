@@ -30,7 +30,7 @@ class UnknownProviderError(SigilError):
     """Raised when a provider is not registered."""
 
 
-class DevLinkNotFound(SigilError):
+class DevLinkNotFoundError(SigilError):
     """Raised when a development link is missing."""
 
 

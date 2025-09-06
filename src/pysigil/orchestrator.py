@@ -10,19 +10,20 @@ the accompanying user request so that it can grow organically.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import Literal, Mapping
+from typing import Literal
 
 from .authoring import get as _get_dev_link, normalize_provider_id
 from .errors import (
+    DevLinkNotFoundError,
     DuplicateFieldError,
     PolicyError,
     SigilLoadError,
     UnknownFieldError,
     UnknownProviderError,
     ValidationError,
-    DevLinkNotFound,
 )
 from .root import ProjectRootNotFoundError
 from .settings_metadata import (
@@ -75,7 +76,7 @@ class Orchestrator:
         pid = normalize_provider_id(provider_id)
         dl = _get_dev_link(pid)
         if dl is None:
-            raise DevLinkNotFound(pid)
+            raise DevLinkNotFoundError(pid)
         return dl.defaults_path.parent.parent
 
     def spec_exists(self, provider_id: str) -> bool:
@@ -86,7 +87,7 @@ class Orchestrator:
         pid = normalize_provider_id(provider_id)
         dl = _get_dev_link(pid)
         if dl is None:
-            raise DevLinkNotFound(pid)
+            raise DevLinkNotFoundError(pid)
         dev_root = dl.defaults_path.parent.parent
         if self.spec_backend.exists(pid):
             spec = self.spec_backend.get_spec(pid)

@@ -1,10 +1,11 @@
 import types
-import pytest
 from pathlib import Path
 
-from pysigil.orchestrator import Orchestrator
+import pytest
+
 import pysigil.orchestrator as orch_mod
-from pysigil.errors import DevLinkNotFound
+from pysigil.errors import DevLinkNotFoundError
+from pysigil.orchestrator import Orchestrator
 from pysigil.settings_metadata import InMemorySpecBackend, ProviderSpec
 
 
@@ -62,7 +63,7 @@ def test_author_edit_with_spec(monkeypatch, tmp_path):
 def test_author_no_devlink(monkeypatch):
     monkeypatch.setattr(orch_mod, "_get_dev_link", lambda pid: None)
     orch = Orchestrator(spec_backend=InMemorySpecBackend())
-    with pytest.raises(DevLinkNotFound):
+    with pytest.raises(DevLinkNotFoundError):
         orch.load_author_context("foo")
 
 
