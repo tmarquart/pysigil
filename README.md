@@ -20,11 +20,11 @@ python -m pysigil --help
 ```
 
 ```python
-from pysigil.core import Sigil
+from pysigil import get_setting, init, set_setting
 
-sigil = Sigil("pysigil")
-get_pref = sigil.get_pref
-set_pref = sigil.set_pref
+init("pysigil")
+get_setting("ui.color")
+set_setting("ui.color", "blue")
 ```
 
 Once installed, try a few commands:
