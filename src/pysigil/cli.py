@@ -238,6 +238,7 @@ def author_gui_cmd(_: argparse.Namespace) -> int:  # pragma: no cover - GUI inte
         print(f"Failed to load provider '{provider_id}': {exc}", file=sys.stderr)
         return 2
 
+
     root = tk.Tk()
     root.withdraw()
     tools = AuthorTools(root, core)
