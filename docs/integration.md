@@ -23,12 +23,10 @@ sigil author register --auto  # or `sigil setup`
 ``` | Installed distributions are scanned for these files—no Python entry points needed. |
 | 4 | (Optional) Expose helpers so callers never touch pysigil APIs | ```python
 # mypkg/__init__.py
-from pysigil.core import Sigil
+from pysigil import get_setting, init, set_setting
 
-_sigil = Sigil(__name__)  # __name__ == "mypkg"
-get_pref = _sigil.get_pref
-set_pref = _sigil.set_pref
-``` | • One-line access:<br>`get_pref("db.host")`<br>• Handles env ▶ project ▶ user ▶ defaults without extra code. |
+init(__name__)  # __name__ == "mypkg"
+``` | • One-line access:<br>`get_setting("db.host")`<br>• Handles env ▶ project ▶ user ▶ defaults without extra code. |
 
 Launch authoring tools without starting the main editor:
 
@@ -41,7 +39,7 @@ sigil author
 Fully merged prefs:
 `SIGIL_MYPKG_DB_HOST (env) → ./settings.ini (project) → ~/.config/mypkg/settings.ini (user) → your defaults.ini.`
 
-No boiler-plate: call `get_pref()` / `set_pref()` from anywhere in your code.
+No boiler-plate: call `get_setting()` / `set_setting()` from anywhere in your code.
 
 User tooling already works:
 
