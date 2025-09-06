@@ -23,14 +23,16 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         super().__init__(master)
         self.title("Sigil – Author Tools")
         self.core = core
-        self.adapter = AuthorAdapter(core.state.provider_id or "")
+        pid = core.state.provider_id or None
+        self.adapter = AuthorAdapter(pid)
         self._current_key: str | None = None
         self._value_widget: object | None = None
         self._options_widget: object | None = None
         # Undiscovered fields are loaded on demand
         self._undiscovered_loaded = False
         self._build()
-        self._reload_tree()
+        if pid:
+            self._reload_tree()
 
     # ------------------------------------------------------------------
     # UI construction
@@ -76,14 +78,19 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         pattern = self._search_var.get().strip().lower()
         self._tree.delete(*self._tree.get_children(""))
 
+        try:
+            defined = list(self.adapter.list_defined())
+            undiscovered = list(self.adapter.list_undiscovered())
+        except RuntimeError:
+            return
+
         # Defined fields appear directly at the root
-        for info in self.adapter.list_defined():
+        for info in defined:
             if pattern and pattern not in info.key.lower():
                 continue
             self._tree.insert("", "end", text=info.key, iid=f"defined:{info.key}")
 
         # Undiscovered fields live under a lazily populated node at the bottom
-        undiscovered = list(self.adapter.list_undiscovered())
         if undiscovered:
             undis_id = self._tree.insert(
                 "", "end", text="Undiscovered", iid="undiscovered", open=self._undiscovered_loaded
