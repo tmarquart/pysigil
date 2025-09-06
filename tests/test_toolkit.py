@@ -2,23 +2,22 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from pysigil import get_setting, init, set_setting
+
+from pysigil import helpers_for
 
 
-def test_cached_instances(monkeypatch, tmp_path: Path) -> None:
+def test_helpers_for_isolated_apps(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
 
-    sig1 = init("demo")
-    set_setting("section.value", "1")
-    assert get_setting("section.value") == 1
+    get_a, set_a = helpers_for("demo")
+    set_a("section.value", "1")
+    assert get_a("section.value", cast=int) == 1
 
-    sig2 = init("demo")
-    assert sig1 is sig2
+    get_b, set_b = helpers_for("other")
+    assert get_b("section.value") is None
+    set_b("section.value", "2")
+    assert get_b("section.value", cast=int) == 2
 
-    init("other")
-    assert get_setting("section.value") is None
-    set_setting("section.value", "2")
-    assert get_setting("section.value") == 2
+    # original demo settings remain unchanged
+    assert get_a("section.value", cast=int) == 1
 
-    init("demo")
-    assert get_setting("section.value", cast=int) == 1

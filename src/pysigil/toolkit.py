@@ -3,53 +3,33 @@ from __future__ import annotations
 from typing import Any, Callable
 
 from .core import Sigil
-from .discovery import pep503_name
 
-__all__ = ["init", "get_setting", "set_setting"]
-
-_cache: dict[str, Sigil] = {}
-_current: str | None = None
+__all__ = ["helpers_for"]
 
 
-def init(app_name: str) -> Sigil:
-    """Initialise and cache a :class:`Sigil` instance for *app_name*.
+def helpers_for(app_name: str) -> tuple[Callable[..., Any], Callable[..., None]]:
+    """Return setting helpers bound to *app_name*.
 
-    Repeated calls for the same application return the cached instance and
-    switch the active application used by :func:`get_setting` and
-    :func:`set_setting`.
+    The returned ``get_setting`` and ``set_setting`` functions operate on a
+    dedicated :class:`Sigil` instance for the provided application name.
     """
-    global _current
-    name = pep503_name(app_name)
-    _current = name
-    try:
-        return _cache[name]
-    except KeyError:
-        sigil = Sigil(app_name)
-        _cache[name] = sigil
-        return sigil
 
+    sigil = Sigil(app_name)
 
-def _current_sigil() -> Sigil:
-    if _current is None:
-        raise RuntimeError("call init(app_name) before accessing settings")
-    return _cache[_current]
+    def get_setting(
+        key: str,
+        *,
+        cast: Callable[[str], Any] | None = None,
+        default: Any | None = None,
+    ) -> Any:
+        return sigil.get_pref(key, cast=cast, default=default)
 
+    def set_setting(
+        key: str,
+        value: Any,
+        *,
+        scope: str | None = None,
+    ) -> None:
+        sigil.set_pref(key, value, scope=scope)
 
-def get_setting(
-    key: str,
-    *,
-    cast: Callable[[str], Any] | None = None,
-    default: Any | None = None,
-) -> Any:
-    """Return the value for *key* from the active application."""
-    return _current_sigil().get_pref(key, cast=cast, default=default)
-
-
-def set_setting(
-    key: str,
-    value: Any,
-    *,
-    scope: str | None = None,
-) -> None:
-    """Set *key* to *value* in the active application."""
-    _current_sigil().set_pref(key, value, scope=scope)
+    return get_setting, set_setting

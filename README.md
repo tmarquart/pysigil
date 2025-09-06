@@ -20,9 +20,10 @@ python -m pysigil --help
 ```
 
 ```python
-from pysigil import get_setting, init, set_setting
+from pysigil import helpers_for
 
-init("pysigil")
+get_setting, set_setting = helpers_for("pysigil")
+
 get_setting("ui.color")
 set_setting("ui.color", "blue")
 ```
