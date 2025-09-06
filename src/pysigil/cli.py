@@ -45,6 +45,7 @@ from .resolver import (
     read_dist_name_from_pyproject,
 )
 from .root import ProjectRootNotFoundError, find_project_root
+from .errors import UnknownProviderError
 
 
 AUTHOR_FLAG_ENV = "SIGIL_AUTHOR"
@@ -228,7 +229,15 @@ def author_gui_cmd(_: argparse.Namespace) -> int:  # pragma: no cover - GUI inte
     provider_id = default_provider_id(pkg, dist_name)
 
     core = AppCore(author_mode=True)
-    core.select_provider(provider_id).result()
+    try:
+        core.select_provider(provider_id).result()
+    except UnknownProviderError:
+        print(f"Provider '{provider_id}' is not registered", file=sys.stderr)
+        return 2
+    except Exception as exc:
+        print(f"Failed to load provider '{provider_id}': {exc}", file=sys.stderr)
+        return 2
+
 
     root = tk.Tk()
     root.withdraw()
