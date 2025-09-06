@@ -232,7 +232,7 @@ def author_gui_cmd(_: argparse.Namespace) -> int:  # pragma: no cover - GUI inte
     try:
         core.select_provider(provider_id).result()
     except UnknownProviderError:
-        print(f"Provider '{provider_id}' is not registered", file=sys.stderr)
+        print(f"Provider '{provider_id}' is not registered. Run sigil setup to register", file=sys.stderr)
         return 2
     except Exception as exc:
         print(f"Failed to load provider '{provider_id}': {exc}", file=sys.stderr)
