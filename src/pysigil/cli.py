@@ -45,6 +45,7 @@ from .resolver import (
     read_dist_name_from_pyproject,
 )
 from .root import ProjectRootNotFoundError, find_project_root
+from .errors import UnknownProviderError
 
 
 AUTHOR_FLAG_ENV = "SIGIL_AUTHOR"
@@ -211,11 +212,37 @@ def gui_cmd(args: argparse.Namespace) -> int:  # pragma: no cover - GUI interact
 
 
 def author_gui_cmd(_: argparse.Namespace) -> int:  # pragma: no cover - GUI interactions
-    from .ui.tk import App
+    import sys
+    from .ui.core import AppCore
+    from .ui.tk.author_tools import AuthorTools
+    import tkinter as tk
 
-    app = App(author_mode=True, initial_provider="sigil-dummy")
-    app._open_author_tools()
-    app.root.mainloop()
+    try:
+        proj_root = find_project_root()
+    except ProjectRootNotFoundError:
+        proj_root = Path.cwd()
+    dist_name = read_dist_name_from_pyproject(proj_root)
+    pkg = find_package_dir(proj_root, dist_name)
+    if not pkg:
+        print("Could not auto-detect package directory", file=sys.stderr)
+        return 2
+    provider_id = default_provider_id(pkg, dist_name)
+
+    core = AppCore(author_mode=True)
+    try:
+        core.select_provider(provider_id).result()
+    except UnknownProviderError:
+        print(f"Provider '{provider_id}' is not registered", file=sys.stderr)
+        return 2
+    except Exception as exc:
+        print(f"Failed to load provider '{provider_id}': {exc}", file=sys.stderr)
+        return 2
+
+    root = tk.Tk()
+    root.withdraw()
+    tools = AuthorTools(root, core)
+    tools.protocol("WM_DELETE_WINDOW", root.destroy)
+    root.mainloop()
     return 0
 
 

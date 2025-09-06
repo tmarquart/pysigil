@@ -21,10 +21,21 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
 
     def __init__(self, master: tk.Misc, core: AppCore) -> None:
         super().__init__(master)
-        self.title("Sigil – Author Tools")
+        pid = core.state.provider_id or ""
+        project = str(core.state.project_root) if core.state.project_root else ""
+        title = "Sigil – Author Tools"
+        if pid:
+            title += f" – {pid}"
+        if project:
+            title += f" – {project}"
+        self.title(title)
         self.core = core
-        pid = core.state.provider_id or None
-        self.adapter = AuthorAdapter(pid)
+        self._info_var = tk.StringVar()
+        info = f"Provider: {pid}"
+        if project:
+            info += f" – {project}"
+        self._info_var.set(info)
+        self.adapter = AuthorAdapter(pid or None)
         self._current_key: str | None = None
         self._value_widget: object | None = None
         self._options_widget: object | None = None
@@ -39,6 +50,7 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
     # ------------------------------------------------------------------
     def _build(self) -> None:
         self.geometry("800x600")
+        ttk.Label(self, textvariable=self._info_var).pack(anchor="w", padx=6, pady=6)
         pw = ttk.PanedWindow(self, orient="horizontal")
         self._left = ttk.Frame(pw)
         self._right = ttk.Frame(pw)
