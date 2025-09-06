@@ -340,6 +340,9 @@ class SpecBackend(Protocol):
     def etag(self, provider_id: str) -> str:
         ...
 
+    def exists(self, provider_id: str) -> bool:
+        ...
+
 
 class InMemorySpecBackend:
     """Simple :class:`SpecBackend` storing data in memory.
@@ -360,6 +363,9 @@ class InMemorySpecBackend:
             return self._specs[provider_id]
         except KeyError as exc:  # pragma: no cover - defensive
             raise UnknownProviderError(provider_id) from exc
+
+    def exists(self, provider_id: str) -> bool:  # pragma: no cover - trivial
+        return provider_id in self._specs
 
 
 class IniSpecBackend:
@@ -474,6 +480,19 @@ class IniSpecBackend:
         )
         self._etags[provider_id] = _stat_etag(st)
         return spec
+
+    def exists(self, provider_id: str) -> bool:
+        dl = get_dev_link(provider_id)
+        if dl is not None:
+            if (dl.defaults_path.parent / "metadata.ini").is_file():
+                return True
+        else:
+            path, _src = resolve_defaults(provider_id, "metadata.ini")
+            if path is not None and path.is_file():
+                return True
+        if self.user_dir is not None:
+            return (self.user_dir / provider_id / "metadata.ini").is_file()
+        return False
 
     # -------------------------------------------------------------- API
     def get_provider_ids(self) -> list[str]:

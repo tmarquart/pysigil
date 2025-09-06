@@ -30,6 +30,10 @@ class UnknownProviderError(SigilError):
     """Raised when a provider is not registered."""
 
 
+class DevLinkNotFoundError(SigilError):
+    """Raised when a development link is missing."""
+
+
 class DuplicateProviderError(SigilError):
     """Raised when attempting to create a provider that already exists."""
 
