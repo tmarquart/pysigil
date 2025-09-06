@@ -211,6 +211,33 @@ def gui_cmd(args: argparse.Namespace) -> int:  # pragma: no cover - GUI interact
 
 
 def launch_author_ui(_ctx: object) -> int:  # pragma: no cover - GUI interactions
+    """Launch the author tools UI for the given context."""
+
+    from .ui.core import AppCore
+    from .ui.tk.author_tools import AuthorTools
+
+    import tkinter as tk
+
+    provider_id = getattr(_ctx, "provider_id", None)
+    dev_root = getattr(_ctx, "dev_root", None)
+    mode = getattr(_ctx, "mode", "edit")
+
+    if dev_root is not None:
+        os.environ.setdefault("SIGIL_ROOT", str(dev_root))
+
+    core = AppCore(author_mode=True)
+    if provider_id is not None:
+        if mode == "bootstrap":
+            core.orchestrator.register_provider(provider_id)
+        try:
+            core.select_provider(provider_id).result()
+        except Exception:
+            return 2
+
+    root = tk.Tk()
+    root.withdraw()
+    AuthorTools(root, core)
+    root.mainloop()
     return 0
 
 
