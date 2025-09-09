@@ -236,7 +236,8 @@ def launch_author_ui(_ctx: object) -> int:  # pragma: no cover - GUI interaction
 
     root = tk.Tk()
     root.withdraw()
-    AuthorTools(root, core)
+    win = AuthorTools(root, core)
+    win.protocol("WM_DELETE_WINDOW", root.destroy)
     root.mainloop()
     return 0
 
