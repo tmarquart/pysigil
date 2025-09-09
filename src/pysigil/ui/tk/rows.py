@@ -94,6 +94,13 @@ class FieldRow(ttk.Frame):
 
         values: Dict[str, ValueInfo] = self.adapter.values_for_key(self.key)
         scopes = self.adapter.scopes()
+
+        # Ensure pills are packed in the same order as ``scopes`` by first
+        # unpacking any existing widgets.  Without this, newly created scopes
+        # would always be appended to the end regardless of the desired order.
+        for child in self.pills.pack_slaves():
+            child.pack_forget()
+
         for scope in scopes:
             has_value = scope in values
             def value_provider(s=scope) -> Any:
