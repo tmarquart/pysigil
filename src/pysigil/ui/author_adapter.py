@@ -34,6 +34,8 @@ class FieldInfo:
     description_short: str | None = None
     description: str | None = None
     options: dict[str, Any] = dataclass_field(default_factory=dict)
+    section: str | None = None
+    order: int | None = None
 
 
 @dataclass(frozen=True)
@@ -136,6 +138,8 @@ class AuthorAdapter:
                 f.description_short,
                 f.description,
                 f.options,
+                f.section,
+                f.order,
             )
             for f in handle.fields()
         ]
@@ -163,6 +167,14 @@ class AuthorAdapter:
         val = per_scope.get("default")
         return None if val is None else val.value
 
+    def get_sections_order(self) -> list[str] | None:
+        handle = self._require_handle()
+        return handle.get_sections_order()
+
+    def get_sections_collapsed(self) -> list[str] | None:
+        handle = self._require_handle()
+        return handle.get_sections_collapsed()
+
     # ------------------------------------------------------------------
     # Mutations
     # ------------------------------------------------------------------
@@ -175,6 +187,8 @@ class AuthorAdapter:
         description_short: str | None = None,
         description: str | None = None,
         options: Mapping[str, Any] | None = None,
+        section: str | None = None,
+        order: int | None = None,
         default: Any | None = None,
         init_scope: str | None = "user",
         new_key: str | None = None,
@@ -190,7 +204,9 @@ class AuthorAdapter:
                 label=label,
                 description_short=description_short,
                 description=description,
-                options=options,
+                 options=options,
+                section=section,
+                order=order,
             )
         elif key in existing and new_key is not None:
             res = handle.edit_field(
@@ -201,6 +217,8 @@ class AuthorAdapter:
                 description_short=description_short,
                 description=description,
                 options=options,
+                section=section,
+                order=order,
             )
         else:
             res = handle.add_field(
@@ -210,6 +228,8 @@ class AuthorAdapter:
                 description_short=description_short,
                 description=description,
                 options=options,
+                section=section,
+                order=order,
                 init_scope=init_scope,  # type: ignore[arg-type]
             )
         info = FieldInfo(
@@ -219,10 +239,24 @@ class AuthorAdapter:
             res.description_short,
             res.description,
             res.options,
+            res.section,
+            res.order,
         )
         if default is not None:
             api._ORCH.set_value(self._provider_id or "", res.key, default, scope="default")  # type: ignore[arg-type]
         return info
+
+    def set_sections_order(self, seq: list[str]) -> None:
+        handle = self._require_handle()
+        handle.set_sections_order(seq)
+
+    def set_sections_collapsed(self, seq: list[str]) -> None:
+        handle = self._require_handle()
+        handle.set_sections_collapsed(seq)
+
+    def patch_fields(self, updates: list[dict[str, object]]) -> None:
+        handle = self._require_handle()
+        handle.patch_fields(updates)
 
     def delete_field(self, key: str, *, remove_values: bool = False, scopes: Iterable[str] = ("user", "project")) -> None:
         """Remove a field from the provider specification."""

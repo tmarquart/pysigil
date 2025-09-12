@@ -54,6 +54,8 @@ class FieldInfo:
     description_short: str | None
     description: str | None
     options: dict[str, Any] = dataclass_field(default_factory=dict)
+    section: str | None = None
+    order: int | None = None
 
 
 @dataclass(frozen=True)
@@ -69,6 +71,8 @@ class ProviderInfo:
     title: str | None
     description: str | None
     fields: list[FieldInfo]
+    sections_order: list[str] | None = None
+    sections_collapsed: list[str] | None = None
 
 
 def _field_info(spec: FieldSpec) -> FieldInfo:
@@ -79,6 +83,8 @@ def _field_info(spec: FieldSpec) -> FieldInfo:
         description_short=spec.description_short,
         description=spec.description,
         options=spec.options,
+        section=spec.section,
+        order=spec.order,
     )
 
 
@@ -88,6 +94,12 @@ def _provider_info(spec: ProviderSpec) -> ProviderInfo:
         title=spec.title,
         description=spec.description,
         fields=[_field_info(f) for f in spec.fields],
+        sections_order=list(spec.sections_order)
+        if spec.sections_order is not None
+        else None,
+        sections_collapsed=list(spec.sections_collapsed)
+        if spec.sections_collapsed is not None
+        else None,
     )
 
 
@@ -174,6 +186,8 @@ class ProviderHandle:
         description_short: str | None = None,
         description: str | None = None,
         options: Mapping[str, Any] | None = None,
+        section: str | None = None,
+        order: int | None = None,
         init_scope: Literal[
             "user", "user-local", "project", "project-local", "environment"
         ] | None = "user",
@@ -187,6 +201,8 @@ class ProviderHandle:
                 description_short=description_short,
                 description=description,
                 options=dict(options) if options is not None else None,
+                section=section,
+                order=order,
             )
         except DuplicateFieldError as exc:
             raise DuplicateFieldError(key) from exc
@@ -209,6 +225,8 @@ class ProviderHandle:
         description_short: str | None = None,
         description: str | None = None,
         options: Mapping[str, Any] | None = None,
+        section: str | None = None,
+        order: int | None = None,
         on_type_change: Literal["convert", "clear"] = "convert",
         migrate_scopes: tuple[
             Literal["user", "user-local", "project", "project-local"], ...
@@ -224,6 +242,8 @@ class ProviderHandle:
                 description_short=description_short,
                 description=description,
                 options=dict(options) if options is not None else None,
+                section=section,
+                order=order,
                 on_type_change=on_type_change,
             )
         except UnknownFieldError as exc:
@@ -254,6 +274,21 @@ class ProviderHandle:
             raise UnknownFieldError(key) from exc
         except PolicyError as exc:
             raise PolicyError(str(exc)) from exc
+
+    def get_sections_order(self) -> list[str] | None:
+        return _ORCH.get_sections_order(self.provider_id)
+
+    def set_sections_order(self, seq: list[str]) -> None:
+        _ORCH.set_sections_order(self.provider_id, list(seq))
+
+    def get_sections_collapsed(self) -> list[str] | None:
+        return _ORCH.get_sections_collapsed(self.provider_id)
+
+    def set_sections_collapsed(self, seq: list[str]) -> None:
+        _ORCH.set_sections_collapsed(self.provider_id, list(seq))
+
+    def patch_fields(self, updates: list[dict[str, object]]) -> None:
+        _ORCH.patch_fields(self.provider_id, updates)
 
     # Untracked (manual INI edits)
     def untracked_keys(self) -> list[str]:
