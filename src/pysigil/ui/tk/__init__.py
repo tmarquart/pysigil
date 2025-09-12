@@ -223,10 +223,12 @@ class App:
                         info.key,
                         self.on_pill_click,
                         compact=self.compact,
+                        on_edit_click=self._open_edit_dialog,
                     )
                     self.field_rows[info.key] = row
                 else:
                     row.set_compact(self.compact)
+                    row._on_edit_click = self._open_edit_dialog
                 if hasattr(row, "update_metadata"):
                     try:
                         row.update_metadata(info)  # type: ignore[attr-defined]

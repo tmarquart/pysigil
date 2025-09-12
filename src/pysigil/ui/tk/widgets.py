@@ -143,8 +143,7 @@ class PillButton(tk.Canvas):
         if self.font is None:
             return 64
         text_w = self.font.measure(self.text)
-        extra = 10 if self.locked else 0
-        return max(64, text_w + self.pad_x * 2 + extra)
+        return max(64, text_w + self.pad_x * 2)
 
     def _draw(self, initial: bool = False) -> None:
         w = self._measure_width()
@@ -177,8 +176,6 @@ class PillButton(tk.Canvas):
         r = self.rad
         self._round_rect(1, 1, w - 1, 26, r, fill=fill, outline=outline, width=border_w)
         self.create_text(w / 2, 14, text=self.text, fill=fg, font=self.font)
-        if self.locked:
-            self.create_text(w - 10, 14, text="\u1F512", fill=fg, font=self.font)
         if self.focus_displayof() is self:
             self.create_rectangle(3, 3, w - 3, 24, outline="#111", dash=(2, 2))
 
