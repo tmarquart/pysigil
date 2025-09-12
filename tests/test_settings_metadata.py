@@ -126,6 +126,22 @@ def test_ini_file_backend(tmp_path):
     assert backend.write_target_for("demo") == "settings.ini"
 
 
+def test_short_description_length_limit():
+    with pytest.raises(ValueError):
+        FieldSpec(key="k", type="string", description_short="x" * 121)
+
+
+def test_fieldspec_serialization_omits_empty_descriptions():
+    spec = FieldSpec(key="k", type="string")
+    gui = spec.to_gui_v0()
+    assert "description" not in gui
+    assert "description_short" not in gui
+    spec = FieldSpec(key="k", type="string", description="long")
+    gui = spec.to_gui_v0()
+    assert gui["description"] == "long"
+    assert "description_short" not in gui
+
+
 def test_spec_backend_detects_external_change(tmp_path):
     backend = IniSpecBackend(user_dir=tmp_path)
     spec = ProviderSpec(provider_id="demo", schema_version="1")

@@ -179,6 +179,7 @@ class Orchestrator:
         key: str,
         type: str,
         label: str | None = None,
+        description_short: str | None = None,
         description: str | None = None,
         options: Mapping[str, object] | None = None,
     ) -> FieldSpec:
@@ -202,6 +203,7 @@ class Orchestrator:
             key=key,
             type=type,
             label=label,
+            description_short=description_short,
             description=description,
             options=dict(options) if options is not None else {},
         )
@@ -226,6 +228,7 @@ class Orchestrator:
         new_key: str | None = None,
         new_type: str | None = None,
         label: str | None = None,
+        description_short: str | None = None,
         description: str | None = None,
         options: Mapping[str, object] | None = None,
         on_type_change: Literal["convert", "clear"] = "convert",
@@ -264,6 +267,11 @@ class Orchestrator:
             key=nk,
             type=nt,
             label=old_field.label if label is None else label,
+            description_short=(
+                old_field.description_short
+                if description_short is None
+                else description_short
+            ),
             description=old_field.description if description is None else description,
             options=old_field.options if options is None else dict(options),
         )

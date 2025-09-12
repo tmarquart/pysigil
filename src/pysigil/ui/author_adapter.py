@@ -31,6 +31,7 @@ class FieldInfo:
     key: str
     type: str
     label: str | None = None
+    description_short: str | None = None
     description: str | None = None
     options: dict[str, Any] = dataclass_field(default_factory=dict)
 
@@ -127,7 +128,17 @@ class AuthorAdapter:
         """Return field specifications defined for the current provider."""
 
         handle = self._require_handle()
-        return [FieldInfo(f.key, f.type, f.label, f.description, f.options) for f in handle.fields()]
+        return [
+            FieldInfo(
+                f.key,
+                f.type,
+                f.label,
+                f.description_short,
+                f.description,
+                f.options,
+            )
+            for f in handle.fields()
+        ]
 
     def list_undiscovered(self) -> list[UntrackedInfo]:
         """Return keys that exist in configuration but lack field metadata."""
@@ -161,6 +172,7 @@ class AuthorAdapter:
         type: str,
         *,
         label: str | None = None,
+        description_short: str | None = None,
         description: str | None = None,
         options: Mapping[str, Any] | None = None,
         default: Any | None = None,
@@ -176,6 +188,7 @@ class AuthorAdapter:
                 key,
                 new_type=type,
                 label=label,
+                description_short=description_short,
                 description=description,
                 options=options,
             )
@@ -185,6 +198,7 @@ class AuthorAdapter:
                 new_key=new_key,
                 new_type=type,
                 label=label,
+                description_short=description_short,
                 description=description,
                 options=options,
             )
@@ -193,11 +207,19 @@ class AuthorAdapter:
                 key if new_key is None else new_key,
                 type,
                 label=label,
+                description_short=description_short,
                 description=description,
                 options=options,
                 init_scope=init_scope,  # type: ignore[arg-type]
             )
-        info = FieldInfo(res.key, res.type, res.label, res.description, res.options)
+        info = FieldInfo(
+            res.key,
+            res.type,
+            res.label,
+            res.description_short,
+            res.description,
+            res.options,
+        )
         if default is not None:
             api._ORCH.set_value(self._provider_id or "", res.key, default, scope="default")  # type: ignore[arg-type]
         return info
@@ -213,7 +235,17 @@ class AuthorAdapter:
 
         handle = self._require_handle()
         specs = handle.adopt_untracked(mapping)
-        return [FieldInfo(s.key, s.type, s.label, s.description, s.options) for s in specs]
+        return [
+            FieldInfo(
+                s.key,
+                s.type,
+                s.label,
+                s.description_short,
+                s.description,
+                s.options,
+            )
+            for s in specs
+        ]
 
     # ------------------------------------------------------------------
     # Validation helpers
@@ -249,7 +281,14 @@ class AuthorAdapter:
 
         handle = self._require_handle()
         res = handle.edit_field(plan.key, new_key=plan.new_key)
-        return FieldInfo(res.key, res.type, res.label, res.description, res.options)
+        return FieldInfo(
+            res.key,
+            res.type,
+            res.label,
+            res.description_short,
+            res.description,
+            res.options,
+        )
 
     def preview_delete(self, key: str) -> DeletePreview:
         """Return scopes containing values for *key* prior to deletion."""
