@@ -21,8 +21,50 @@ except Exception:  # pragma: no cover - fallback when tkinter missing
 
 from ..core import EventBus, AppCore
 from ..provider_adapter import ProviderAdapter
+from ..sections import bucket_by_section, compute_section_order, field_sort_key
 from .dialogs import EditDialog
 from .rows import FieldRow
+
+
+class SectionFrame(ttk.Frame):  # pragma: no cover - simple container widget
+    """Frame grouping field rows for a single section."""
+
+    def __init__(self, master: tk.Widget, name: str, *, collapsible: bool, collapsed: bool) -> None:
+        super().__init__(master)
+        self.name = name
+        self._collapsible = collapsible
+        self._collapsed = collapsed if collapsible else False
+        header = ttk.Frame(self)
+        header.pack(fill="x")
+        if collapsible:
+            self._toggle = ttk.Label(header, text="\u25B8" if collapsed else "\u25BE", width=2)
+            self._toggle.pack(side="left")
+            self._toggle.bind("<Button-1>", lambda e: self.toggle())
+        else:
+            self._toggle = None
+        ttk.Label(header, text=name, style="Title.TLabel").pack(side="left")
+        self.container = ttk.Frame(self)
+        if not self._collapsed:
+            self.container.pack(fill="x")
+
+    def toggle(self) -> None:
+        if not self._collapsible:
+            return
+        self._collapsed = not self._collapsed
+        if self._toggle is not None:
+            self._toggle.configure(text="\u25B8" if self._collapsed else "\u25BE")
+        if self._collapsed:
+            self.container.pack_forget()
+        else:
+            self.container.pack(fill="x")
+
+    def set_visible(self, visible: bool) -> None:
+        if visible:
+            if not self.winfo_ismapped():
+                self.pack(fill="x", anchor="w", pady=(6, 0))
+        else:
+            if self.winfo_ismapped():
+                self.pack_forget()
 
 
 class App:
@@ -51,8 +93,8 @@ class App:
         self.author_mode = author_mode
         self.core: AppCore | None = AppCore(author_mode=author_mode) if author_mode else None
         self.compact = True
-        self.rows: dict[str, FieldRow] = {}
-        self._edit_buttons: dict[str, ttk.Button] = {}
+        self.section_frames: dict[str, SectionFrame] = {}
+        self.field_rows: dict[str, FieldRow] = {}
         self._initial_provider = initial_provider
         self._align_pending = False
         self._key_col_width: int | None = None
@@ -106,17 +148,15 @@ class App:
         style = ttk.Style(self.root)
         style.configure("Title.TLabel", font=(None, 10, "bold"), anchor="center")
 
-        ttk.Label(self._table, text="Key", style="Title.TLabel").grid(
-            row=0, column=0, sticky="ew"
-        )
-        ttk.Label(self._table, text="Value (effective)", style="Title.TLabel").grid(
-            row=0, column=1, sticky="ew"
-        )
-        ttk.Label(self._table, text="Scopes", style="Title.TLabel").grid(
-            row=0, column=2, sticky="ew"
-        )
+        header = ttk.Frame(self._table)
+        header.pack(fill="x")
+        ttk.Label(header, text="Key", style="Title.TLabel").grid(row=0, column=0, sticky="ew")
+        ttk.Label(header, text="Value (effective)", style="Title.TLabel").grid(row=0, column=1, sticky="ew")
+        ttk.Label(header, text="Scopes", style="Title.TLabel").grid(row=0, column=2, sticky="ew")
+        header.columnconfigure(1, weight=1)
 
-        self._table.columnconfigure(1, weight=1)
+        self._rows_container = ttk.Frame(self._table)
+        self._rows_container.pack(fill="both", expand=True)
 
     def _populate_providers(self) -> None:
         providers = self.adapter.list_providers()
@@ -153,33 +193,60 @@ class App:
     # ------------------------------------------------------------------
     # Row handling
     # ------------------------------------------------------------------
-    def _clear_rows(self) -> None:
-        for row in self.rows.values():
-            row.destroy()
-        for btn in self._edit_buttons.values():
-            btn.destroy()
-        self.rows.clear()
-        self._edit_buttons.clear()
-
     def _rebuild_rows(self) -> None:
-        self._clear_rows()
-        for idx, key in enumerate(self.adapter.fields(), start=1):
-            row = FieldRow(
-                self._table,
-                self.adapter,
-                key,
-                self.on_pill_click,
-                compact=self.compact,
-            )
-            row.grid(row=idx, column=0, columnspan=3, sticky="ew", pady=2)
-            btn = ttk.Button(
-                self._table,
-                text="Edit…",
-                command=lambda k=key: self._open_edit_dialog(k),
-            )
-            btn.grid(row=idx, column=3, sticky="w", padx=4)
-            self.rows[key] = row
-            self._edit_buttons[key] = btn
+        fields = self.adapter.list_fields()
+        sec_order = compute_section_order(fields, self.adapter.provider_sections_order())
+        groups = bucket_by_section(fields)
+        collapsed = {s.casefold() for s in self.adapter.provider_sections_collapsed() or []}
+
+        used_rows: set[str] = set()
+        used_sections: set[str] = set()
+        for sec in sec_order:
+            frame = self.section_frames.get(sec)
+            if frame is None:
+                frame = SectionFrame(
+                    self._rows_container,
+                    sec,
+                    collapsible=sec.casefold() in collapsed,
+                    collapsed=sec.casefold() in collapsed,
+                )
+                self.section_frames[sec] = frame
+            rows = sorted(groups.get(sec, []), key=field_sort_key)
+            for info in rows:
+                row = self.field_rows.get(info.key)
+                if row is None or row.master is not frame.container:
+                    if row is not None:
+                        row.destroy()
+                    row = FieldRow(
+                        frame.container,
+                        self.adapter,
+                        info.key,
+                        self.on_pill_click,
+                        compact=self.compact,
+                    )
+                    self.field_rows[info.key] = row
+                else:
+                    row.set_compact(self.compact)
+                if hasattr(row, "update_metadata"):
+                    try:
+                        row.update_metadata(info)  # type: ignore[attr-defined]
+                    except Exception:
+                        pass
+                row.pack(fill="x", pady=2)
+                used_rows.add(info.key)
+            frame.set_visible(bool(rows))
+            used_sections.add(sec)
+
+        # remove unused rows and hide unused sections
+        for key, row in list(self.field_rows.items()):
+            if key not in used_rows:
+                row.destroy()
+                del self.field_rows[key]
+        for name, frame in list(self.section_frames.items()):
+            if name not in used_sections:
+                frame.destroy()
+                del self.section_frames[name]
+
         self._key_col_width = None
         self._pill_col_width = None
         self._schedule_align()
@@ -230,7 +297,7 @@ class App:
         except Exception as exc:  # pragma: no cover - defensive
             self.events.emit_error(str(exc))
             raise
-        row = self.rows.get(key)
+        row = self.field_rows.get(key)
         if row is not None:
             row.refresh()
             self._schedule_align()
@@ -241,7 +308,7 @@ class App:
         except Exception as exc:  # pragma: no cover - defensive
             self.events.emit_error(str(exc))
             return
-        row = self.rows.get(key)
+        row = self.field_rows.get(key)
         if row is not None:
             row.refresh()
             self._schedule_align()
@@ -259,17 +326,17 @@ class App:
 
     def _align_rows(self) -> None:
         self._align_pending = False
-        if not self.rows:
+        if not self.field_rows:
             return
         self.root.update_idletasks()
-        key_w = max(r.lbl_key.winfo_reqwidth() for r in self.rows.values())
-        pills_w = max(r.pills.winfo_reqwidth() for r in self.rows.values())
+        key_w = max(r.lbl_key.winfo_reqwidth() for r in self.field_rows.values())
+        pills_w = max(r.pills.winfo_reqwidth() for r in self.field_rows.values())
         if key_w != self._key_col_width:
-            for r in self.rows.values():
+            for r in self.field_rows.values():
                 r.grid_columnconfigure(0, minsize=key_w)
             self._key_col_width = key_w
         if pills_w != self._pill_col_width:
-            for r in self.rows.values():
+            for r in self.field_rows.values():
                 r.grid_columnconfigure(2, minsize=pills_w)
             self._pill_col_width = pills_w
 
