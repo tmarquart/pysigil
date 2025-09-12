@@ -33,6 +33,10 @@ def test_adapter_writes_and_effective(tmp_path, monkeypatch):
     adapter, _ = _setup_adapter(tmp_path, monkeypatch)
     assert adapter.list_providers() == ["demo"]
     assert adapter.fields() == ["alpha"]
+    fields = adapter.list_fields()
+    assert [f.key for f in fields] == ["alpha"]
+    assert adapter.provider_sections_order() is None
+    assert adapter.provider_sections_collapsed() is None
 
     adapter.set_value("alpha", "user", 1)
     eff_val, eff_scope = adapter.effective_for_key("alpha")

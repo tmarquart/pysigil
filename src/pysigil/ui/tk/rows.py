@@ -230,5 +230,12 @@ class FieldRow(ttk.Frame):
         if not pill.winfo_ismapped():
             pill.pack(side="left", padx=(0, 6))
 
+    # ------------------------------------------------------------------
+    def update_metadata(self, info: object) -> None:  # pragma: no cover - simple
+        """Update field key label based on new metadata."""
+        key = getattr(info, "key", self.key)
+        self.key = key
+        self.lbl_key.configure(text=key)
+
 
 __all__ = ["FieldRow"]

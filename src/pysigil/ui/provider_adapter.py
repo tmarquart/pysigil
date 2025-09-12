@@ -186,6 +186,27 @@ class ProviderAdapter:
         handle = self._require_handle()
         return [f.key for f in handle.fields()]
 
+    # ------------------------------------------------------------------
+    # Field and section metadata
+    # ------------------------------------------------------------------
+
+    def list_fields(self) -> List[api.FieldInfo]:
+        """Return field metadata objects in provider defined order."""
+        handle = self._require_handle()
+        return list(handle.fields())
+
+    def provider_sections_order(self) -> List[str] | None:
+        """Return explicit provider defined section order if available."""
+        handle = self._require_handle()
+        info = handle.info()
+        return info.sections_order
+
+    def provider_sections_collapsed(self) -> List[str] | None:
+        """Return sections that should start collapsed if available."""
+        handle = self._require_handle()
+        info = handle.info()
+        return info.sections_collapsed
+
     def field_info(self, key: str) -> api.FieldInfo:
         """Return field metadata for *key*."""
         handle = self._require_handle()
