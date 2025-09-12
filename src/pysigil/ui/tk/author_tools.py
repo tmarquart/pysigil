@@ -11,7 +11,7 @@ except Exception:  # pragma: no cover - fallback when tkinter missing
     tk = None  # type: ignore
     ttk = None  # type: ignore
 
-from ...settings_metadata import TYPE_REGISTRY, FieldType
+from ...settings_metadata import TYPE_REGISTRY, FieldType, SHORT_DESC_MAX
 from ..author_adapter import AuthorAdapter, FieldInfo
 from ..options_form import OptionsForm
 from ..core import AppCore
@@ -231,10 +231,32 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         self._label_var = tk.StringVar(value=info.label or "")
         ttk.Label(ident, text="Label:").grid(row=1, column=0, sticky="w")
         ttk.Entry(ident, textvariable=self._label_var).grid(row=1, column=1, sticky="ew")
-        self._desc_var = tk.StringVar(value=info.description or "")
-        ttk.Label(ident, text="Description:").grid(row=2, column=0, sticky="w")
-        ttk.Entry(ident, textvariable=self._desc_var).grid(row=2, column=1, sticky="ew")
         ident.columnconfigure(1, weight=1)
+
+        # Descriptions ---------------------------------------------------
+        desc_fr = ttk.LabelFrame(self._form, text="Descriptions")
+        desc_fr.pack(fill="x", pady=(0, 6))
+        self._desc_short_var = tk.StringVar(value=info.description_short or "")
+        ttk.Label(desc_fr, text="Short:").grid(row=0, column=0, sticky="w")
+        short_entry = ttk.Entry(desc_fr, textvariable=self._desc_short_var)
+        short_entry.grid(row=0, column=1, sticky="ew")
+        self._desc_short_count = ttk.Label(desc_fr, text="0/0")
+        self._desc_short_count.grid(row=0, column=2, sticky="e")
+        desc_fr.columnconfigure(1, weight=1)
+
+        def _update_count(*_args: object) -> None:
+            n = len(self._desc_short_var.get())
+            fg = "red" if n > SHORT_DESC_MAX else "black"
+            self._desc_short_count.config(text=f"{n}/{SHORT_DESC_MAX}", foreground=fg)
+
+        self._desc_short_var.trace_add("write", _update_count)
+        _update_count()
+
+        ttk.Label(desc_fr, text="Long:").grid(row=1, column=0, sticky="nw")
+        self._desc_text = tk.Text(desc_fr, height=4, wrap="word")
+        self._desc_text.grid(row=1, column=1, columnspan=2, sticky="ew")
+        if info.description:
+            self._desc_text.insert("1.0", info.description)
 
         # Type -----------------------------------------------------------
         type_fr = ttk.LabelFrame(self._form, text="Type")
@@ -301,7 +323,8 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         key = self._key_var.get().strip()
         type_name = self._type_var.get().strip()
         label = self._label_var.get().strip() or None
-        description = self._desc_var.get().strip() or None
+        desc_short = self._desc_short_var.get().strip() or None
+        description = self._desc_text.get("1.0", "end").strip() or None
         options = self._collect_options()
         default = None
         if self._value_widget is not None and hasattr(self._value_widget, "get_value"):
@@ -324,12 +347,20 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         kwargs: dict[str, object] = {}
         if "label" in sig.parameters:
             kwargs["label"] = label
+        if "description_short" in sig.parameters:
+            kwargs["description_short"] = desc_short
         if "description" in sig.parameters:
             kwargs["description"] = description
         if "options" in sig.parameters and options is not None:
             kwargs["options"] = options
         if "default" in sig.parameters and default is not None:
             kwargs["default"] = default
+        if desc_short is not None and len(desc_short) > SHORT_DESC_MAX:
+            if messagebox is not None:
+                messagebox.showerror(
+                    "Too long", f"Short description exceeds {SHORT_DESC_MAX} characters", parent=self
+                )
+            return
         self.adapter.upsert_field(key, type_name, **kwargs)  # type: ignore[arg-type]
         self._current_key = key
         self._reload_tree()

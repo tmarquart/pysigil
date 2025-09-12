@@ -51,6 +51,7 @@ class FieldInfo:
     key: str
     type: str
     label: str | None
+    description_short: str | None
     description: str | None
     options: dict[str, Any] = dataclass_field(default_factory=dict)
 
@@ -75,6 +76,7 @@ def _field_info(spec: FieldSpec) -> FieldInfo:
         key=spec.key,
         type=spec.type,
         label=spec.label,
+        description_short=spec.description_short,
         description=spec.description,
         options=spec.options,
     )
@@ -169,6 +171,7 @@ class ProviderHandle:
         type: str,
         *,
         label: str | None = None,
+        description_short: str | None = None,
         description: str | None = None,
         options: Mapping[str, Any] | None = None,
         init_scope: Literal[
@@ -181,6 +184,7 @@ class ProviderHandle:
                 key=key,
                 type=type,
                 label=label,
+                description_short=description_short,
                 description=description,
                 options=dict(options) if options is not None else None,
             )
@@ -202,6 +206,7 @@ class ProviderHandle:
         new_key: str | None = None,
         new_type: str | None = None,
         label: str | None = None,
+        description_short: str | None = None,
         description: str | None = None,
         options: Mapping[str, Any] | None = None,
         on_type_change: Literal["convert", "clear"] = "convert",
@@ -216,6 +221,7 @@ class ProviderHandle:
                 new_key=new_key,
                 new_type=new_type,
                 label=label,
+                description_short=description_short,
                 description=description,
                 options=dict(options) if options is not None else None,
                 on_type_change=on_type_change,

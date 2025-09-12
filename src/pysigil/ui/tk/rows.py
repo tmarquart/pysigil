@@ -11,7 +11,7 @@ except Exception:  # pragma: no cover
     messagebox = None  # type: ignore
 
 from ..provider_adapter import ProviderAdapter, ValueInfo
-from .widgets import PillButton, SCOPE_COLOR, GREY_BG
+from .widgets import PillButton, SCOPE_COLOR, GREY_BG, GREY_TXT, HoverTip
 
 # Mapping from scope ids to color constants used by :class:`PillButton`
 _SCOPE_COLORS = {
@@ -42,9 +42,39 @@ class FieldRow(ttk.Frame):
         self._on_pill_click = on_pill_click
         self.compact = compact
 
-        # key label
-        self.lbl_key = ttk.Label(self, text=key)
-        self.lbl_key.grid(row=0, column=0, sticky="w")
+        # container for key + info button
+        self.key_frame = ttk.Frame(self)
+        self.key_frame.grid(row=0, column=0, sticky="w")
+        self.lbl_key = ttk.Label(self.key_frame, text=key)
+        self.lbl_key.pack(side="left")
+        self.info_btn: tk.Label | None = None
+        self.lbl_desc: ttk.Label | None = None
+        info = None
+        if hasattr(adapter, "field_info"):
+            try:
+                info = adapter.field_info(key)  # type: ignore[attr-defined]
+            except Exception:
+                info = None
+        if info:
+            tip = info.description or info.description_short
+            if tip:
+                self.info_btn = tk.Label(
+                    self.key_frame,
+                    text="\u24D8",
+                    fg=GREY_TXT,
+                    cursor="question_arrow",
+                    takefocus=1,
+                )
+                self.info_btn.pack(side="left", padx=(4, 0))
+                HoverTip(self.info_btn, lambda: tip)
+            if info.description_short:
+                self.lbl_desc = ttk.Label(
+                    self,
+                    text=info.description_short,
+                    foreground=GREY_TXT,
+                    wraplength=360,
+                )
+                self.lbl_desc.grid(row=1, column=0, columnspan=3, sticky="w")
 
         # effective value display
         self.var_eff = tk.StringVar(value="") if tk else None

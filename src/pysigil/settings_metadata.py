@@ -48,6 +48,9 @@ from .resolver import resolve_defaults
 from .root import ProjectRootNotFoundError
 from .discovery import pep503_name
 
+# Maximum length for short descriptions in field specs
+SHORT_DESC_MAX = 120
+
 ####################
 ##### ADAPTERS #####
 ####################
@@ -246,23 +249,37 @@ class FieldSpec:
     key: str
     type: str
     label: str | None = None
+    description_short: str | None = None
     description: str | None = None
     options: dict[str, Any] = dataclass_field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if self.type not in TYPE_REGISTRY:
             raise ValueError(f"unknown type: {self.type!r}")
+        if (
+            self.description_short is not None
+            and len(self.description_short) > SHORT_DESC_MAX
+        ):
+            raise ValueError(
+                f"description_short too long ({len(self.description_short)}>{SHORT_DESC_MAX})"
+            )
 
     def to_gui_v0(self) -> dict[str, Any]:
         """Return a minimal GUI representation."""
 
-        return {
+        data = {
             "key": self.key,
             "type": self.type,
-            "label": self.label,
-            "description": self.description,
-            "options": self.options,
         }
+        if self.label is not None:
+            data["label"] = self.label
+        if self.description_short is not None:
+            data["description_short"] = self.description_short
+        if self.description is not None:
+            data["description"] = self.description
+        if self.options:
+            data["options"] = self.options
+        return data
 
 
 @dataclass
@@ -436,6 +453,8 @@ class IniSpecBackend:
             parser.set(section, "type", field.type)
             if field.label is not None:
                 parser.set(section, "label", field.label)
+            if field.description_short is not None:
+                parser.set(section, "description_short", field.description_short)
             if field.description is not None:
                 parser.set(section, "description", field.description)
             if field.options:
@@ -467,6 +486,7 @@ class IniSpecBackend:
                     key=key,
                     type=data.get("type", "string"),
                     label=data.get("label"),
+                    description_short=data.get("description_short"),
                     description=data.get("description"),
                     options=json.loads(data.get("options", "{}")),
                 )
@@ -1014,5 +1034,6 @@ __all__ = [
     "load_provider_spec",
     "register_provider",
     "save_provider_spec",
+    "SHORT_DESC_MAX",
 ]
 
