@@ -35,11 +35,13 @@ class FieldRow(ttk.Frame):
         on_pill_click: Callable[[str, str], None],
         *,
         compact: bool = True,
+        on_edit_click: Callable[[str], None] | None = None,
     ) -> None:
         super().__init__(master)
         self.adapter = adapter
         self.key = key
         self._on_pill_click = on_pill_click
+        self._on_edit_click = on_edit_click
         self.compact = compact
 
         # container for key + info button
@@ -93,6 +95,14 @@ class FieldRow(ttk.Frame):
         # container for scope pills
         self.pills = ttk.Frame(self)
         self.pills.grid(row=0, column=2, sticky="w")
+
+        # edit action button
+        self.btn_edit = ttk.Button(
+            self,
+            text="Edit…",
+            command=lambda: self._on_edit_click(self.key) if self._on_edit_click else None,
+        )
+        self.btn_edit.grid(row=0, column=3, padx=4)
 
         self.columnconfigure(1, weight=1)
 
