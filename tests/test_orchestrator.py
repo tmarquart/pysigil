@@ -119,6 +119,21 @@ def test_validate_all_reports_errors(tmp_path: Path) -> None:
     assert errors["num"] is not None
 
 
+def test_patch_fields_and_sections(tmp_path: Path) -> None:
+    orch = _make_orch(tmp_path)
+    orch.register_provider("pkg")
+    orch.add_field("pkg", key="a", type="string", section="Old", order=1)
+    orch.add_field("pkg", key="b", type="string", section="Old", order=2)
+    orch.patch_fields("pkg", [{"key": "b", "section": "New", "order": 5}])
+    spec = orch.reload_spec("pkg")
+    b_field = [f for f in spec.fields if f.key == "b"][0]
+    assert b_field.section == "New" and b_field.order == 5
+    orch.set_sections_order("pkg", ["New", "Old"])
+    assert orch.get_sections_order("pkg") == ["New", "Old"]
+    orch.set_sections_collapsed("pkg", ["Old"])
+    assert orch.get_sections_collapsed("pkg") == ["Old"]
+
+
 def test_set_many_atomic(tmp_path: Path) -> None:
     orch = _make_orch(tmp_path)
     orch.register_provider("pkg")

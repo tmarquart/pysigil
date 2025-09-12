@@ -252,6 +252,8 @@ class FieldSpec:
     description_short: str | None = None
     description: str | None = None
     options: dict[str, Any] = dataclass_field(default_factory=dict)
+    section: str | None = None
+    order: int | None = None
 
     def __post_init__(self) -> None:
         if self.type not in TYPE_REGISTRY:
@@ -279,6 +281,10 @@ class FieldSpec:
             data["description"] = self.description
         if self.options:
             data["options"] = self.options
+        if self.section is not None:
+            data["section"] = self.section
+        if self.order is not None:
+            data["order"] = self.order
         return data
 
 
@@ -310,6 +316,8 @@ class ProviderSpec:
     title: str | None = None
     description: str | None = None
     fields: Iterable[FieldSpec] = dataclass_field(default_factory=tuple)
+    sections_order: Iterable[str] | None = None
+    sections_collapsed: Iterable[str] | None = None
 
     def __post_init__(self) -> None:
         if not _PEP503_RE.fullmatch(self.provider_id):
@@ -318,17 +326,26 @@ class ProviderSpec:
             )
         # Freeze iterable of fields into a tuple for immutability
         object.__setattr__(self, "fields", tuple(self.fields))
+        if self.sections_order is not None:
+            object.__setattr__(self, "sections_order", tuple(self.sections_order))
+        if self.sections_collapsed is not None:
+            object.__setattr__(self, "sections_collapsed", tuple(self.sections_collapsed))
 
     def to_gui_doc_v0(self) -> dict[str, Any]:
         """Return a dict representation for GUI consumption."""
 
-        return {
+        data = {
             "schema_version": self.schema_version,
             "provider_id": self.provider_id,
             "title": self.title,
             "description": self.description,
             "fields": [f.to_gui_v0() for f in self.fields],
         }
+        if self.sections_order is not None:
+            data["sections_order"] = list(self.sections_order)
+        if self.sections_collapsed is not None:
+            data["sections_collapsed"] = list(self.sections_collapsed)
+        return data
 
 ####################
 ##### BACKENDS #####
@@ -446,6 +463,10 @@ class IniSpecBackend:
             meta["title"] = spec.title
         if spec.description is not None:
             meta["description"] = spec.description
+        if spec.sections_order is not None:
+            meta["sections_order"] = json.dumps(list(spec.sections_order))
+        if spec.sections_collapsed is not None:
+            meta["sections_collapsed"] = json.dumps(list(spec.sections_collapsed))
         parser["__meta__"] = meta
         for field in spec.fields:
             section = f"field:{field.key}"
@@ -459,6 +480,10 @@ class IniSpecBackend:
                 parser.set(section, "description", field.description)
             if field.options:
                 parser.set(section, "options", json.dumps(field.options, sort_keys=True))
+            if field.section is not None:
+                parser.set(section, "section", field.section)
+            if field.order is not None:
+                parser.set(section, "order", str(field.order))
         path.parent.mkdir(parents=True, exist_ok=True)
         tmp = path.with_suffix(path.suffix + ".tmp")
         with tmp.open("w") as fh:
@@ -481,6 +506,7 @@ class IniSpecBackend:
                 continue
             key = section.split(":", 1)[1]
             data = parser[section]
+            order_val = data.get("order")
             fields.append(
                 FieldSpec(
                     key=key,
@@ -489,14 +515,20 @@ class IniSpecBackend:
                     description_short=data.get("description_short"),
                     description=data.get("description"),
                     options=json.loads(data.get("options", "{}")),
+                    section=data.get("section"),
+                    order=int(order_val) if order_val is not None else None,
                 )
             )
+        so_raw = meta.get("sections_order")
+        sc_raw = meta.get("sections_collapsed")
         spec = ProviderSpec(
             provider_id=provider_id,
             schema_version=meta.get("schema_version", "0"),
             title=meta.get("title"),
             description=meta.get("description"),
             fields=fields,
+            sections_order=json.loads(so_raw) if so_raw else None,
+            sections_collapsed=json.loads(sc_raw) if sc_raw else None,
         )
         self._etags[provider_id] = _stat_etag(st)
         return spec
@@ -928,6 +960,8 @@ def load_provider_spec(path: Path) -> ProviderSpec:
         title=data.get("title"),
         description=data.get("description"),
         fields=fields,
+        sections_order=data.get("sections_order"),
+        sections_collapsed=data.get("sections_collapsed"),
     )
 
 
@@ -939,6 +973,8 @@ def register_provider(
     title: str | None = None,
     description: str | None = None,
     fields: Iterable[FieldSpec] = (),
+    sections_order: Iterable[str] | None = None,
+    sections_collapsed: Iterable[str] | None = None,
 ) -> ProviderSpec:
     """Create and persist a :class:`ProviderSpec` and return it."""
     spec = ProviderSpec(
@@ -947,6 +983,8 @@ def register_provider(
         title=title,
         description=description,
         fields=fields,
+        sections_order=sections_order,
+        sections_collapsed=sections_collapsed,
     )
     save_provider_spec(path, spec)
     return spec
@@ -961,6 +999,8 @@ def add_field_spec(path: Path, field: FieldSpec) -> ProviderSpec:
         title=spec.title,
         description=spec.description,
         fields=list(spec.fields) + [field],
+        sections_order=spec.sections_order,
+        sections_collapsed=spec.sections_collapsed,
     )
     save_provider_spec(path, spec)
     return spec
@@ -983,6 +1023,8 @@ def update_field_spec(path: Path, field: FieldSpec) -> ProviderSpec:
         title=spec.title,
         description=spec.description,
         fields=fields,
+        sections_order=spec.sections_order,
+        sections_collapsed=spec.sections_collapsed,
     )
     save_provider_spec(path, spec)
     return spec
@@ -1001,6 +1043,8 @@ def remove_field_spec(path: Path, key: str) -> ProviderSpec:
         title=spec.title,
         description=spec.description,
         fields=fields,
+        sections_order=spec.sections_order,
+        sections_collapsed=spec.sections_collapsed,
     )
     save_provider_spec(path, spec)
     return spec

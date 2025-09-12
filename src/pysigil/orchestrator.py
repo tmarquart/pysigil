@@ -182,6 +182,8 @@ class Orchestrator:
         description_short: str | None = None,
         description: str | None = None,
         options: Mapping[str, object] | None = None,
+        section: str | None = None,
+        order: int | None = None,
     ) -> FieldSpec:
         """Add a new field to a provider specification.
 
@@ -206,6 +208,8 @@ class Orchestrator:
             description_short=description_short,
             description=description,
             options=dict(options) if options is not None else {},
+            section=section,
+            order=order,
         )
         new_spec = replace(spec, fields=tuple(spec.fields) + (field,))
         etag = self.spec_backend.etag(pid)
@@ -231,6 +235,8 @@ class Orchestrator:
         description_short: str | None = None,
         description: str | None = None,
         options: Mapping[str, object] | None = None,
+        section: str | None = None,
+        order: int | None = None,
         on_type_change: Literal["convert", "clear"] = "convert",
     ) -> FieldSpec:
         """Modify an existing field definition.
@@ -274,6 +280,8 @@ class Orchestrator:
             ),
             description=old_field.description if description is None else description,
             options=old_field.options if options is None else dict(options),
+            section=old_field.section if section is None else section,
+            order=old_field.order if order is None else order,
         )
 
         raw_map, source_map = self.config_backend.read_merged(pid)
@@ -367,6 +375,68 @@ class Orchestrator:
                     )
                 except ProjectRootNotFoundError as exc:  # pragma: no cover - defensive
                     raise PolicyError(str(exc)) from exc
+
+    def get_sections_order(self, provider_id: str) -> list[str] | None:
+        pid = normalize_provider_id(provider_id)
+        spec = self.spec_backend.get_spec(pid)
+        return list(spec.sections_order) if spec.sections_order is not None else None
+
+    def set_sections_order(self, provider_id: str, seq: list[str]) -> None:
+        pid = normalize_provider_id(provider_id)
+        spec = self.spec_backend.get_spec(pid)
+        new_spec = replace(spec, sections_order=tuple(seq))
+        etag = self.spec_backend.etag(pid)
+        try:
+            self.spec_backend.save_spec(new_spec, expected_etag=etag)
+        except ProjectRootNotFoundError as exc:
+            raise PolicyError(str(exc)) from exc
+
+    def get_sections_collapsed(self, provider_id: str) -> list[str] | None:
+        pid = normalize_provider_id(provider_id)
+        spec = self.spec_backend.get_spec(pid)
+        return (
+            list(spec.sections_collapsed)
+            if spec.sections_collapsed is not None
+            else None
+        )
+
+    def set_sections_collapsed(self, provider_id: str, seq: list[str]) -> None:
+        pid = normalize_provider_id(provider_id)
+        spec = self.spec_backend.get_spec(pid)
+        new_spec = replace(spec, sections_collapsed=tuple(seq))
+        etag = self.spec_backend.etag(pid)
+        try:
+            self.spec_backend.save_spec(new_spec, expected_etag=etag)
+        except ProjectRootNotFoundError as exc:
+            raise PolicyError(str(exc)) from exc
+
+    def patch_fields(self, provider_id: str, updates: list[dict[str, object]]) -> None:
+        pid = normalize_provider_id(provider_id)
+        spec = self.spec_backend.get_spec(pid)
+        fields = list(spec.fields)
+        index = {f.key: i for i, f in enumerate(fields)}
+        for upd in updates:
+            key = str(upd["key"])
+            idx = index.get(key)
+            if idx is None:
+                continue
+            field = fields[idx]
+            fields[idx] = FieldSpec(
+                key=field.key,
+                type=field.type,
+                label=field.label,
+                description_short=field.description_short,
+                description=field.description,
+                options=field.options,
+                section=upd.get("section", field.section),
+                order=upd.get("order", field.order),
+            )
+        new_spec = replace(spec, fields=tuple(fields))
+        etag = self.spec_backend.etag(pid)
+        try:
+            self.spec_backend.save_spec(new_spec, expected_etag=etag)
+        except ProjectRootNotFoundError as exc:
+            raise PolicyError(str(exc)) from exc
 
     # ---- Discovery ----
     def list_providers(self) -> list[str]:

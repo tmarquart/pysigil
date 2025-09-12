@@ -97,6 +97,27 @@ def test_ini_spec_backend_persists_options(tmp_path):
     assert loaded.fields[0].options == {"choices": ["a", "b"]}
 
 
+def test_ini_spec_backend_persists_sections(tmp_path):
+    backend = IniSpecBackend(user_dir=tmp_path)
+    spec = ProviderSpec(
+        provider_id="demo",
+        schema_version="1",
+        sections_order=["Basics", "Advanced"],
+        sections_collapsed=["Advanced"],
+        fields=[
+            FieldSpec(
+                key="endpoint", type="string", section="Basics", order=100
+            )
+        ],
+    )
+    backend.create_spec(spec)
+    loaded = backend.get_spec("demo")
+    assert loaded.sections_order == ("Basics", "Advanced")
+    assert loaded.sections_collapsed == ("Advanced",)
+    assert loaded.fields[0].section == "Basics"
+    assert loaded.fields[0].order == 100
+
+
 def test_ini_file_backend(tmp_path):
     user_dir = tmp_path / "user"
     project_dir = tmp_path / "proj"

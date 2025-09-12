@@ -280,6 +280,19 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         ft = TYPE_REGISTRY.get(info.type)
         self._build_type_section(ft, default, info.options)
 
+        # Grouping ------------------------------------------------------
+        group_fr = ttk.LabelFrame(self._form, text="Grouping")
+        group_fr.pack(fill="x", pady=(0, 6))
+        self._section_var = tk.StringVar(value=info.section or "")
+        ttk.Label(group_fr, text="Section:").grid(row=0, column=0, sticky="w")
+        ttk.Entry(group_fr, textvariable=self._section_var).grid(row=0, column=1, sticky="ew")
+        self._order_var = tk.StringVar(
+            value="" if info.order is None else str(info.order)
+        )
+        ttk.Label(group_fr, text="Order:").grid(row=1, column=0, sticky="w")
+        ttk.Entry(group_fr, textvariable=self._order_var).grid(row=1, column=1, sticky="ew")
+        group_fr.columnconfigure(1, weight=1)
+
         # Actions --------------------------------------------------------
         actions = ttk.Frame(self._form)
         actions.pack(fill="x", pady=(0, 6))
@@ -326,6 +339,16 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         desc_short = self._desc_short_var.get().strip() or None
         description = self._desc_text.get("1.0", "end").strip() or None
         options = self._collect_options()
+        section = self._section_var.get().strip() or None
+        order_val = self._order_var.get().strip()
+        order = None
+        if order_val:
+            try:
+                order = int(order_val)
+            except ValueError:
+                if messagebox is not None:
+                    messagebox.showerror("Invalid order", "Order must be an integer", parent=self)
+                return
         default = None
         if self._value_widget is not None and hasattr(self._value_widget, "get_value"):
             default = self._value_widget.get_value()  # type: ignore[attr-defined]
@@ -353,6 +376,10 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
             kwargs["description"] = description
         if "options" in sig.parameters and options is not None:
             kwargs["options"] = options
+        if "section" in sig.parameters:
+            kwargs["section"] = section
+        if "order" in sig.parameters and order is not None:
+            kwargs["order"] = order
         if "default" in sig.parameters and default is not None:
             kwargs["default"] = default
         if desc_short is not None and len(desc_short) > SHORT_DESC_MAX:
