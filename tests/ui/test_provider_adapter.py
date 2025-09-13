@@ -71,10 +71,12 @@ def test_field_row_pill_click(tmp_path, monkeypatch):
 
     clicks = []
     row = FieldRow(root, adapter, "alpha", lambda k, s: clicks.append((k, s)), compact=False)
-    states = {p.text: p.state for p in _collect_pills(row)}
+    pills = _collect_pills(row)
+    states = {p.text: p.state for p in pills}
     assert states["User"] == "effective"
-
-    for pill in _collect_pills(row):
+    user_pill = next(p for p in pills if p.text == "User")
+    assert adapter.scope_description("user") in user_pill._tip_text()
+    for pill in pills:
         if pill.text == "User":
             pill.on_click()
             break

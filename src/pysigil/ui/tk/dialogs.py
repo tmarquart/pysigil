@@ -120,6 +120,7 @@ class EditDialog(tk.Toplevel):  # type: ignore[misc]
                 value_provider=value_provider,
                 clickable=False,
                 tooltip_title=long_label,
+                tooltip_desc=adapter.scope_description(scope),
                 locked=locked,
             )
             pill.grid(row=row, column=0, sticky="w", padx=(0, 8), pady=4)
