@@ -348,8 +348,10 @@ class ListEditor(ttk.Frame):  # pragma: no cover - exercised via tk tests
         path = filedialog.askopenfilename(parent=self, filetypes=[("CSV", "*.csv")])
         if not path:
             return
-        # ``utf8-sig`` transparently strips a UTF-8 BOM if present
-        with open(path, newline="", encoding="utf8-sig") as f:
+
+        # ``utf-8-sig`` transparently strips a UTF-8 BOM if present
+        with open(path, newline="", encoding="utf-8-sig") as f:
+
             reader = csv.reader(f)
             rows = list(reader)
         if self.mode != "simple" and rows and len(rows[0]) == len(self._columns):
