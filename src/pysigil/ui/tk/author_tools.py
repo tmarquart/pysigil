@@ -16,6 +16,7 @@ from ..author_adapter import AuthorAdapter, FieldInfo
 from ..options_form import OptionsForm
 from ..core import AppCore
 from ..value_parser import parse_field_value
+from .dialogs import SectionOrderDialog
 
 
 class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
@@ -68,6 +69,9 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         entry = ttk.Entry(search, textvariable=self._search_var)
         entry.pack(fill="x", side="left", expand=True)
         ttk.Button(search, text="Add", command=self._on_add).pack(side="right", padx=(4, 0))
+        ttk.Button(search, text="Sections…", command=self._open_sections_dialog).pack(
+            side="right", padx=(4, 0)
+        )
         self._search_var.trace_add("write", lambda *_: self._reload_tree())
 
         self._tree = ttk.Treeview(self._left, show="tree")
@@ -131,6 +135,9 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         if node == "undiscovered" and not self._undiscovered_loaded:
             self._undiscovered_loaded = True
             self._reload_tree()
+
+    def _open_sections_dialog(self) -> None:  # pragma: no cover - simple UI callback
+        SectionOrderDialog(self, self.adapter)
 
     # ------------------------------------------------------------------
     def _build_type_section(
