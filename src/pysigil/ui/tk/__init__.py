@@ -22,9 +22,32 @@ except Exception:  # pragma: no cover - fallback when tkinter missing
 from ..core import EventBus, AppCore
 from ..provider_adapter import ProviderAdapter
 from ..sections import bucket_by_section, compute_section_order, field_sort_key
-from ..aurelia_theme import get_palette, use
+from ..aurelia_theme import get_palette, use as theme_use
 from .dialogs import EditDialog
 from .rows import FieldRow
+
+
+def use(root: tk.Misc) -> None:
+    """Apply the Aurelia theme and register additional styles."""
+    theme_use(root)
+    if ttk is None:
+        return
+    colors = get_palette()
+    style = ttk.Style(root)
+    style.map("TEntry", foreground=[("readonly", colors["ink"])])
+    style.configure(
+        "Light.Secondary.TButton",
+        background="#F5F7FC",
+        foreground=colors["ink"],
+        bordercolor="#D9E2F3",
+        relief="solid",
+        borderwidth=1,
+    )
+    style.map(
+        "Light.Secondary.TButton",
+        background=[("active", "#EEF2FA")],
+        bordercolor=[("focus", colors["gold"])],
+    )
 
 
 class SectionFrame(ttk.Frame):  # pragma: no cover - simple container widget
