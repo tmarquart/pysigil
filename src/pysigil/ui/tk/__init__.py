@@ -36,14 +36,14 @@ class SectionFrame(ttk.Frame):  # pragma: no cover - simple container widget
         self._collapsible = collapsible
         self._collapsed = collapsed if collapsible else False
         header = ttk.Frame(self)
-        header.pack(fill="x", padx=(6, 0))
+        header.pack(fill="x", padx=(0, 0))
         if collapsible:
             self._toggle = ttk.Label(header, text="\u25B8" if collapsed else "\u25BE", width=2)
             self._toggle.pack(side="left")
             self._toggle.bind("<Button-1>", lambda e: self.toggle())
         else:
             self._toggle = None
-        ttk.Label(header, text=name, style="Title.TLabel").pack(side="left")
+        ttk.Label(header, text=name, style="Title.TLabel",padding=4).pack(side="left")
         self.container = ttk.Frame(self)
         if not self._collapsed:
             self.container.pack(fill="x")
