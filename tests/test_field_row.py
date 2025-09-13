@@ -1,3 +1,4 @@
+import importlib
 import pytest
 import types
 
@@ -188,5 +189,22 @@ def test_field_row_default_effective():
     assert pill.state == "effective"
     assert pill.color == "#000000"
     assert pill.locked
+    root.destroy()
+
+
+def test_debug_columns_env_var_after_import(monkeypatch):
+    if tk is None:
+        pytest.skip("tkinter not available")
+    try:
+        root = tk.Tk()
+    except Exception:
+        pytest.skip("no display available")
+
+    monkeypatch.delenv("PYSGIL_DEBUG_COLUMNS", raising=False)
+    importlib.reload(tk_rows)
+
+    monkeypatch.setenv("PYSGIL_DEBUG_COLUMNS", "1")
+    row = tk_rows.FieldRow(root, DummyAdapter(), "alpha", lambda k, s: None, compact=False)
+    assert hasattr(row, "_debug_canvas")
     root.destroy()
 
