@@ -80,10 +80,23 @@ class ProviderAdapter:
         "default": "Default",
     }
 
+    SCOPE_DESCRIPTIONS = {
+        "env": "Overrides from the environment for this run only.",
+        "user": "Applies to all projects for the current user.",
+        "user-local": "User settings specific to this machine.",
+        "project": "Shared project configuration committed to source control.",
+        "project-local": "Project settings for this machine only.",
+        "default": "Built-in default provided by the author.",
+    }
+
     def scope_label(self, scope_id: str, short: bool = False) -> str:
         """Return human readable label for *scope_id*."""
         mapping = self._SHORT_LABELS if short else self._LONG_LABELS
         return mapping.get(scope_id, scope_id)
+
+    def scope_description(self, scope_id: str) -> str:
+        """Return human readable description for ``scope_id``."""
+        return self.SCOPE_DESCRIPTIONS.get(scope_id, scope_id)
 
     def can_write(self, scope_id: str) -> bool:
         """Return ``True`` if *scope_id* is writable according to policy."""

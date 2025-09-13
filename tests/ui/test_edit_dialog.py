@@ -10,6 +10,7 @@ except Exception:  # pragma: no cover - tkinter missing
 from pysigil.api import FieldInfo
 from pysigil.ui.tk.dialogs import EditDialog
 from pysigil.ui.provider_adapter import ValueInfo
+from pysigil.ui.tk.widgets import PillButton
 
 
 class DummyAdapter:
@@ -37,6 +38,14 @@ class DummyAdapter:
             description="Long description",
         )
 
+    _DESCRIPTIONS = {
+        "user": "User configuration",
+        "default": "Built-in default",
+    }
+
+    def scope_description(self, scope):
+        return self._DESCRIPTIONS[scope]
+
 
 def test_edit_dialog_default_readonly():
     if tk is None:
@@ -45,7 +54,8 @@ def test_edit_dialog_default_readonly():
         root = tk.Tk()
     except Exception:
         pytest.skip("no display available")
-    dlg = EditDialog(root, DummyAdapter(), "alpha")
+    adapter = DummyAdapter()
+    dlg = EditDialog(root, adapter, "alpha")
     entry = dlg.entries["default"]
     assert entry.instate(["readonly"])  # default is read-only
     row = entry.grid_info()["row"]
@@ -54,6 +64,9 @@ def test_edit_dialog_default_readonly():
     btn_remove = body.grid_slaves(row=row, column=3)[0]
     assert btn_save.instate(["disabled"])
     assert btn_remove.instate(["disabled"])
+    pill = body.grid_slaves(row=row, column=0)[0]
+    assert isinstance(pill, PillButton)
+    assert adapter.scope_description("default") in pill._tip_text()
     dlg.destroy()
     root.destroy()
 
