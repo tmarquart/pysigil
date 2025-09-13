@@ -46,7 +46,9 @@ class FieldRow(ttk.Frame):
 
         # container for key + info button
         self.key_frame = ttk.Frame(self)
+
         self.key_frame.grid(row=0, column=0, sticky="nw", pady=(6, 0))
+
         info = None
         if hasattr(adapter, "field_info"):
             try:
@@ -55,7 +57,9 @@ class FieldRow(ttk.Frame):
                 info = None
         label = getattr(info, "label", None) or key
         self.lbl_key = ttk.Label(self.key_frame, text=label)
+
         self.lbl_key.pack(side="left", anchor="nw")
+
         self.info_btn: tk.Label | None = None
         self.lbl_desc: ttk.Label | None = None
         if info:
@@ -72,7 +76,7 @@ class FieldRow(ttk.Frame):
                     cursor="question_arrow",
                     takefocus=1,
                 )
-                self.info_btn.pack(side="left", padx=(4, 0))
+                self.info_btn.pack(side="left", padx=(4, 0), pady=(6, 0))
                 HoverTip(self.info_btn, lambda: tip)
                 HoverTip(self.lbl_key, lambda: tip)
             if info.description_short:
@@ -94,6 +98,7 @@ class FieldRow(ttk.Frame):
             bd=1,
             relief="ridge",
             padx=10,
+
             pady=0,
             anchor="nw",
         )
@@ -103,13 +108,16 @@ class FieldRow(ttk.Frame):
         self.pills = ttk.Frame(self)
         self.pills.grid(row=0, column=2, sticky="nw", pady=(6, 0))
 
+
         # edit action button
         self.btn_edit = ttk.Button(
             self,
             text="Edit…",
             command=lambda: self._on_edit_click(self.key) if self._on_edit_click else None,
         )
+
         self.btn_edit.grid(row=0, column=3, padx=4, pady=(6, 0), sticky="n")
+
 
         self.columnconfigure(1, weight=1)
 
