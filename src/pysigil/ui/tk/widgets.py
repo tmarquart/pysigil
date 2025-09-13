@@ -5,14 +5,13 @@ layer.  It ports components originally prototyped during the UI design
 process, namely :class:`HoverTip` for delayed hover tooltips and
 :class:`PillButton`, a rounded button displaying the value state of a
 setting.
-
-The module also exports a handful of color constants so that other parts
-of the interface can match the prototype styling.
 """
 
 from __future__ import annotations
 
 from typing import Callable, Any, Literal
+
+from ..aurelia_theme import get_palette
 
 try:  # pragma: no cover - importing tkinter is environment dependent
     import tkinter as tk
@@ -20,21 +19,6 @@ try:  # pragma: no cover - importing tkinter is environment dependent
 except Exception:  # pragma: no cover - fallback when tkinter missing
     tk = None  # type: ignore
     tkfont = None  # type: ignore
-
-# --- prototype color constants -------------------------------------------------
-
-SCOPE_COLOR = {
-    "Env": "#15803d",  # green-700
-    "User": "#1e40af",  # blue-900
-    "Machine": "#065f46",  # emerald-900
-    "Project": "#6d28d9",  # violet-700
-    "ProjectMachine": "#c2410c",  # orange-700
-    "Def": "#000000",  # black
-}
-
-GREY_BG = "#f3f4f6"
-GREY_TXT = "#6b7280"
-GREY_BORDER = "#e5e7eb"
 
 
 class HoverTip:
@@ -70,9 +54,12 @@ class HoverTip:
         self.tip.wm_overrideredirect(True)
         self.tip.attributes("-topmost", True)
         self.tip.wm_geometry(f"+{x}+{y}")
-        frame = tk.Frame(self.tip, bg="#111827", bd=0)
+        palette = get_palette()
+        bg = palette["neutrals"]["900"]
+        fg = palette["text"]["on_primary"]
+        frame = tk.Frame(self.tip, bg=bg, bd=0)
         frame.pack()
-        label = tk.Label(frame, text=txt, bg="#111827", fg="#ffffff", padx=8, pady=6)
+        label = tk.Label(frame, text=txt, bg=bg, fg=fg, padx=8, pady=6)
         label.pack()
 
     def _hide(self, _event: tk.Event) -> None:
@@ -149,35 +136,45 @@ class PillButton(tk.Canvas):
         w = self._measure_width()
         self.configure(width=w)
         self.delete("all")
+        palette = get_palette()
+        neutrals = palette["neutrals"]
+        text = palette["text"]
         if self.state == "effective":
             fill = outline = self.color
-            fg = "#ffffff"
+            fg = text["on_primary"]
             border_w = 1
         elif self.state == "present":
-            fill = "#ffffff"
+            fill = neutrals["0"]
             outline = self.color
             fg = self.color
             border_w = 2
         elif self.state == "disabled":
-            fill = GREY_BG
-            outline = GREY_BORDER
-            fg = GREY_TXT
+            fill = neutrals["100"]
+            outline = neutrals["200"]
+            fg = text["muted"]
             border_w = 1
         elif self.state == "synthetic":
-            fill = "#ffffff"
+            fill = neutrals["0"]
             outline = self.color
             fg = self.color
             border_w = 1
         else:  # empty
-            fill = "#ffffff"
-            outline = GREY_BORDER
-            fg = GREY_TXT
+            fill = neutrals["0"]
+            outline = neutrals["200"]
+            fg = text["muted"]
             border_w = 1
         r = self.rad
         self._round_rect(1, 1, w - 1, 26, r, fill=fill, outline=outline, width=border_w)
         self.create_text(w / 2, 14, text=self.text, fill=fg, font=self.font)
         if self.focus_displayof() is self:
-            self.create_rectangle(3, 3, w - 3, 24, outline="#111", dash=(2, 2))
+            self.create_rectangle(
+                3,
+                3,
+                w - 3,
+                24,
+                outline=neutrals["900"],
+                dash=(2, 2),
+            )
 
     def _round_rect(self, x1: int, y1: int, x2: int, y2: int, r: int, **kw: Any) -> int:
         pts = [
@@ -217,8 +214,4 @@ class PillButton(tk.Canvas):
 __all__ = [
     "HoverTip",
     "PillButton",
-    "SCOPE_COLOR",
-    "GREY_BG",
-    "GREY_TXT",
-    "GREY_BORDER",
 ]
