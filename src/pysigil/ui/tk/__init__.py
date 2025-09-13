@@ -106,20 +106,17 @@ class App:
 
         use(self.root)
         core_palette = get_palette()
-        neutrals = core_palette["neutrals"]
-        text_colors = core_palette["text"]
-        accents = core_palette["accents"]
         self.palette = {
-            "bg": neutrals["100"],
-            "gold": accents["primary"],
-            "hdr_fg": text_colors["fg"],
-            "hdr_muted": text_colors["muted"],
-            "card": neutrals["0"],
-            "card_edge": neutrals["200"],
-            "ink": text_colors["fg"],
-            "ink_muted": text_colors["muted"],
-            "field": neutrals["0"],
-            "field_bd": neutrals["200"],
+            "bg": core_palette["bg"],
+            "gold": core_palette["gold"],
+            "hdr_fg": core_palette["hdr_fg"],
+            "hdr_muted": core_palette["hdr_muted"],
+            "card": core_palette["card"],
+            "card_edge": core_palette["card_edge"],
+            "ink": core_palette["ink"],
+            "ink_muted": core_palette["ink_muted"],
+            "field": core_palette["field"],
+            "field_bd": core_palette["field_bd"],
         }
         self.root.title("pysigil")
         self.root.configure(bg=self.palette["bg"])
@@ -188,7 +185,13 @@ class App:
         )
         style.configure("Title.TLabel", font=(None, 10, "bold"))
 
-        self._table = ttk.Frame(self.root, style="CardFrame.TFrame")
+        self._table = tk.Frame(
+            self.root,
+            bg=palette["card"],
+            highlightthickness=1,
+            highlightbackground=palette["card_edge"],
+            highlightcolor=palette["card_edge"],
+        )
         self._table.pack(fill="both", expand=True, padx=6, pady=6)
 
         self._header = ttk.Frame(self._table, style="CardFrame.TFrame")
@@ -209,23 +212,12 @@ class App:
         self._hdr_edit.grid(row=0, column=3, sticky="ew")
         self._header.columnconfigure(1, weight=1)
 
-        self._rows_container = tk.Frame(
-            self._table,
-            bg=palette["card"],
-            highlightthickness=1,
-            highlightbackground=palette["card_edge"],
-            highlightcolor=palette["card_edge"],
-        )
+        self._rows_container = ttk.Frame(self._table, style="CardFrame.TFrame")
         self._rows_container.pack(fill="both", expand=True)
 
     def _style_row(self, row: FieldRow) -> None:
         palette = self.palette
-        row.configure(
-            bg=palette["card"],
-            highlightthickness=1,
-            highlightbackground=palette["card_edge"],
-            highlightcolor=palette["card_edge"],
-        )
+        row.configure(bg=palette["card"])
         row.key_frame.configure(style="CardFrame.TFrame")
         row.lbl_key.configure(background=palette["card"], foreground=palette["ink"])
         if row.info_btn:

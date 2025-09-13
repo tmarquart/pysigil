@@ -52,8 +52,9 @@ class FieldRow(tk.Frame):
         self.compact = compact
 
         palette = get_palette()
-        text_colors = palette["text"]
-        neutrals = palette["neutrals"]
+        ink = palette["ink"]
+        ink_muted = palette["ink_muted"]
+        field = palette["field"]
 
         # container for key + info button
         self.key_frame = ttk.Frame(self)
@@ -82,7 +83,7 @@ class FieldRow(tk.Frame):
                 self.info_btn = tk.Label(
                     self.key_frame,
                     text="\u24D8",
-                    fg=text_colors["muted"],
+                    fg=ink_muted,
                     cursor="question_arrow",
                     takefocus=1,
                 )
@@ -93,7 +94,7 @@ class FieldRow(tk.Frame):
                 self.lbl_desc = ttk.Label(
                     self,
                     text=info.description_short,
-                    foreground=text_colors["muted"],
+                    foreground=ink_muted,
                     wraplength=360,
                 )
                 self.lbl_desc.grid(row=1, column=0, columnspan=3, sticky="w")
@@ -103,8 +104,8 @@ class FieldRow(tk.Frame):
         self.lbl_eff = tk.Label(
             self,
             textvariable=self.var_eff,
-            bg=neutrals["100"],
-            fg=text_colors["fg"],
+            bg=field,
+            fg=ink,
             bd=1,
             relief="ridge",
             padx=10,
@@ -269,7 +270,7 @@ class FieldRow(tk.Frame):
         short_label = self.adapter.scope_label(name, short=True)
         long_label = self.adapter.scope_label(name, short=False)
         palette = get_palette()
-        color = _SCOPE_COLORS.get(name, palette["text"]["muted"])
+        color = _SCOPE_COLORS.get(name, palette["ink_muted"])
 
         def cb() -> None:
             if not locked and self._on_pill_click:
