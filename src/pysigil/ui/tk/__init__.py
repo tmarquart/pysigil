@@ -141,7 +141,7 @@ class App:
         )
 
         header = ttk.Frame(self.root, style="AppHeader.TFrame")
-        header.pack(fill="x", padx=6, pady=6)
+        header.pack(fill="x", padx=12, pady=12)
 
         ttk.Label(header, text="Provider:", style="AppHeader.TLabel").pack(side="left")
         self._provider_var = tk.StringVar()
@@ -192,10 +192,10 @@ class App:
             highlightbackground=palette["card_edge"],
             highlightcolor=palette["card_edge"],
         )
-        self._table.pack(fill="both", expand=True, padx=6, pady=6)
+        self._table.pack(fill="both", expand=True, padx=12, pady=12)
 
         self._header = ttk.Frame(self._table, style="CardFrame.TFrame")
-        self._header.pack(fill="x", padx=8, pady=8)
+        self._header.pack(fill="x", padx=12, pady=12)
         self._hdr_key = ttk.Label(
             self._header, text="Key", style="CardHeader.TLabel", anchor="center"
         )
@@ -213,7 +213,7 @@ class App:
         self._header.columnconfigure(1, weight=1)
 
         self._rows_container = ttk.Frame(self._table, style="CardFrame.TFrame")
-        self._rows_container.pack(fill="both", expand=True, padx=8, pady=(0, 8))
+        self._rows_container.pack(fill="both", expand=True, padx=12, pady=(0, 12))
 
     def _style_row(self, row: FieldRow) -> None:
         palette = self.palette
