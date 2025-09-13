@@ -24,7 +24,10 @@ _SCOPE_COLORS = {
     "default": SCOPE_COLOR["Def"],
 }
 
-_DEBUG_COLUMNS = bool(os.environ.get("PYSGIL_DEBUG_COLUMNS"))
+
+def _debug_columns() -> bool:
+    """Return True when the debug column overlay is enabled."""
+    return bool(os.environ.get("PYSGIL_DEBUG_COLUMNS"))
 
 
 class FieldRow(ttk.Frame):
@@ -128,7 +131,7 @@ class FieldRow(ttk.Frame):
 
         self.refresh()
 
-        if _DEBUG_COLUMNS and tk is not None:
+        if _debug_columns() and tk is not None:
             self._debug_canvas = tk.Canvas(self, highlightthickness=0)
             self._debug_canvas.place(relx=0, rely=0, relwidth=1, relheight=1)
             self.bind("<Configure>", self._on_debug_configure)
@@ -182,7 +185,7 @@ class FieldRow(ttk.Frame):
             )
 
     def _on_debug_configure(self, event: tk.Event) -> None:
-        if not _DEBUG_COLUMNS:
+        if not _debug_columns():
             return
         canvas = getattr(self, "_debug_canvas", None)
         if canvas is None:
