@@ -100,6 +100,7 @@ class App:
         self._key_col_width: int | None = None
         self._pill_col_width: int | None = None
         self._eff_col_width: int | None = None
+        self._edit_col_width: int | None = None
         self._author_tools: tk.Toplevel | None = None
 
         self.root.title("pysigil")
@@ -163,6 +164,11 @@ class App:
             self._header, text="Scopes", style="Title.TLabel", anchor="center"
         )
         self._hdr_scopes.grid(row=0, column=2, sticky="ew")
+        # spacer column matching the width of the per-row edit button so the
+        # "Scopes" header aligns with the actual scope column instead of also
+        # spanning the edit column
+        self._hdr_edit = ttk.Label(self._header, text="", style="Title.TLabel")
+        self._hdr_edit.grid(row=0, column=3, sticky="ew")
         self._header.columnconfigure(1, weight=1)
 
         self._rows_container = ttk.Frame(self._table)
@@ -353,6 +359,7 @@ class App:
             self._hdr_eff.winfo_reqwidth(),
             *(r.lbl_eff.winfo_reqwidth() for r in self.field_rows.values()),
         )
+        edit_w = max(r.btn_edit.winfo_reqwidth() for r in self.field_rows.values())
         if key_w != self._key_col_width:
             self._header.grid_columnconfigure(0, minsize=key_w)
             for r in self.field_rows.values():
@@ -368,6 +375,11 @@ class App:
             for r in self.field_rows.values():
                 r.grid_columnconfigure(1, minsize=eff_w)
             self._eff_col_width = eff_w
+        if edit_w != self._edit_col_width:
+            self._header.grid_columnconfigure(3, minsize=edit_w)
+            for r in self.field_rows.values():
+                r.grid_columnconfigure(3, minsize=edit_w)
+            self._edit_col_width = edit_w
 
 
 def launch(initial_provider: str | None = None, *, author_mode: bool = False) -> None:
