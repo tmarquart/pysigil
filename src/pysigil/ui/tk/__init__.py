@@ -149,12 +149,21 @@ class App:
         style = ttk.Style(self.root)
         style.configure("Title.TLabel", font=(None, 10, "bold"))
 
-        header = ttk.Frame(self._table)
-        header.pack(fill="x")
-        ttk.Label(header, text="Key", style="Title.TLabel", anchor="w").grid(row=0, column=0, sticky="ew")
-        ttk.Label(header, text="Value (effective)", style="Title.TLabel", anchor="w").grid(row=0, column=1, sticky="ew")
-        ttk.Label(header, text="Scopes", style="Title.TLabel", anchor="w").grid(row=0, column=2, sticky="ew")
-        header.columnconfigure(1, weight=1)
+        self._header = ttk.Frame(self._table)
+        self._header.pack(fill="x")
+        self._hdr_key = ttk.Label(
+            self._header, text="Key", style="Title.TLabel", anchor="center"
+        )
+        self._hdr_key.grid(row=0, column=0, sticky="ew")
+        self._hdr_eff = ttk.Label(
+            self._header, text="Value (effective)", style="Title.TLabel", anchor="center"
+        )
+        self._hdr_eff.grid(row=0, column=1, sticky="ew")
+        self._hdr_scopes = ttk.Label(
+            self._header, text="Scopes", style="Title.TLabel", anchor="center"
+        )
+        self._hdr_scopes.grid(row=0, column=2, sticky="ew")
+        self._header.columnconfigure(1, weight=1)
 
         self._rows_container = ttk.Frame(self._table)
         self._rows_container.pack(fill="both", expand=True)
@@ -332,18 +341,30 @@ class App:
         if not self.field_rows:
             return
         self.root.update_idletasks()
-        key_w = max(r.key_frame.winfo_reqwidth() for r in self.field_rows.values())
-        pills_w = max(r.pills.winfo_reqwidth() for r in self.field_rows.values())
-        eff_w = max(r.lbl_eff.winfo_reqwidth() for r in self.field_rows.values())
+        key_w = max(
+            self._hdr_key.winfo_reqwidth(),
+            *(r.key_frame.winfo_reqwidth() for r in self.field_rows.values()),
+        )
+        pills_w = max(
+            self._hdr_scopes.winfo_reqwidth(),
+            *(r.pills.winfo_reqwidth() for r in self.field_rows.values()),
+        )
+        eff_w = max(
+            self._hdr_eff.winfo_reqwidth(),
+            *(r.lbl_eff.winfo_reqwidth() for r in self.field_rows.values()),
+        )
         if key_w != self._key_col_width:
+            self._header.grid_columnconfigure(0, minsize=key_w)
             for r in self.field_rows.values():
                 r.grid_columnconfigure(0, minsize=key_w)
             self._key_col_width = key_w
         if pills_w != self._pill_col_width:
+            self._header.grid_columnconfigure(2, minsize=pills_w)
             for r in self.field_rows.values():
                 r.grid_columnconfigure(2, minsize=pills_w)
             self._pill_col_width = pills_w
         if eff_w != self._eff_col_width:
+            self._header.grid_columnconfigure(1, minsize=eff_w)
             for r in self.field_rows.values():
                 r.grid_columnconfigure(1, minsize=eff_w)
             self._eff_col_width = eff_w
