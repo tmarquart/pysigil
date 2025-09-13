@@ -165,13 +165,7 @@ class FieldRow(tk.Frame):
             src_txt = "—"
         else:
             src_txt = self.adapter.scope_label(eff_src)
-
-        locked = bool(eff_src and not self.adapter.can_write(eff_src))
-        palette = get_palette()
-        fg = palette["ink_muted"] if locked else palette["ink"]
-        lock = "\U0001F512 " if locked else ""
-        self.lbl_eff.configure(fg=fg)
-        self.var_eff.set(f"{lock}{val_txt}  ({src_txt})")
+        self.var_eff.set(f"{val_txt}  ({src_txt})")
 
         values: Dict[str, ValueInfo] = self.adapter.values_for_key(self.key)
         scopes = self.adapter.scopes()
