@@ -12,9 +12,20 @@ except Exception:  # pragma: no cover - fallback when tkinter missing
     messagebox = None  # type: ignore
     ttk = None  # type: ignore
 
-from ..aurelia_theme import get_palette
+from ..aurelia_theme import SCOPE_COLORS, get_palette
 from ..provider_adapter import ProviderAdapter, ValueInfo
 from ..value_parser import parse_field_value
+from .widgets import PillButton
+
+
+_SCOPE_COLORS = {
+    "env": SCOPE_COLORS["Env"],
+    "user": SCOPE_COLORS["User"],
+    "user-local": SCOPE_COLORS["Machine"],
+    "project": SCOPE_COLORS["Project"],
+    "project-local": SCOPE_COLORS["ProjectMachine"],
+    "default": SCOPE_COLORS["Def"],
+}
 
 
 class EditDialog(tk.Toplevel):  # type: ignore[misc]
@@ -59,29 +70,66 @@ class EditDialog(tk.Toplevel):  # type: ignore[misc]
         if "default" not in scopes:
             scopes.append("default")
 
+        _, eff_src = adapter.effective_for_key(key)
+
         row = 2
         for scope in scopes:
             if scope == "env" and scope not in values:
                 continue
 
-            label = adapter.scope_label(scope)
-            ttk.Label(body, text=label).grid(
-                row=row, column=0, sticky="w", padx=(0, 8), pady=4
-            )
-            entry = ttk.Entry(body)
-            entry.grid(row=row, column=1, sticky="ew", pady=4)
-
             vinfo: ValueInfo | None = values.get(scope)
-            if vinfo and vinfo.value is not None:
-                entry.insert(0, str(vinfo.value))
+
+            def value_provider(s=scope) -> object:
+                v = values.get(s)
+                if v and v.value is not None:
+                    return v.value
+                if s == "default":
+                    return self.adapter.default_for_key(self.key)
+                return None
 
             can_write = adapter.can_write(scope)
             if scope == "default":
-                entry.state(["readonly"])
                 can_write = False
             elif scope == "env" or adapter.is_overlay(scope):
-                entry.state(["readonly"])
                 can_write = False
+
+            locked = not can_write
+            if locked and scope != "default" and not adapter.is_overlay(scope):
+                state = "disabled"
+            elif eff_src == scope:
+                state = "effective"
+            elif vinfo and vinfo.value is not None:
+                state = "present"
+            else:
+                state = "empty"
+
+            short_label = adapter.scope_label(scope, short=True)
+            long_label = adapter.scope_label(scope, short=False)
+            palette = get_palette()
+            color = _SCOPE_COLORS.get(scope, palette["ink_muted"])
+
+            pill = PillButton(
+                body,
+                text=short_label,
+                color=color,
+                state=state,  # type: ignore[arg-type]
+                value_provider=value_provider,
+                clickable=False,
+                tooltip_title=long_label,
+                locked=locked,
+            )
+            pill.grid(row=row, column=0, sticky="w", padx=(0, 8), pady=4)
+
+            entry = ttk.Entry(body)
+            entry.grid(row=row, column=1, sticky="ew", pady=4)
+
+            if vinfo and vinfo.value is not None:
+                entry.insert(0, str(vinfo.value))
+
+            if scope == "default":
+                entry.state(["readonly"])
+            elif scope == "env" or adapter.is_overlay(scope):
+                entry.state(["readonly"])
             elif not can_write:
                 entry.state(["disabled"])
 
