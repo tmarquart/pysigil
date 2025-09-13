@@ -55,8 +55,8 @@ class HoverTip:
         self.tip.attributes("-topmost", True)
         self.tip.wm_geometry(f"+{x}+{y}")
         palette = get_palette()
-        bg = palette["neutrals"]["900"]
-        fg = palette["text"]["on_primary"]
+        bg = palette["tooltip_bg"]
+        fg = palette["tooltip_fg"]
         frame = tk.Frame(self.tip, bg=bg, bd=0)
         frame.pack()
         label = tk.Label(frame, text=txt, bg=bg, fg=fg, padx=8, pady=6)
@@ -137,31 +137,32 @@ class PillButton(tk.Canvas):
         self.configure(width=w)
         self.delete("all")
         palette = get_palette()
-        neutrals = palette["neutrals"]
-        text = palette["text"]
+        card = palette["card"]
+        card_edge = palette["card_edge"]
+        ink_muted = palette["ink_muted"]
         if self.state == "effective":
             fill = outline = self.color
-            fg = text["on_primary"]
+            fg = palette["on_primary"]
             border_w = 1
         elif self.state == "present":
-            fill = neutrals["0"]
+            fill = card
             outline = self.color
             fg = self.color
             border_w = 2
         elif self.state == "disabled":
-            fill = neutrals["100"]
-            outline = neutrals["200"]
-            fg = text["muted"]
+            fill = card
+            outline = card_edge
+            fg = ink_muted
             border_w = 1
         elif self.state == "synthetic":
-            fill = neutrals["0"]
+            fill = card
             outline = self.color
             fg = self.color
             border_w = 1
         else:  # empty
-            fill = neutrals["0"]
-            outline = neutrals["200"]
-            fg = text["muted"]
+            fill = card
+            outline = card_edge
+            fg = ink_muted
             border_w = 1
         r = self.rad
         self._round_rect(1, 1, w - 1, 26, r, fill=fill, outline=outline, width=border_w)
@@ -172,7 +173,7 @@ class PillButton(tk.Canvas):
                 3,
                 w - 3,
                 24,
-                outline=neutrals["900"],
+                outline=palette["ink"],
                 dash=(2, 2),
             )
 

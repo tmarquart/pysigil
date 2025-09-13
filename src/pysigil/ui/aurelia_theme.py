@@ -19,33 +19,22 @@ except Exception:  # pragma: no cover - fallback when tkinter missing
 # Palette
 # ---------------------------------------------------------------------------
 
-_AURELIA_PALETTE: dict[str, dict[str, str]] = {
-    # Neutrals ---------------------------------------------------------------
-    "neutrals": {
-        "0": "#ffffff",
-        "50": "#f9fafb",
-        "100": "#f3f4f6",
-        "200": "#e5e7eb",
-        "300": "#d1d5db",
-        "400": "#9ca3af",
-        "500": "#6b7280",
-        "600": "#475569",
-        "700": "#374151",
-        "800": "#1f2937",
-        "900": "#111827",
-    },
-    # Text colours ----------------------------------------------------------
-    "text": {
-        "fg": "#111827",
-        "muted": "#6b7280",
-        "on_primary": "#ffffff",
-    },
-    # Accent colours --------------------------------------------------------
-    "accents": {
-        "primary": "#1e40af",
-        "primary_hover": "#1d4ed8",
-    },
-    # Scope colours ---------------------------------------------------------
+_AURELIA_PALETTE: dict[str, object] = {
+    "bg": "#2B313B",
+    "card": "#EEF3FA",
+    "card_edge": "#D4DEEE",
+    "hdr_fg": "#F4F8FF",
+    "hdr_muted": "#C3CFE4",
+    "ink": "#0E1724",
+    "ink_muted": "#586A84",
+    "field": "#FFFFFF",
+    "field_bd": "#C8D3E6",
+    "gold": "#D4B76A",
+    "primary": "#365DC6",
+    "primary_hover": "#587BE2",
+    "on_primary": "#F7FAFF",
+    "tooltip_bg": "#0E1724",
+    "tooltip_fg": "#F7FAFF",
     "scopes": {
         "Env": "#15803d",  # green-700
         "User": "#1e40af",  # blue-900
@@ -56,16 +45,16 @@ _AURELIA_PALETTE: dict[str, dict[str, str]] = {
     },
 }
 
-_ACTIVE_PALETTE: dict[str, dict[str, str]] = _AURELIA_PALETTE
+_ACTIVE_PALETTE: dict[str, object] = _AURELIA_PALETTE.copy()
 
-SCOPE_COLORS = _AURELIA_PALETTE["scopes"]
+SCOPE_COLORS = _AURELIA_PALETTE["scopes"]  # type: ignore[index]
 
 # ---------------------------------------------------------------------------
 # Palette helpers
 # ---------------------------------------------------------------------------
 
 
-def get_palette() -> dict[str, dict[str, str]]:
+def get_palette() -> dict[str, object]:
     """Return the currently active palette."""
 
     return _ACTIVE_PALETTE
@@ -86,6 +75,8 @@ def register_scope_styles(
     ``"Scope.<scope>.Outline.TButton"`` (outline variant).
     """
 
+    palette = get_palette()
+
     for scope, color in scope_colors.items():
         filled = f"Scope.{scope}.TButton"
         outline = f"Scope.{scope}.Outline.TButton"
@@ -93,17 +84,17 @@ def register_scope_styles(
         style.configure(
             filled,
             background=color,
-            foreground=_AURELIA_PALETTE["text"]["on_primary"],
+            foreground=palette["on_primary"],
         )
         style.map(
             filled,
             background=[("active", color)],
-            foreground=[("active", _AURELIA_PALETTE["text"]["on_primary"])],
+            foreground=[("active", palette["on_primary"])],
         )
 
         style.configure(
             outline,
-            background=_AURELIA_PALETTE["neutrals"]["0"],
+            background=palette["card"],
             foreground=color,
             bordercolor=color,
             relief="solid",
@@ -111,7 +102,7 @@ def register_scope_styles(
         )
         style.map(
             outline,
-            background=[("active", _AURELIA_PALETTE["neutrals"]["0"])],
+            background=[("active", palette["card"])],
             foreground=[("active", color)],
         )
 
@@ -121,7 +112,7 @@ def register_scope_styles(
 # ---------------------------------------------------------------------------
 
 
-def use(root: tk.Misc, *, palette: dict[str, dict[str, str]] | None = None) -> None:
+def use(root: tk.Misc, *, palette: dict[str, object] | None = None) -> None:
     """Apply the Aurelia palette to *root*.
 
     ``palette`` can be provided to override the default palette; this also
@@ -136,32 +127,29 @@ def use(root: tk.Misc, *, palette: dict[str, dict[str, str]] | None = None) -> N
         return
 
     style = ttk.Style(root)
-    neutrals = colors["neutrals"]
-    text = colors["text"]
-    accents = colors["accents"]
 
-    root.configure(bg=neutrals["100"])  # type: ignore[call-arg]
+    root.configure(bg=colors["bg"])  # type: ignore[call-arg]
 
-    style.configure("TFrame", background=neutrals["100"])
-    style.configure("TLabel", background=neutrals["100"], foreground=text["fg"])
+    style.configure("TFrame", background=colors["bg"])
+    style.configure("TLabel", background=colors["bg"], foreground=colors["hdr_fg"])
 
     style.configure(
         "Card.TFrame",
-        background=neutrals["0"],
-        bordercolor=neutrals["200"],
+        background=colors["card"],
+        bordercolor=colors["card_edge"],
         borderwidth=1,
         relief="solid",
     )
 
     style.configure(
         "TButton",
-        background=accents["primary"],
-        foreground=text["on_primary"],
+        background=colors["primary"],
+        foreground=colors["on_primary"],
     )
     style.map(
         "TButton",
-        background=[("active", accents["primary_hover"])],
-        foreground=[("disabled", text["muted"])],
+        background=[("active", colors["primary_hover"])],
+        foreground=[("disabled", colors["hdr_muted"])],
     )
 
     register_scope_styles(style, colors["scopes"])
