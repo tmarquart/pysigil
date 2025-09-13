@@ -11,17 +11,18 @@ except Exception:  # pragma: no cover
     ttk = None  # type: ignore
     messagebox = None  # type: ignore
 
+from ..aurelia_theme import SCOPE_COLORS, get_palette
 from ..provider_adapter import ProviderAdapter, ValueInfo
-from .widgets import PillButton, SCOPE_COLOR, GREY_BG, GREY_TXT, HoverTip
+from .widgets import PillButton, HoverTip
 
 # Mapping from scope ids to color constants used by :class:`PillButton`
 _SCOPE_COLORS = {
-    "env": SCOPE_COLOR["Env"],
-    "user": SCOPE_COLOR["User"],
-    "user-local": SCOPE_COLOR["Machine"],
-    "project": SCOPE_COLOR["Project"],
-    "project-local": SCOPE_COLOR["ProjectMachine"],
-    "default": SCOPE_COLOR["Def"],
+    "env": SCOPE_COLORS["Env"],
+    "user": SCOPE_COLORS["User"],
+    "user-local": SCOPE_COLORS["Machine"],
+    "project": SCOPE_COLORS["Project"],
+    "project-local": SCOPE_COLORS["ProjectMachine"],
+    "default": SCOPE_COLORS["Def"],
 }
 
 
@@ -50,6 +51,10 @@ class FieldRow(ttk.Frame):
         self._on_edit_click = on_edit_click
         self.compact = compact
 
+        palette = get_palette()
+        text_colors = palette["text"]
+        neutrals = palette["neutrals"]
+
         # container for key + info button
         self.key_frame = ttk.Frame(self)
 
@@ -77,7 +82,7 @@ class FieldRow(ttk.Frame):
                 self.info_btn = tk.Label(
                     self.key_frame,
                     text="\u24D8",
-                    fg=GREY_TXT,
+                    fg=text_colors["muted"],
                     cursor="question_arrow",
                     takefocus=1,
                 )
@@ -88,7 +93,7 @@ class FieldRow(ttk.Frame):
                 self.lbl_desc = ttk.Label(
                     self,
                     text=info.description_short,
-                    foreground=GREY_TXT,
+                    foreground=text_colors["muted"],
                     wraplength=360,
                 )
                 self.lbl_desc.grid(row=1, column=0, columnspan=3, sticky="w")
@@ -98,8 +103,8 @@ class FieldRow(ttk.Frame):
         self.lbl_eff = tk.Label(
             self,
             textvariable=self.var_eff,
-            bg=GREY_BG,
-            fg="#111111",
+            bg=neutrals["100"],
+            fg=text_colors["fg"],
             bd=1,
             relief="ridge",
             padx=10,
@@ -255,7 +260,8 @@ class FieldRow(ttk.Frame):
 
         short_label = self.adapter.scope_label(name, short=True)
         long_label = self.adapter.scope_label(name, short=False)
-        color = _SCOPE_COLORS.get(name, "#888888")
+        palette = get_palette()
+        color = _SCOPE_COLORS.get(name, palette["text"]["muted"])
 
         def cb() -> None:
             if not locked and self._on_pill_click:
