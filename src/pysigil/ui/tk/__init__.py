@@ -188,14 +188,14 @@ class App:
         self._table = tk.Frame(
             self.root,
             bg=palette["card"],
-            highlightthickness=1,
+            highlightthickness=2,
             highlightbackground=palette["card_edge"],
             highlightcolor=palette["card_edge"],
         )
         self._table.pack(fill="both", expand=True, padx=6, pady=6)
 
         self._header = ttk.Frame(self._table, style="CardFrame.TFrame")
-        self._header.pack(fill="x")
+        self._header.pack(fill="x", padx=8, pady=8)
         self._hdr_key = ttk.Label(
             self._header, text="Key", style="CardHeader.TLabel", anchor="center"
         )
@@ -213,7 +213,7 @@ class App:
         self._header.columnconfigure(1, weight=1)
 
         self._rows_container = ttk.Frame(self._table, style="CardFrame.TFrame")
-        self._rows_container.pack(fill="both", expand=True)
+        self._rows_container.pack(fill="both", expand=True, padx=8, pady=(0, 8))
 
     def _style_row(self, row: FieldRow) -> None:
         palette = self.palette
