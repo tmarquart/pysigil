@@ -96,6 +96,7 @@ class FieldRow(tk.Frame):
                     text=info.description_short,
                     foreground=ink_muted,
                     wraplength=360,
+                    padding=(6,0,0,0) # (left, top, right, bottom)
                 )
                 self.lbl_desc.grid(row=1, column=0, columnspan=3, sticky="w")
 
