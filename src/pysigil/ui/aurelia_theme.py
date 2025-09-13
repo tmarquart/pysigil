@@ -155,6 +155,19 @@ def use(root: tk.Misc, *, palette: dict[str, object] | None = None) -> None:
         foreground=[("disabled", colors["ink_muted"])],
     )
 
+    style.configure(
+        "Plain.TButton",
+        background=colors["card"],
+        foreground=colors["ink"],
+        borderwidth=0,
+        relief="flat",
+    )
+    style.map(
+        "Plain.TButton",
+        background=[("active", colors["card_edge"])],
+        foreground=[("disabled", colors["ink_muted"])],
+    )
+
     register_scope_styles(style, colors["scopes"])
 
 
