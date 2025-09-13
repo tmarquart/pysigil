@@ -199,10 +199,18 @@ class FieldRow(ttk.Frame):
         if tk is None:  # pragma: no cover - defensive
             return
         try:
-            btn_h = self.btn_edit.winfo_reqheight()
-            lbl_h = self.lbl_eff.winfo_reqheight()
-            pad = max(0, (btn_h - lbl_h) // 2)
-            self.lbl_eff.configure(pady=pad)
+            # ``winfo_height`` reflects the actual rendered size whereas
+            # ``winfo_reqheight`` only reports the requested size.  Using the
+            # real height keeps the effective value box in sync with themed
+            # button and pill widgets whose final size may exceed their
+            # request due to style padding.
+            self.update_idletasks()
+            btn_h = self.btn_edit.winfo_height()
+            lbl_h = self.lbl_eff.winfo_height()
+            diff = btn_h - lbl_h
+            if diff > 0:
+                pad = (diff + 1) // 2  # round up to avoid being short by 1px
+                self.lbl_eff.configure(pady=pad)
         except Exception:
             pass
 
