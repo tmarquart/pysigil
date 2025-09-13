@@ -53,7 +53,7 @@ class FieldRow(ttk.Frame):
         # container for key + info button
         self.key_frame = ttk.Frame(self)
 
-        self.key_frame.grid(row=0, column=0, sticky="nw", pady=(6, 0))
+        self.key_frame.grid(row=0, column=0, sticky="w", pady=(6, 0))
 
         info = None
         if hasattr(adapter, "field_info"):
@@ -63,8 +63,7 @@ class FieldRow(ttk.Frame):
                 info = None
         label = getattr(info, "label", None) or key
         self.lbl_key = ttk.Label(self.key_frame, text=label)
-
-        self.lbl_key.pack(side="left", anchor="nw")
+        self.lbl_key.pack(side="left")
 
         self.info_btn: tk.Label | None = None
         self.lbl_desc: ttk.Label | None = None
@@ -82,7 +81,7 @@ class FieldRow(ttk.Frame):
                     cursor="question_arrow",
                     takefocus=1,
                 )
-                self.info_btn.pack(side="left", padx=(4, 0), pady=(6, 0))
+                self.info_btn.pack(side="left", padx=(4, 0))
                 HoverTip(self.info_btn, lambda: tip)
                 HoverTip(self.lbl_key, lambda: tip)
             if info.description_short:
@@ -123,6 +122,10 @@ class FieldRow(ttk.Frame):
         )
 
         self.btn_edit.grid(row=0, column=3, padx=4, pady=(6, 0), sticky="n")
+
+        # ensure value box matches edit button height
+        if tk is not None:
+            self.after_idle(self._sync_value_height)
 
 
         self.columnconfigure(1, weight=1)
@@ -183,6 +186,20 @@ class FieldRow(ttk.Frame):
                 can_write=can_write,
                 value_provider=value_provider,
             )
+
+        # adjust value label height when geometry might change
+        self._sync_value_height()
+
+    def _sync_value_height(self) -> None:
+        if tk is None:  # pragma: no cover - defensive
+            return
+        try:
+            btn_h = self.btn_edit.winfo_reqheight()
+            lbl_h = self.lbl_eff.winfo_reqheight()
+            pad = max(0, (btn_h - lbl_h) // 2)
+            self.lbl_eff.configure(pady=pad)
+        except Exception:
+            pass
 
     def _on_debug_configure(self, event: tk.Event) -> None:
         if not _debug_columns():
