@@ -143,13 +143,16 @@ def use(root: tk.Misc, *, palette: dict[str, object] | None = None) -> None:
 
     style.configure(
         "TButton",
-        background=colors["primary"],
-        foreground=colors["on_primary"],
+        background=colors["card"],
+        foreground=colors["ink"],
+        bordercolor=colors["field_bd"],
+        borderwidth=1,
+        relief="solid",
     )
     style.map(
         "TButton",
-        background=[("active", colors["primary_hover"])],
-        foreground=[("disabled", colors["hdr_muted"])],
+        background=[("active", colors["card_edge"])],
+        foreground=[("disabled", colors["ink_muted"])],
     )
 
     register_scope_styles(style, colors["scopes"])
