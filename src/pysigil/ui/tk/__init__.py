@@ -12,6 +12,8 @@ be shared with other UI layers in the future.
 
 from __future__ import annotations
 
+from pygments.styles.dracula import foreground
+
 try:  # pragma: no cover - tkinter availability depends on the env
     import tkinter as tk
     from tkinter import ttk
@@ -183,7 +185,7 @@ class App:
             foreground=palette["ink"],
             font=(None, 12, "bold"),
         )
-        style.configure("Title.TLabel", font=(None, 11, "bold"))
+        style.configure("Title.TLabel", font=(None, 11, "bold")) # foreground=palette['gold'] #set color for mid labels here
 
         self._table = tk.Frame(
             self.root,
