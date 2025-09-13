@@ -46,7 +46,7 @@ class FieldRow(ttk.Frame):
 
         # container for key + info button
         self.key_frame = ttk.Frame(self)
-        self.key_frame.grid(row=0, column=0, sticky="w")
+        self.key_frame.grid(row=0, column=0, sticky="nw", pady=(6, 0))
         info = None
         if hasattr(adapter, "field_info"):
             try:
@@ -55,15 +55,14 @@ class FieldRow(ttk.Frame):
                 info = None
         label = getattr(info, "label", None) or key
         self.lbl_key = ttk.Label(self.key_frame, text=label)
-        self.lbl_key.pack(side="left")
+        self.lbl_key.pack(side="left", anchor="nw")
         self.info_btn: tk.Label | None = None
         self.lbl_desc: ttk.Label | None = None
         if info:
             desc = info.description or info.description_short
-            tip_lines = []
+            tip_lines = [f"Key: {key}"]
             if desc:
                 tip_lines.append(desc)
-            tip_lines.append(f"Key: {key}")
             tip = "\n\n".join(tip_lines)
             if desc or key:
                 self.info_btn = tk.Label(
@@ -95,14 +94,14 @@ class FieldRow(ttk.Frame):
             bd=1,
             relief="ridge",
             padx=10,
-            pady=6,
-            anchor="w",
+            pady=0,
+            anchor="nw",
         )
-        self.lbl_eff.grid(row=0, column=1, sticky="ew", padx=(8, 8))
+        self.lbl_eff.grid(row=0, column=1, sticky="new", padx=(8, 8), pady=(6, 0))
 
         # container for scope pills
         self.pills = ttk.Frame(self)
-        self.pills.grid(row=0, column=2, sticky="w")
+        self.pills.grid(row=0, column=2, sticky="nw", pady=(6, 0))
 
         # edit action button
         self.btn_edit = ttk.Button(
@@ -110,7 +109,7 @@ class FieldRow(ttk.Frame):
             text="Edit…",
             command=lambda: self._on_edit_click(self.key) if self._on_edit_click else None,
         )
-        self.btn_edit.grid(row=0, column=3, padx=4)
+        self.btn_edit.grid(row=0, column=3, padx=4, pady=(6, 0), sticky="n")
 
         self.columnconfigure(1, weight=1)
 
@@ -256,10 +255,9 @@ class FieldRow(ttk.Frame):
         label = getattr(info, "label", None) or key
         self.lbl_key.configure(text=label)
         desc = getattr(info, "description", None) or getattr(info, "description_short", None)
-        tip_lines = []
+        tip_lines = [f"Key: {key}"]
         if desc:
             tip_lines.append(desc)
-        tip_lines.append(f"Key: {key}")
         tip = "\n\n".join(tip_lines)
         if self.info_btn is not None:
             HoverTip(self.info_btn, lambda: tip)
