@@ -12,6 +12,7 @@ except Exception:  # pragma: no cover - fallback when tkinter missing
     messagebox = None  # type: ignore
     ttk = None  # type: ignore
 
+from ..aurelia_theme import get_palette
 from ..provider_adapter import ProviderAdapter, ValueInfo
 from ..value_parser import parse_field_value
 
@@ -38,8 +39,11 @@ class EditDialog(tk.Toplevel):  # type: ignore[misc]
         self.on_edit_save = on_edit_save
         self.on_edit_remove = on_edit_remove
 
+        palette = get_palette()
+        self.configure(bg=palette["bg"])  # type: ignore[call-arg]
+
         body = ttk.Frame(self, padding=12, style="Card.TFrame")
-        body.pack(fill="both", expand=True)
+        body.pack(fill="both", expand=True, padx=18, pady=12)
 
         ttk.Label(body, text=key, font=(None, 12, "bold")).grid(
             row=0, column=0, columnspan=4, sticky="w", pady=(0, 6)
