@@ -192,10 +192,10 @@ class App:
             highlightbackground=palette["card_edge"],
             highlightcolor=palette["card_edge"],
         )
-        self._table.pack(fill="both", expand=True, padx=12, pady=12)
+        self._table.pack(fill="both", expand=True, padx=18, pady=(6,18)) # padding for main table
 
         self._header = ttk.Frame(self._table, style="CardFrame.TFrame")
-        self._header.pack(fill="x", padx=12, pady=12)
+        self._header.pack(fill="x", padx=12, pady=6)
         self._hdr_key = ttk.Label(
             self._header, text="Key", style="CardHeader.TLabel", anchor="center"
         )

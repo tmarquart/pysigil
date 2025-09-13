@@ -13,7 +13,7 @@ if __name__ == "__main__":  # pragma: no cover - manual test only
     prov=api.handle('sigil-dummy')
     #prov.add_field("api_field", "string")
 
-    os.environ["PYSGIL_DEBUG_COLUMNS"] = "1"
+    #os.environ["PYSGIL_DEBUG_COLUMNS"] = "1"
     print(bool(os.environ.get("PYSGIL_DEBUG_COLUMNS")))
     prov.set("api_field", "42", scope="environment")  # sets SIGIL_PKG_API_FIELD
 

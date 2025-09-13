@@ -36,7 +36,7 @@ _AURELIA_PALETTE: dict[str, object] = {
     "tooltip_bg": "#0E1724",
     "tooltip_fg": "#F7FAFF",
     "scopes": {
-        "Env": "#2cb67d",  # green-700
+        "Env": "#1f9d66",  # green-700
         "User": "#1e40af",  # blue-900
         "Machine": "#1c6e7d",  # emerald-900
         "Project": "#D4B76A",  # violet-700
