@@ -38,7 +38,7 @@ class EditDialog(tk.Toplevel):  # type: ignore[misc]
         self.on_edit_save = on_edit_save
         self.on_edit_remove = on_edit_remove
 
-        body = ttk.Frame(self, padding=12)
+        body = ttk.Frame(self, padding=12, style="Card.TFrame")
         body.pack(fill="both", expand=True)
 
         ttk.Label(body, text=key, font=(None, 12, "bold")).grid(
@@ -85,12 +85,14 @@ class EditDialog(tk.Toplevel):  # type: ignore[misc]
                 body,
                 text="Save",
                 command=lambda s=scope: self._save_scope(s),
+                style="Plain.TButton",
             )
             btn_save.grid(row=row, column=2, padx=4)
             btn_remove = ttk.Button(
                 body,
                 text="Remove",
                 command=lambda s=scope: self._remove_scope(s),
+                style="Plain.TButton",
             )
             btn_remove.grid(row=row, column=3, padx=4)
 
@@ -106,9 +108,9 @@ class EditDialog(tk.Toplevel):  # type: ignore[misc]
             self.entries[scope] = entry
             row += 1
 
-        ttk.Button(body, text="Close", command=self.destroy).grid(
-            row=row, column=3, sticky="e"
-        )
+        ttk.Button(
+            body, text="Close", command=self.destroy, style="Plain.TButton"
+        ).grid(row=row, column=3, sticky="e")
         body.columnconfigure(1, weight=1)
 
     # -- callbacks ---------------------------------------------------------
