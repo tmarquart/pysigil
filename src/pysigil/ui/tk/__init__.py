@@ -22,6 +22,7 @@ except Exception:  # pragma: no cover - fallback when tkinter missing
 from ..core import EventBus, AppCore
 from ..provider_adapter import ProviderAdapter
 from ..sections import bucket_by_section, compute_section_order, field_sort_key
+from ..aurelia_theme import get_palette
 from .dialogs import EditDialog
 from .rows import FieldRow
 
@@ -103,7 +104,12 @@ class App:
         self._edit_col_width: int | None = None
         self._author_tools: tk.Toplevel | None = None
 
+        self.palette = get_palette()
         self.root.title("pysigil")
+        self.root.configure(bg=self.palette["bg"])
+        self.root.option_add("*highlightcolor", self.palette["gold"])
+        self.root.option_add("*highlightbackground", self.palette["bg"])
+        self.root.option_add("*highlightthickness", 1)
 
         self._build_header()
         self._build_table()
@@ -113,10 +119,18 @@ class App:
     # UI construction
     # ------------------------------------------------------------------
     def _build_header(self) -> None:
-        header = ttk.Frame(self.root)
+        palette = self.palette
+        style = ttk.Style(self.root)
+        style.configure("AppHeader.TFrame", background=palette["bg"])
+        style.configure("AppHeader.TLabel", background=palette["bg"], foreground=palette["hdr_fg"])
+        style.configure(
+            "AppHeader.TCheckbutton", background=palette["bg"], foreground=palette["hdr_muted"]
+        )
+
+        header = ttk.Frame(self.root, style="AppHeader.TFrame")
         header.pack(fill="x", padx=6, pady=6)
 
-        ttk.Label(header, text="Provider:").pack(side="left")
+        ttk.Label(header, text="Provider:", style="AppHeader.TLabel").pack(side="left")
         self._provider_var = tk.StringVar()
         self._provider_box = ttk.Combobox(
             header, textvariable=self._provider_var, state="readonly"
@@ -130,9 +144,12 @@ class App:
             text="Compact",
             variable=self._compact_var,
             command=self.on_toggle_compact,
+            style="AppHeader.TCheckbutton",
         ).pack(side="left")
 
-        ttk.Label(header, text="Project:").pack(side="left", padx=(12, 0))
+        ttk.Label(header, text="Project:", style="AppHeader.TLabel").pack(
+            side="left", padx=(12, 0)
+        )
         self._project_var = tk.StringVar(value="")
         self._project_entry = ttk.Entry(
             header, textvariable=self._project_var, state="readonly"
@@ -144,35 +161,61 @@ class App:
             ).pack(side="right")
 
     def _build_table(self) -> None:
-        self._table = ttk.Frame(self.root)
-        self._table.pack(fill="both", expand=True, padx=6, pady=6)
-
+        palette = self.palette
         style = ttk.Style(self.root)
+        style.configure("CardFrame.TFrame", background=palette["card"])
+        style.configure(
+            "CardHeader.TLabel",
+            background=palette["card"],
+            foreground=palette["ink"],
+            font=(None, 10, "bold"),
+        )
         style.configure("Title.TLabel", font=(None, 10, "bold"))
 
-        self._header = ttk.Frame(self._table)
+        self._table = ttk.Frame(self.root, style="CardFrame.TFrame")
+        self._table.pack(fill="both", expand=True, padx=6, pady=6)
+
+        self._header = ttk.Frame(self._table, style="CardFrame.TFrame")
         self._header.pack(fill="x")
         self._hdr_key = ttk.Label(
-            self._header, text="Key", style="Title.TLabel", anchor="center"
+            self._header, text="Key", style="CardHeader.TLabel", anchor="center"
         )
         self._hdr_key.grid(row=0, column=0, sticky="ew")
         self._hdr_eff = ttk.Label(
-            self._header, text="Value (effective)", style="Title.TLabel", anchor="center"
+            self._header, text="Value (effective)", style="CardHeader.TLabel", anchor="center"
         )
         self._hdr_eff.grid(row=0, column=1, sticky="ew")
         self._hdr_scopes = ttk.Label(
-            self._header, text="Scopes", style="Title.TLabel", anchor="center"
+            self._header, text="Scopes", style="CardHeader.TLabel", anchor="center"
         )
         self._hdr_scopes.grid(row=0, column=2, sticky="ew")
-        # spacer column matching the width of the per-row edit button so the
-        # "Scopes" header aligns with the actual scope column instead of also
-        # spanning the edit column
-        self._hdr_edit = ttk.Label(self._header, text="", style="Title.TLabel")
+        self._hdr_edit = ttk.Label(self._header, text="", style="CardHeader.TLabel")
         self._hdr_edit.grid(row=0, column=3, sticky="ew")
         self._header.columnconfigure(1, weight=1)
 
-        self._rows_container = ttk.Frame(self._table)
+        self._rows_container = ttk.Frame(self._table, style="CardFrame.TFrame")
         self._rows_container.pack(fill="both", expand=True)
+        self._rows_container.configure(highlightthickness=1, highlightbackground=palette["card_edge"], highlightcolor=palette["card_edge"])
+
+    def _style_row(self, row: FieldRow) -> None:
+        palette = self.palette
+        row.configure(style="CardFrame.TFrame", highlightthickness=1, highlightbackground=palette["card_edge"], highlightcolor=palette["card_edge"])
+        row.key_frame.configure(style="CardFrame.TFrame")
+        row.lbl_key.configure(background=palette["card"], foreground=palette["ink"])
+        if row.info_btn:
+            row.info_btn.configure(bg=palette["card"], fg=palette["ink_muted"])
+        if row.lbl_desc:
+            row.lbl_desc.configure(background=palette["card"], foreground=palette["ink_muted"])
+        row.lbl_eff.configure(
+            bg=palette["field"],
+            fg=palette["ink"],
+            highlightthickness=1,
+            highlightbackground=palette["field_bd"],
+            highlightcolor=palette["field_bd"],
+            bd=0,
+            relief="flat",
+        )
+        row.pills.configure(style="CardFrame.TFrame")
 
     def _populate_providers(self) -> None:
         providers = self.adapter.list_providers()
@@ -226,6 +269,8 @@ class App:
                     collapsible=sec.casefold() in collapsed,
                     collapsed=sec.casefold() in collapsed,
                 )
+                frame.configure(style="CardFrame.TFrame")
+                frame.container.configure(style="CardFrame.TFrame")
                 self.section_frames[sec] = frame
             rows = sorted(groups.get(sec, []), key=field_sort_key)
             for info in rows:
@@ -250,6 +295,7 @@ class App:
                         row.update_metadata(info)  # type: ignore[attr-defined]
                     except Exception:
                         pass
+                self._style_row(row)
                 row.pack(fill="x", pady=2)
                 used_rows.add(info.key)
             frame.set_visible(bool(rows))
