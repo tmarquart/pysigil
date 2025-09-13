@@ -90,11 +90,13 @@ class PillButton(tk.Canvas):
         clickable: bool = True,
         on_click: Callable[[], None] | None = None,
         tooltip_title: str | None = None,
+        tooltip_desc: str | None = None,
         locked: bool = False,
     ) -> None:
         super().__init__(master, height=28, highlightthickness=0, bd=0)
         self.text = text
         self.tooltip_title = tooltip_title or text
+        self.tooltip_desc = tooltip_desc
         self.color = color
         self.state = state
         self.locked = locked
@@ -209,7 +211,11 @@ class PillButton(tk.Canvas):
     def _tip_text(self) -> str:
         val = self.value_provider()
         val_txt = str(val) if val is not None else "—"
-        return f"{self.tooltip_title}: {val_txt}"
+        parts = [self.tooltip_title]
+        if self.tooltip_desc:
+            parts.append(self.tooltip_desc)
+        parts.append(f"Value: {val_txt}")
+        return "\n".join(parts)
 
 
 __all__ = [

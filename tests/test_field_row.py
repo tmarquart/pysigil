@@ -36,6 +36,18 @@ class DummyAdapter:
         }
         return (short_labels if short else long_labels)[scope_id]
 
+    _DESCRIPTIONS = {
+        "env": "Environment override",
+        "user": "User configuration",
+        "user-local": "Machine specific user setting",
+        "project": "Shared project configuration",
+        "project-local": "Project setting for this machine",
+        "default": "Built-in default",
+    }
+
+    def scope_description(self, scope_id):
+        return self._DESCRIPTIONS[scope_id]
+
     def can_write(self, scope_id):
         return scope_id not in {"env", "project", "default"}
 
@@ -56,6 +68,12 @@ class DummyAdapter:
     def default_for_key(self, key):
         return "d"
 
+    def scope_hint(self, scope_id):
+        if scope_id == "default":
+            return "Default scope is read-only. Use Author Tools to change it."
+        label = self.scope_label(scope_id)
+        return f"{label} scope is read-only. Use Author Tools to change it."
+
 
 def _collect_pills(row):
     return [w for w in row.pills.winfo_children() if isinstance(w, PillButton)]
@@ -69,7 +87,8 @@ def test_field_row_full_mode(monkeypatch):
     except Exception:
         pytest.skip("no display available")
     clicks = []
-    row = FieldRow(root, DummyAdapter(), "alpha", lambda k, s: clicks.append((k, s)), compact=False)
+    adapter = DummyAdapter()
+    row = FieldRow(root, adapter, "alpha", lambda k, s: clicks.append((k, s)), compact=False)
     pills = _collect_pills(row)
     states = {p.text: p.state for p in pills}
     assert states == {
@@ -84,6 +103,8 @@ def test_field_row_full_mode(monkeypatch):
     assert default_pill.locked
     env_pill = next(p for p in pills if p.text == "Env")
     assert env_pill.locked
+    user_pill = next(p for p in pills if p.text == "User")
+    assert adapter.scope_description("user") in user_pill._tip_text()
     for p in _collect_pills(row):
         if p.text == "User":
             p.on_click()

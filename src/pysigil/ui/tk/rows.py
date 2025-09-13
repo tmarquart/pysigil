@@ -295,6 +295,7 @@ class FieldRow(tk.Frame):
                 clickable=True,
                 on_click=cb,
                 tooltip_title=long_label,
+                tooltip_desc=self.adapter.scope_description(name),
                 locked=locked,
             )
             self._pill_widgets[name] = pill
@@ -306,6 +307,7 @@ class FieldRow(tk.Frame):
             pill.clickable = True
             pill.value_provider = value_provider
             pill.tooltip_title = long_label
+            pill.tooltip_desc = self.adapter.scope_description(name)
             pill.on_click = cb
             pill.bind("<Button-1>", lambda e: cb())
             pill.configure(cursor="hand2")
