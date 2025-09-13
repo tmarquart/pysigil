@@ -53,15 +53,11 @@ class EditDialog(tk.Toplevel):  # type: ignore[misc]
         palette = get_palette()
         self.configure(bg=palette["bg"])  # type: ignore[call-arg]
 
+        ttk.Label(self, text=key, style="Title.TLabel").pack(
+            anchor="w", padx=18, pady=(12, 6)
+        )
         body = ttk.Frame(self, padding=12, style="Card.TFrame")
-        body.pack(fill="both", expand=True, padx=18, pady=12)
-
-        ttk.Label(body, text=key, font=(None, 12, "bold")).grid(
-            row=0, column=0, columnspan=4, sticky="w", pady=(0, 6)
-        )
-        ttk.Separator(body).grid(
-            row=1, column=0, columnspan=4, sticky="ew", pady=(0, 8)
-        )
+        body.pack(fill="both", expand=True, padx=18, pady=(0, 12))
 
         self.entries: dict[str, ttk.Entry] = {}
 
@@ -72,7 +68,7 @@ class EditDialog(tk.Toplevel):  # type: ignore[misc]
 
         _, eff_src = adapter.effective_for_key(key)
 
-        row = 2
+        row = 0
         for scope in scopes:
             if scope == "env" and scope not in values:
                 continue
