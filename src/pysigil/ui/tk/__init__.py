@@ -332,7 +332,7 @@ class App:
         if not self.field_rows:
             return
         self.root.update_idletasks()
-        key_w = max(r.lbl_key.winfo_reqwidth() for r in self.field_rows.values())
+        key_w = max(r.key_frame.winfo_reqwidth() for r in self.field_rows.values())
         pills_w = max(r.pills.winfo_reqwidth() for r in self.field_rows.values())
         eff_w = max(r.lbl_eff.winfo_reqwidth() for r in self.field_rows.values())
         if key_w != self._key_col_width:
