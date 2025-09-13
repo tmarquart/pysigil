@@ -7,6 +7,7 @@ except Exception:  # pragma: no cover - tkinter missing
     tk = None  # type: ignore
     ttk = None  # type: ignore
 
+from pysigil.api import FieldInfo
 from pysigil.ui.tk.dialogs import EditDialog
 from pysigil.ui.provider_adapter import ValueInfo
 
@@ -27,6 +28,15 @@ class DummyAdapter:
     def is_overlay(self, scope):
         return False
 
+    def field_info(self, key):
+        return FieldInfo(
+            key=key,
+            type="string",
+            label="Alpha Label",
+            description_short="Short description",
+            description="Long description",
+        )
+
 
 def test_edit_dialog_default_readonly():
     if tk is None:
@@ -44,5 +54,26 @@ def test_edit_dialog_default_readonly():
     btn_remove = body.grid_slaves(row=row, column=3)[0]
     assert btn_save.instate(["disabled"])
     assert btn_remove.instate(["disabled"])
+    dlg.destroy()
+    root.destroy()
+
+
+def test_edit_dialog_shows_metadata():
+    if tk is None:
+        pytest.skip("tkinter not available")
+    try:
+        root = tk.Tk()
+    except Exception:
+        pytest.skip("no display available")
+    dlg = EditDialog(root, DummyAdapter(), "alpha")
+    assert dlg.title() == "Edit — Alpha Label"
+    children = dlg.winfo_children()
+    texts = [w.cget("text") for w in children if isinstance(w, ttk.Label)]
+    assert "Alpha Label" in texts
+    assert "alpha" in texts
+    body = next(w for w in children if isinstance(w, ttk.Frame))
+    body_texts = [w.cget("text") for w in body.winfo_children() if isinstance(w, ttk.Label)]
+    assert "Short description" in body_texts
+    assert "Long description" in body_texts
     dlg.destroy()
     root.destroy()

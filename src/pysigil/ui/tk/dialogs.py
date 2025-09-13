@@ -41,7 +41,9 @@ class EditDialog(tk.Toplevel):  # type: ignore[misc]
         on_edit_remove: Callable[[str, str], None] | None = None,
     ) -> None:
         super().__init__(master)
-        self.title(f"Edit — {key}")
+        info = adapter.field_info(key)
+        label = info.label or key
+        self.title(f"Edit — {label}")
         self.transient(master)
         self.grab_set()
         self.resizable(False, False)
@@ -53,8 +55,14 @@ class EditDialog(tk.Toplevel):  # type: ignore[misc]
         palette = get_palette()
         self.configure(bg=palette["bg"])  # type: ignore[call-arg]
 
-        ttk.Label(self, text=key, style="Title.TLabel").pack(
-            anchor="w", padx=18, pady=(12, 6)
+        ttk.Label(self, text=label, style="Title.TLabel").pack(
+            anchor="w", padx=18, pady=(12, 0)
+        )
+        ttk.Style(self).configure(
+            "Key.TLabel", background=palette["bg"], foreground=palette["hdr_muted"]
+        )
+        ttk.Label(self, text=key, style="Key.TLabel").pack(
+            anchor="w", padx=18, pady=(0, 6)
         )
         body = ttk.Frame(self, padding=12, style="Card.TFrame")
         body.pack(fill="both", expand=True, padx=18, pady=(0, 12))
@@ -154,6 +162,29 @@ class EditDialog(tk.Toplevel):  # type: ignore[misc]
                 row += 1
 
             self.entries[scope] = entry
+            row += 1
+        ttk.Style(self).configure(
+            "Desc.TLabel", background=palette["card"], foreground=palette["ink_muted"]
+        )
+        if info.description_short:
+            ttk.Label(
+                body,
+                text=info.description_short,
+                style="Desc.TLabel",
+                wraplength=400,
+                anchor="w",
+                justify="left",
+            ).grid(row=row, column=0, columnspan=4, sticky="w", pady=(12, 0))
+            row += 1
+        if info.description:
+            ttk.Label(
+                body,
+                text=info.description,
+                style="Desc.TLabel",
+                wraplength=400,
+                anchor="w",
+                justify="left",
+            ).grid(row=row, column=0, columnspan=4, sticky="w")
             row += 1
 
         ttk.Button(
