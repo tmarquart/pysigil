@@ -36,7 +36,7 @@ class SectionFrame(ttk.Frame):  # pragma: no cover - simple container widget
         self._collapsible = collapsible
         self._collapsed = collapsed if collapsible else False
         header = ttk.Frame(self)
-        header.pack(fill="x")
+        header.pack(fill="x", padx=(6, 0))
         if collapsible:
             self._toggle = ttk.Label(header, text="\u25B8" if collapsed else "\u25BE", width=2)
             self._toggle.pack(side="left")
@@ -141,7 +141,7 @@ class App:
         )
 
         header = ttk.Frame(self.root, style="AppHeader.TFrame")
-        header.pack(fill="x", padx=12, pady=12)
+        header.pack(fill="x", padx=18, pady=12)
 
         ttk.Label(header, text="Provider:", style="AppHeader.TLabel").pack(side="left")
         self._provider_var = tk.StringVar()
