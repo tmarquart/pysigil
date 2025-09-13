@@ -209,13 +209,23 @@ class App:
         self._hdr_edit.grid(row=0, column=3, sticky="ew")
         self._header.columnconfigure(1, weight=1)
 
-        self._rows_container = ttk.Frame(self._table, style="CardFrame.TFrame")
+        self._rows_container = tk.Frame(
+            self._table,
+            bg=palette["card"],
+            highlightthickness=1,
+            highlightbackground=palette["card_edge"],
+            highlightcolor=palette["card_edge"],
+        )
         self._rows_container.pack(fill="both", expand=True)
-        self._rows_container.configure(highlightthickness=1, highlightbackground=palette["card_edge"], highlightcolor=palette["card_edge"])
 
     def _style_row(self, row: FieldRow) -> None:
         palette = self.palette
-        row.configure(style="CardFrame.TFrame", highlightthickness=1, highlightbackground=palette["card_edge"], highlightcolor=palette["card_edge"])
+        row.configure(
+            bg=palette["card"],
+            highlightthickness=1,
+            highlightbackground=palette["card_edge"],
+            highlightcolor=palette["card_edge"],
+        )
         row.key_frame.configure(style="CardFrame.TFrame")
         row.lbl_key.configure(background=palette["card"], foreground=palette["ink"])
         if row.info_btn:

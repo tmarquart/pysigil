@@ -31,7 +31,7 @@ def _debug_columns() -> bool:
     return bool(os.environ.get("PYSGIL_DEBUG_COLUMNS"))
 
 
-class FieldRow(ttk.Frame):
+class FieldRow(tk.Frame):
     """Representation of a single field row with scope pills."""
 
     def __init__(
