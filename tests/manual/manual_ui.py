@@ -17,6 +17,6 @@ if __name__ == "__main__":  # pragma: no cover - manual test only
     print(bool(os.environ.get("PYSGIL_DEBUG_COLUMNS")))
     prov.set("api_field", "42", scope="environment")  # sets SIGIL_PKG_API_FIELD
 
-    app = App()
+    app = App(initial_provider='sigil-dummy')
     app.root.mainloop()
 

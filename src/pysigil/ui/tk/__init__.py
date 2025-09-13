@@ -43,7 +43,7 @@ class SectionFrame(ttk.Frame):  # pragma: no cover - simple container widget
             self._toggle.bind("<Button-1>", lambda e: self.toggle())
         else:
             self._toggle = None
-        ttk.Label(header, text=name, style="Title.TLabel",padding=4).pack(side="left")
+        ttk.Label(header, text=name, style="Title.TLabel",padding=6).pack(side="left")
         self.container = ttk.Frame(self)
         if not self._collapsed:
             self.container.pack(fill="x")
@@ -181,14 +181,14 @@ class App:
             "CardHeader.TLabel",
             background=palette["card"],
             foreground=palette["ink"],
-            font=(None, 10, "bold"),
+            font=(None, 12, "bold"),
         )
-        style.configure("Title.TLabel", font=(None, 10, "bold"))
+        style.configure("Title.TLabel", font=(None, 11, "bold"))
 
         self._table = tk.Frame(
             self.root,
             bg=palette["card"],
-            highlightthickness=2,
+            highlightthickness=0, # this controls the border for the table
             highlightbackground=palette["card_edge"],
             highlightcolor=palette["card_edge"],
         )
@@ -215,7 +215,7 @@ class App:
         self._header.columnconfigure(1, weight=1)
 
         self._rows_container = ttk.Frame(self._table, style="CardFrame.TFrame")
-        self._rows_container.grid(row=1, column=0, sticky="nsew", padx=12, pady=(0, 12))
+        self._rows_container.grid(row=1, column=0, sticky="nsew", padx=0, pady=(0, 0)) #this controls the group labels and overall alignment
 
     def _style_row(self, row: FieldRow) -> None:
         palette = self.palette

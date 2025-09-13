@@ -68,7 +68,7 @@ class FieldRow(tk.Frame):
             except Exception:
                 info = None
         label = getattr(info, "label", None) or key
-        self.lbl_key = ttk.Label(self.key_frame, text=label)
+        self.lbl_key = ttk.Label(self.key_frame, text=label,padding=6, font=(None, 10,"bold")) #this controls the labels themselves
         self.lbl_key.pack(side="left")
 
         self.info_btn: tk.Label | None = None
