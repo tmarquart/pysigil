@@ -47,19 +47,25 @@ class FieldRow(ttk.Frame):
         # container for key + info button
         self.key_frame = ttk.Frame(self)
         self.key_frame.grid(row=0, column=0, sticky="w")
-        self.lbl_key = ttk.Label(self.key_frame, text=key)
-        self.lbl_key.pack(side="left")
-        self.info_btn: tk.Label | None = None
-        self.lbl_desc: ttk.Label | None = None
         info = None
         if hasattr(adapter, "field_info"):
             try:
                 info = adapter.field_info(key)  # type: ignore[attr-defined]
             except Exception:
                 info = None
+        label = getattr(info, "label", None) or key
+        self.lbl_key = ttk.Label(self.key_frame, text=label)
+        self.lbl_key.pack(side="left")
+        self.info_btn: tk.Label | None = None
+        self.lbl_desc: ttk.Label | None = None
         if info:
-            tip = info.description or info.description_short
-            if tip:
+            desc = info.description or info.description_short
+            tip_lines = []
+            if desc:
+                tip_lines.append(desc)
+            tip_lines.append(f"Key: {key}")
+            tip = "\n\n".join(tip_lines)
+            if desc or key:
                 self.info_btn = tk.Label(
                     self.key_frame,
                     text="\u24D8",
@@ -69,6 +75,7 @@ class FieldRow(ttk.Frame):
                 )
                 self.info_btn.pack(side="left", padx=(4, 0))
                 HoverTip(self.info_btn, lambda: tip)
+                HoverTip(self.lbl_key, lambda: tip)
             if info.description_short:
                 self.lbl_desc = ttk.Label(
                     self,
@@ -89,6 +96,7 @@ class FieldRow(ttk.Frame):
             relief="ridge",
             padx=10,
             pady=6,
+            anchor="w",
         )
         self.lbl_eff.grid(row=0, column=1, sticky="ew", padx=(8, 8))
 
@@ -245,7 +253,17 @@ class FieldRow(ttk.Frame):
         """Update field key label based on new metadata."""
         key = getattr(info, "key", self.key)
         self.key = key
-        self.lbl_key.configure(text=key)
+        label = getattr(info, "label", None) or key
+        self.lbl_key.configure(text=label)
+        desc = getattr(info, "description", None) or getattr(info, "description_short", None)
+        tip_lines = []
+        if desc:
+            tip_lines.append(desc)
+        tip_lines.append(f"Key: {key}")
+        tip = "\n\n".join(tip_lines)
+        if self.info_btn is not None:
+            HoverTip(self.info_btn, lambda: tip)
+        HoverTip(self.lbl_key, lambda: tip)
 
 
 __all__ = ["FieldRow"]

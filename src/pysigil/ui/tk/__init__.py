@@ -99,6 +99,7 @@ class App:
         self._align_pending = False
         self._key_col_width: int | None = None
         self._pill_col_width: int | None = None
+        self._eff_col_width: int | None = None
         self._author_tools: tk.Toplevel | None = None
 
         self.root.title("pysigil")
@@ -146,13 +147,13 @@ class App:
         self._table.pack(fill="both", expand=True, padx=6, pady=6)
 
         style = ttk.Style(self.root)
-        style.configure("Title.TLabel", font=(None, 10, "bold"), anchor="center")
+        style.configure("Title.TLabel", font=(None, 10, "bold"))
 
         header = ttk.Frame(self._table)
         header.pack(fill="x")
-        ttk.Label(header, text="Key", style="Title.TLabel").grid(row=0, column=0, sticky="ew")
-        ttk.Label(header, text="Value (effective)", style="Title.TLabel").grid(row=0, column=1, sticky="ew")
-        ttk.Label(header, text="Scopes", style="Title.TLabel").grid(row=0, column=2, sticky="ew")
+        ttk.Label(header, text="Key", style="Title.TLabel", anchor="w").grid(row=0, column=0, sticky="ew")
+        ttk.Label(header, text="Value (effective)", style="Title.TLabel", anchor="w").grid(row=0, column=1, sticky="ew")
+        ttk.Label(header, text="Scopes", style="Title.TLabel", anchor="w").grid(row=0, column=2, sticky="ew")
         header.columnconfigure(1, weight=1)
 
         self._rows_container = ttk.Frame(self._table)
@@ -333,6 +334,7 @@ class App:
         self.root.update_idletasks()
         key_w = max(r.lbl_key.winfo_reqwidth() for r in self.field_rows.values())
         pills_w = max(r.pills.winfo_reqwidth() for r in self.field_rows.values())
+        eff_w = max(r.lbl_eff.winfo_reqwidth() for r in self.field_rows.values())
         if key_w != self._key_col_width:
             for r in self.field_rows.values():
                 r.grid_columnconfigure(0, minsize=key_w)
@@ -341,6 +343,10 @@ class App:
             for r in self.field_rows.values():
                 r.grid_columnconfigure(2, minsize=pills_w)
             self._pill_col_width = pills_w
+        if eff_w != self._eff_col_width:
+            for r in self.field_rows.values():
+                r.grid_columnconfigure(1, minsize=eff_w)
+            self._eff_col_width = eff_w
 
 
 def launch(initial_provider: str | None = None, *, author_mode: bool = False) -> None:
