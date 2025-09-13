@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Callable, Dict, Any
+import os
+from typing import Any, Callable, Dict
 
 try:  # pragma: no cover - tkinter may be missing
     import tkinter as tk
@@ -22,6 +23,8 @@ _SCOPE_COLORS = {
     "project-local": SCOPE_COLOR["ProjectMachine"],
     "default": SCOPE_COLOR["Def"],
 }
+
+_DEBUG_COLUMNS = bool(os.environ.get("PYSGIL_DEBUG_COLUMNS"))
 
 
 class FieldRow(ttk.Frame):
@@ -125,6 +128,11 @@ class FieldRow(ttk.Frame):
 
         self.refresh()
 
+        if _DEBUG_COLUMNS and tk is not None:
+            self._debug_canvas = tk.Canvas(self, highlightthickness=0)
+            self._debug_canvas.place(relx=0, rely=0, relwidth=1, relheight=1)
+            self.bind("<Configure>", self._on_debug_configure)
+
     # ------------------------------------------------------------------
     def set_compact(self, compact: bool) -> None:
         """Toggle compact mode and rebuild pills."""
@@ -172,6 +180,21 @@ class FieldRow(ttk.Frame):
                 can_write=can_write,
                 value_provider=value_provider,
             )
+
+    def _on_debug_configure(self, event: tk.Event) -> None:
+        if not _DEBUG_COLUMNS:
+            return
+        canvas = getattr(self, "_debug_canvas", None)
+        if canvas is None:
+            return
+        canvas.delete("all")
+        cols = self.grid_size()[0]
+        for col in range(cols - 1):
+            try:
+                x, y, w, h = self.grid_bbox(col, 0)
+            except Exception:
+                continue
+            canvas.create_line(x + w, 0, x + w, event.height, fill="red", width=2)
 
     def update_pill(
         self,
