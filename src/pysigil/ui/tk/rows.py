@@ -209,7 +209,7 @@ class FieldRow(ttk.Frame):
             lbl_h = self.lbl_eff.winfo_height()
             diff = btn_h - lbl_h
             if diff > 0:
-                pad = (diff + 1) // 2  # round up to avoid being short by 1px
+                pad = (diff+1) // 5
                 self.lbl_eff.configure(pady=pad)
         except Exception:
             pass
