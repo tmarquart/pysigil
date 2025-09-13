@@ -259,17 +259,21 @@ class ListEditor(ttk.Frame):  # pragma: no cover - exercised via tk tests
         if offset > 0:
             indices.reverse()
         moved = False
+        new_selection: list[int] = []
         for idx in indices:
             new_idx = idx + offset
             if not (0 <= new_idx < len(self._items)):
+                new_selection.append(idx)
                 continue
             self._items[idx], self._items[new_idx] = (
                 self._items[new_idx],
                 self._items[idx],
             )
+            new_selection.append(new_idx)
             moved = True
         if moved:
             self._refresh_tree()
+            self._tree.selection_set([str(i) for i in sorted(new_selection)])
             self.event_generate("<<ListChanged>>")
 
     def sort_items(self) -> None:
@@ -344,7 +348,8 @@ class ListEditor(ttk.Frame):  # pragma: no cover - exercised via tk tests
         path = filedialog.askopenfilename(parent=self, filetypes=[("CSV", "*.csv")])
         if not path:
             return
-        with open(path, newline="", encoding="utf8") as f:
+        # ``utf-8-sig`` transparently strips a UTF-8 BOM if present
+        with open(path, newline="", encoding="utf-8-sig") as f:
             reader = csv.reader(f)
             rows = list(reader)
         if self.mode != "simple" and rows and len(rows[0]) == len(self._columns):
