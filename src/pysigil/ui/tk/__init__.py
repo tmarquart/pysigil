@@ -22,7 +22,7 @@ except Exception:  # pragma: no cover - fallback when tkinter missing
 from ..core import EventBus, AppCore
 from ..provider_adapter import ProviderAdapter
 from ..sections import bucket_by_section, compute_section_order, field_sort_key
-from ..aurelia_theme import get_palette
+from ..aurelia_theme import get_palette, use
 from .dialogs import EditDialog
 from .rows import FieldRow
 
@@ -104,7 +104,23 @@ class App:
         self._edit_col_width: int | None = None
         self._author_tools: tk.Toplevel | None = None
 
-        self.palette = get_palette()
+        use(self.root)
+        core_palette = get_palette()
+        neutrals = core_palette["neutrals"]
+        text_colors = core_palette["text"]
+        accents = core_palette["accents"]
+        self.palette = {
+            "bg": neutrals["100"],
+            "gold": accents["primary"],
+            "hdr_fg": text_colors["fg"],
+            "hdr_muted": text_colors["muted"],
+            "card": neutrals["0"],
+            "card_edge": neutrals["200"],
+            "ink": text_colors["fg"],
+            "ink_muted": text_colors["muted"],
+            "field": neutrals["0"],
+            "field_bd": neutrals["200"],
+        }
         self.root.title("pysigil")
         self.root.configure(bg=self.palette["bg"])
         self.root.option_add("*highlightcolor", self.palette["gold"])
