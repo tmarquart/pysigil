@@ -36,11 +36,11 @@ _AURELIA_PALETTE: dict[str, object] = {
     "tooltip_bg": "#0E1724",
     "tooltip_fg": "#F7FAFF",
     "scopes": {
-        "Env": "#15803d",  # green-700
+        "Env": "#2cb67d",  # green-700
         "User": "#1e40af",  # blue-900
-        "Machine": "#065f46",  # emerald-900
-        "Project": "#6d28d9",  # violet-700
-        "ProjectMachine": "#c2410c",  # orange-700
+        "Machine": "#1c6e7d",  # emerald-900
+        "Project": "#D4B76A",  # violet-700
+        "ProjectMachine": "#c25e0c",  # orange-700
         "Def": "#334155",  # slate-700
     },
 }
