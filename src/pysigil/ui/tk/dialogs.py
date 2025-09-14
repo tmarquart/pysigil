@@ -14,6 +14,8 @@ except Exception:  # pragma: no cover - fallback when tkinter missing
 
 from ..aurelia_theme import SCOPE_COLORS, get_palette
 from ..provider_adapter import ProviderAdapter, ValueInfo
+from ..author_adapter import AuthorAdapter
+from ..sections import compute_section_order
 from ..value_parser import parse_field_value
 from .widgets import PillButton
 
@@ -237,3 +239,68 @@ class EditDialog(tk.Toplevel):  # type: ignore[misc]
         entry = self.entries.get(scope)
         if entry is not None:
             entry.delete(0, "end")
+
+
+class SectionOrderDialog(tk.Toplevel):  # pragma: no cover - simple UI wrapper
+    """Dialog allowing authors to reorder configuration sections."""
+
+    def __init__(self, master: tk.Widget, adapter: AuthorAdapter) -> None:
+        super().__init__(master)
+        self.title("Section Order")
+        self.transient(master)
+        self.grab_set()
+        self.resizable(False, False)
+        self.adapter = adapter
+
+        fields = adapter.list_defined()
+        order = compute_section_order(fields, adapter.get_sections_order())
+        self._sections = list(order)
+
+        body = ttk.Frame(self, padding=12)
+        body.pack(fill="both", expand=True)
+
+        self._list = tk.Listbox(body, exportselection=False)
+        self._list.pack(side="left", fill="both", expand=True)
+        for sec in self._sections:
+            self._list.insert("end", sec)
+
+        btns = ttk.Frame(body)
+        btns.pack(side="left", fill="y", padx=(6, 0))
+        ttk.Button(btns, text="Up", command=self._move_up).pack(fill="x")
+        ttk.Button(btns, text="Down", command=self._move_down).pack(fill="x", pady=4)
+
+        actions = ttk.Frame(self)
+        actions.pack(fill="x", padx=12, pady=(0, 12))
+        ttk.Button(actions, text="Save", command=self._save).pack(side="right")
+        ttk.Button(actions, text="Close", command=self.destroy).pack(side="right", padx=(0, 6))
+
+    # -- helpers ---------------------------------------------------------
+    def _move(self, delta: int) -> None:
+        sel = self._list.curselection()
+        if not sel:
+            return
+        idx = sel[0]
+        new_idx = max(0, min(len(self._sections) - 1, idx + delta))
+        if new_idx == idx:
+            return
+        self._sections[idx], self._sections[new_idx] = (
+            self._sections[new_idx],
+            self._sections[idx],
+        )
+        self._list.delete(0, "end")
+        for sec in self._sections:
+            self._list.insert("end", sec)
+        self._list.selection_set(new_idx)
+
+    def _move_up(self) -> None:
+        self._move(-1)
+
+    def _move_down(self) -> None:
+        self._move(1)
+
+    def _save(self) -> None:
+        try:
+            self.adapter.set_sections_order(self._sections)
+        except Exception:
+            pass
+        self.destroy()
