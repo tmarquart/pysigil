@@ -9,7 +9,8 @@ setting.
 
 from __future__ import annotations
 
-from typing import Callable, Any, Literal
+from collections.abc import Callable
+from typing import Any, Literal
 
 from ..aurelia_theme import get_palette
 
@@ -19,6 +20,10 @@ try:  # pragma: no cover - importing tkinter is environment dependent
 except Exception:  # pragma: no cover - fallback when tkinter missing
     tk = None  # type: ignore
     tkfont = None  # type: ignore
+
+
+# Maximum width of tooltip labels before wrapping (pixels)
+_TIP_WRAP_LENGTH = 480
 
 
 class HoverTip:
@@ -59,7 +64,16 @@ class HoverTip:
         fg = palette["tooltip_fg"]
         frame = tk.Frame(self.tip, bg=bg, bd=0)
         frame.pack()
-        label = tk.Label(frame, text=txt, bg=bg, fg=fg, padx=8, pady=6)
+        label = tk.Label(
+            frame,
+            text=txt,
+            bg=bg,
+            fg=fg,
+            padx=8,
+            pady=6,
+            justify="left",
+            wraplength=_TIP_WRAP_LENGTH,
+        )
         label.pack()
 
     def _hide(self, _event: tk.Event) -> None:
