@@ -12,6 +12,7 @@ from pysigil.ui.tk.widgets import PillButton
 from pysigil.settings_metadata import IniFileBackend, IniSpecBackend
 from pysigil.orchestrator import Orchestrator
 from tests.utils import DummyPolicy
+import pysigil
 
 
 def _setup_adapter(tmp_path, monkeypatch):
@@ -82,6 +83,16 @@ def test_field_row_pill_click(tmp_path, monkeypatch):
             break
     assert clicks == [("alpha", "user")]
     root.destroy()
+
+
+def test_scopes_hide_machine(tmp_path, monkeypatch):
+    adapter, _ = _setup_adapter(tmp_path, monkeypatch)
+    monkeypatch.setattr(pysigil, "show_machine_scope", False)
+    assert "user-local" not in adapter.scopes()
+    assert "project-local" not in adapter.scopes()
+    monkeypatch.setattr(pysigil, "show_machine_scope", True)
+    scopes = adapter.scopes()
+    assert "user-local" in scopes and "project-local" in scopes
 
 
 def test_policy_respected(tmp_path, monkeypatch):

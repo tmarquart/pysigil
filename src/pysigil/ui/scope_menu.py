@@ -11,6 +11,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List
 
+import pysigil
+
 from .. import api
 
 
@@ -52,10 +54,12 @@ def build_menu(
 
     eff = handle.effective().get(key)
     layers = handle.layers().get(key, {})
-    paths = {
-        scope: handle.target_path(scope)
-        for scope in ("user", "user-local", "project", "project-local")
-    }
+    scopes = ["user", "user-local", "project", "project-local"]
+    if not pysigil.show_machine_scope:
+        machine = set(policy.machine_scopes())
+        scopes = [s for s in scopes if s not in machine]
+
+    paths = {scope: handle.target_path(scope) for scope in scopes}
 
     def has(scope: str) -> bool:
         return layers.get(scope) is not None
@@ -79,8 +83,12 @@ def build_menu(
     menu.append(Separator())
 
     # Scopes list
-    for scope in ["user", "user-local", "project", "project-local"]:
-        row = ScopeRow(scope, effective=(eff is not None and eff.source == scope), present=has(scope))
+    for scope in scopes:
+        row = ScopeRow(
+            scope,
+            effective=(eff is not None and eff.source == scope),
+            present=has(scope),
+        )
         if has(scope):
             row.add(Action("Edit…", enabled=writable(scope)))
             row.add(Action("Remove", enabled=writable(scope)))
@@ -92,8 +100,10 @@ def build_menu(
     menu.append(Action("Show layers…"))
 
     # Files
-    for scope in ["user", "project", "user-local", "project-local"]:
-        menu.append(Action(f"Open file for {scope}", enabled=paths.get(scope) is not None))
+    for scope in [s for s in ["user", "project", "user-local", "project-local"] if s in paths]:
+        menu.append(
+            Action(f"Open file for {scope}", enabled=paths.get(scope) is not None)
+        )
 
     return menu
 

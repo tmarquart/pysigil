@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
+import pysigil
+
 from .. import api
 from ..policy import policy
 from ..authoring import get as get_dev_link, list_links
@@ -58,8 +60,11 @@ class ProviderAdapter:
 
     def scopes(self) -> List[str]:
         """Return scope ids in display order."""
-        known = set(policy.scopes)
-        order = [s for s in policy.precedence(read=True) if s in known]
+        known = set(getattr(policy, "scopes", []))
+        order = [s for s in policy.precedence(read=True) if not known or s in known]
+        if not pysigil.show_machine_scope:
+            machine = set(policy.machine_scopes())
+            order = [s for s in order if s not in machine]
         return [s for s in order if s != "core"]
 
     _SHORT_LABELS = {

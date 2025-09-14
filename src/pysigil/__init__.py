@@ -4,11 +4,17 @@ from .policy import policy
 from .toolkit import helpers_for
 
 
+# Toggle visibility of machine-specific scopes in the UI.  When ``False``
+# machine scopes such as ``user-local`` and ``project-local`` are hidden.
+show_machine_scope = False
+
+
 __all__ = [
     "Sigil",
     "SigilError",
     "parse_key",
     "policy",
     "helpers_for",
+    "show_machine_scope",
 
 ]
