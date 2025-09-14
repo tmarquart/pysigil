@@ -49,7 +49,7 @@ from .root import ProjectRootNotFoundError
 from .discovery import pep503_name
 
 # Maximum length for short descriptions in field specs
-SHORT_DESC_MAX = 120
+SHORT_DESC_MAX = 80
 
 ####################
 ##### ADAPTERS #####
