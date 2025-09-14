@@ -16,6 +16,7 @@ from ..author_adapter import AuthorAdapter, FieldInfo
 from ..options_form import OptionsForm
 from ..core import AppCore
 from ..value_parser import parse_field_value
+from ..aurelia_theme import get_palette, use
 
 
 class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
@@ -23,6 +24,32 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
 
     def __init__(self, master: tk.Misc, core: AppCore) -> None:
         super().__init__(master)
+        use(self)
+        palette = get_palette()
+        self.configure(bg=palette["bg"])  # type: ignore[call-arg]
+        style = ttk.Style(self)
+        style.configure(
+            "Treeview",
+            background=palette["card"],
+            fieldbackground=palette["card"],
+            foreground=palette["ink"],
+            bordercolor=palette["card_edge"],
+        )
+        style.map(
+            "Treeview",
+            background=[("selected", palette["primary_hover"])],
+            foreground=[("selected", palette["on_primary"])],
+        )
+        style.configure(
+            "TLabelframe",
+            background=palette["bg"],
+            foreground=palette["hdr_fg"],
+        )
+        style.configure(
+            "TLabelframe.Label",
+            background=palette["bg"],
+            foreground=palette["hdr_fg"],
+        )
         pid = core.state.provider_id or ""
         project_root: Path | None = core.state.project_root
         project = project_root.as_posix() if project_root else ""
