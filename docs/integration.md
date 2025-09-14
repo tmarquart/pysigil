@@ -42,6 +42,12 @@ sigil author
 Fully merged prefs:
 `SIGIL_MYPKG_DB_HOST (env) → ./settings.ini (project) → ~/.config/mypkg/settings.ini (user) → your defaults.ini.`
 
+Need machine-specific values?  The default policy also includes an optional
+`user-local` layer.  It lives alongside the regular user file but is named per
+host and is handy for paths or secrets that shouldn't roam between machines.
+If you don't need that separation simply ignore it—`pysigil` works fine without
+the extra file.
+
 No boiler-plate: call `get_setting()` / `set_setting()` from anywhere in your code.
 
 User tooling already works:
@@ -75,3 +81,14 @@ custom = ScopePolicy([*policy._scopes, git_only, machine])
 
 The `machine=True` flag causes the file name to include the host, e.g.
 `settings-local-myhost.ini`.
+
+The default set of scopes already contains a machine-specific `user-local`
+layer.  If you don't need a separate file per host you can build a custom
+policy without it:
+
+```python
+from pysigil.policy import ScopePolicy, policy
+
+custom = ScopePolicy([s for s in policy._scopes if s.name != "user-local"])
+```
+
