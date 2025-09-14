@@ -212,9 +212,11 @@ class PillButton(tk.Canvas):
         val = self.value_provider()
         val_txt = str(val) if val is not None else "—"
         parts = [self.tooltip_title]
-        if self.tooltip_desc:
-            parts.append(self.tooltip_desc)
         parts.append(f"Value: {val_txt}")
+        if self.tooltip_desc:
+            parts.append('________________________________')
+            parts.append(self.tooltip_desc)
+
         return "\n".join(parts)
 
 

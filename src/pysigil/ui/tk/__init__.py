@@ -12,8 +12,6 @@ be shared with other UI layers in the future.
 
 from __future__ import annotations
 
-from pygments.styles.dracula import foreground
-
 try:  # pragma: no cover - tkinter availability depends on the env
     import tkinter as tk
     from tkinter import ttk

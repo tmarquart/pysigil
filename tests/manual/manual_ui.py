@@ -20,3 +20,4 @@ if __name__ == "__main__":  # pragma: no cover - manual test only
     app = App(initial_provider='sigil-dummy')
     app.root.mainloop()
 
+
