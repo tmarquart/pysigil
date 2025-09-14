@@ -15,6 +15,7 @@ from ...resolver import (
     read_dist_name_from_pyproject,
 )
 from ...root import ProjectRootNotFoundError, find_project_root
+from ..aurelia_theme import get_palette, use
 
 APP_TITLE = "Sigil – Register Package Defaults"
 
@@ -24,9 +25,15 @@ APP_TITLE = "Sigil – Register Package Defaults"
 class RegisterApp(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
+        use(self)
+        palette = get_palette()
+        self.configure(bg=palette["bg"])  # type: ignore[call-arg]
         self.title(APP_TITLE)
         self.geometry("640x320")
         self.minsize(520, 280)
+        self.option_add("*highlightcolor", palette["gold"])
+        self.option_add("*highlightbackground", palette["bg"])
+        self.option_add("*highlightthickness", 1)
 
         self.defaults_path: tk.StringVar = tk.StringVar(value="")
         self.provider_id: tk.StringVar = tk.StringVar(value="")
