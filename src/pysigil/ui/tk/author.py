@@ -27,6 +27,10 @@ class RegisterApp(tk.Tk):
         super().__init__()
         use(self)
         palette = get_palette()
+
+        style = ttk.Style(self)
+        style.configure("TLabel",font=(None, 10, "bold"))
+
         self.configure(bg=palette["bg"])  # type: ignore[call-arg]
         self.title(APP_TITLE)
         self.geometry("640x320")
