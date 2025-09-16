@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from collections.abc import Callable, Mapping, MutableMapping, Sequence
 from contextlib import contextmanager
 from pathlib import Path
@@ -255,6 +256,14 @@ class Sigil:
     def _strip_prefix(self, path: KeyPath) -> KeyPath:
         return path[1:] if self._is_ours(path) else path
 
+    def _env_var_name(self, raw_path: KeyPath) -> str:
+        if not raw_path:
+            raise ValueError("Environment keys require at least one segment")
+        sanitized_app = self.app_name.upper().replace("-", "_")
+        sanitized_parts = [part.replace("-", "_") for part in raw_path]
+        suffix = KEY_JOIN_CHAR.join(sanitized_parts).upper()
+        return f"SIGIL_{sanitized_app}_{suffix}"
+
     def _value_from_scope(self, scope: str, key: KeyPath) -> str | None:
         return self.policy.get_store(scope).get(key)
 
@@ -428,6 +437,8 @@ class Sigil:
 
     def set_pref(self, key: str | KeyPath, value: Any, *, scope: str | None = None) -> None:
         target_scope = scope or self._default_scope
+        if target_scope == "environment":
+            target_scope = "env"
         if target_scope == "core":
             raise ReadOnlyScopeError("Core defaults are read-only")
         if (
@@ -437,12 +448,23 @@ class Sigil:
         ):
             raise ReadOnlyScopeError("Default scope is read-only")
         raw_path = parse_key(key)
+        if len(raw_path) > 1 and pep503_name(raw_path[0]) == self.app_name:
+            raw_path = raw_path[1:]
         if raw_path and raw_path[0] == "secret":
             if not self._secrets.can_write():
                 raise SigilWriteError("Secrets backend is read-only or locked")
             self._secrets.set(".".join(raw_path), str(value))
             return
         full_path = (self.app_name, *raw_path)
+        if target_scope == "env":
+            env_key = self._env_var_name(raw_path)
+            with self._lock:
+                if value is None:
+                    os.environ.pop(env_key, None)
+                else:
+                    os.environ[env_key] = str(value)
+                self.invalidate_cache()
+            return
         data, path_file = self._get_scope_storage(target_scope)
         with self._lock:
             if value is None:
