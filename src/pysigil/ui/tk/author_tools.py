@@ -278,8 +278,8 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
 
         def _update_count(*_args: object) -> None:
             n = len(self._desc_short_var.get())
-            fg = "red" if n > SHORT_DESC_MAX else "black"
-            self._desc_short_count.config(text=f"{n}/{SHORT_DESC_MAX}", foreground=get_palette()['hdr_fg'])
+            fg = "red" if n > SHORT_DESC_MAX else get_palette()['hdr_fg']
+            self._desc_short_count.config(text=f"{n}/{SHORT_DESC_MAX}", foreground=fg)
 
         self._desc_short_var.trace_add("write", _update_count)
         _update_count()

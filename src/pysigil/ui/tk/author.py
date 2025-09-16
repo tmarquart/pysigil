@@ -7,7 +7,7 @@ import webbrowser
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
-from ...authoring import DevLinkError, _dev_dir, link, normalize_provider_id
+from ...authoring import DevLinkError, _dev_dir, link, normalize_provider_id,ensure_sigil_package_data
 from ...resolver import (
     default_provider_id,
     ensure_defaults_file,
@@ -157,6 +157,7 @@ class RegisterApp(tk.Tk):
             settings_path = ensure_defaults_file(pkg, provider_norm)
             dl = link(provider_norm, settings_path, validate=True)
             self.message_var.set(f"Linked {dl.provider_id} -> {dl.defaults_path}")
+            ensure_sigil_package_data(find_project_root(pkg_dir),provider)
             messagebox.showinfo(
                 "Success",
                 f"Created/verified {settings_path}\n\nRegistered dev link for {dl.provider_id}.",
