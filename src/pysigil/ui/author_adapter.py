@@ -100,7 +100,7 @@ class DeletePreview:
 # ---------------------------------------------------------------------------
 
 
-_KEY_RE = re.compile(r"^[a-z0-9]+(\.[a-z0-9_]+)*$")
+_KEY_RE = re.compile(r"^[a-z0-9][a-z0-9_]*(\.[a-z0-9_]+)*$")
 
 
 class AuthorAdapter:

@@ -125,15 +125,15 @@ class DefaultsValidationError(Exception):
     """Raised when a defaults file is invalid."""
 
 
-_KEY_RE = re.compile(r"^[a-z0-9]+(\.[a-z0-9_]+)*$")
+_KEY_RE = re.compile(r"^[a-z0-9][a-z0-9_]*(\.[a-z0-9_]+)*$")
 
 
 def validate_defaults_file(path: Path, provider_id: str) -> None:
     """Validate ``path`` for ``provider_id``.
 
     The file must contain a ``[<provider_id>]`` section and all keys in that
-    section must be dotted names using lowercase letters, digits and underscores
-    after the first segment.
+    section must be dotted names using lowercase letters, digits, and optional
+    underscores. Keys must start with a letter or digit.
     """
 
     path = Path(path).expanduser().resolve()
