@@ -186,11 +186,13 @@ def ensure_sigil_package_data(project_root: Path, package: str) -> None:
 
     ppt = project_root / "pyproject.toml"
     if not ppt.is_file():
+        print("Error locating pyproject.toml")
         return
 
     try:  # pragma: no cover - defensive
         doc = tomlkit.parse(ppt.read_text(encoding="utf-8"))
     except Exception:  # pragma: no cover - defensive
+        print("Error reading pyproject.toml")
         return
 
     tool = doc.setdefault("tool", tomlkit.table())
