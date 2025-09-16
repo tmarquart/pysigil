@@ -105,19 +105,7 @@ class App:
         self._author_tools: tk.Toplevel | None = None
 
         use(self.root)
-        core_palette = get_palette()
-        self.palette = {
-            "bg": core_palette["bg"],
-            "gold": core_palette["gold"],
-            "hdr_fg": core_palette["hdr_fg"],
-            "hdr_muted": core_palette["hdr_muted"],
-            "card": core_palette["card"],
-            "card_edge": core_palette["card_edge"],
-            "ink": core_palette["ink"],
-            "ink_muted": core_palette["ink_muted"],
-            "field": core_palette["field"],
-            "field_bd": core_palette["field_bd"],
-        }
+        self.palette = get_palette()
         self.root.title("pysigil")
         self.root.configure(bg=self.palette["bg"])
         self.root.option_add("*highlightcolor", self.palette["gold"])
@@ -183,7 +171,9 @@ class App:
             foreground=palette["ink"],
             font=(None, 12, "bold"),
         )
-        style.configure("Title.TLabel", font=(None, 11, "bold")) # foreground=palette['gold'] #set color for mid labels here
+
+        #style.configure("Title.TLabel", font=(None,12,'bold'),foreground=palette['title_accent']) # foreground=palette['gold'] #set color for mid labels here
+        style.configure("Title.TLabel", font=(None, 11,"bold"))
 
         self._table = tk.Frame(
             self.root,
