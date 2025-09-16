@@ -48,8 +48,13 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         style.configure(
             "TLabelframe.Label",
             background=palette["bg"],
-            foreground=palette["hdr_fg"],
+            foreground=palette["title_accent"],font=10
         )
+
+        #style.configure('TFrame',padding=12)
+
+        style.configure("TLabel",font=(None, 10, "bold"))
+
         pid = core.state.provider_id or ""
         project_root: Path | None = core.state.project_root
         project = project_root.as_posix() if project_root else ""
@@ -250,21 +255,21 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         self._clear_form()
 
         # Identity -------------------------------------------------------
-        ident = ttk.LabelFrame(self._form, text="Identity")
+        ident = ttk.LabelFrame(self._form, text=" Identity ", padding=(12,8,12,12)) #
         ident.pack(fill="x", pady=(0, 6))
         self._key_var = tk.StringVar(value=info.key)
-        ttk.Label(ident, text="Key:").grid(row=0, column=0, sticky="w")
+        ttk.Label(ident, text="Key: ").grid(row=0, column=0, sticky="w")
         ttk.Entry(ident, textvariable=self._key_var).grid(row=0, column=1, sticky="ew")
         self._label_var = tk.StringVar(value=info.label or "")
-        ttk.Label(ident, text="Label:").grid(row=1, column=0, sticky="w")
+        ttk.Label(ident, text="Label: ").grid(row=1, column=0, sticky="w")
         ttk.Entry(ident, textvariable=self._label_var).grid(row=1, column=1, sticky="ew")
         ident.columnconfigure(1, weight=1)
 
         # Descriptions ---------------------------------------------------
-        desc_fr = ttk.LabelFrame(self._form, text="Descriptions")
+        desc_fr = ttk.LabelFrame(self._form, text=" Descriptions ", padding=(12,8,12,12))
         desc_fr.pack(fill="x", pady=(0, 6))
         self._desc_short_var = tk.StringVar(value=info.description_short or "")
-        ttk.Label(desc_fr, text="Short:").grid(row=0, column=0, sticky="w")
+        ttk.Label(desc_fr, text="Short: ").grid(row=0, column=0, sticky="w")
         short_entry = ttk.Entry(desc_fr, textvariable=self._desc_short_var)
         short_entry.grid(row=0, column=1, sticky="ew")
         self._desc_short_count = ttk.Label(desc_fr, text="0/0")
@@ -274,22 +279,22 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         def _update_count(*_args: object) -> None:
             n = len(self._desc_short_var.get())
             fg = "red" if n > SHORT_DESC_MAX else "black"
-            self._desc_short_count.config(text=f"{n}/{SHORT_DESC_MAX}", foreground=fg)
+            self._desc_short_count.config(text=f"{n}/{SHORT_DESC_MAX}", foreground=get_palette()['hdr_fg'])
 
         self._desc_short_var.trace_add("write", _update_count)
         _update_count()
 
-        ttk.Label(desc_fr, text="Long:").grid(row=1, column=0, sticky="nw")
+        ttk.Label(desc_fr, text="Long: ").grid(row=1, column=0, sticky="nw")
         self._desc_text = tk.Text(desc_fr, height=4, wrap="word")
         self._desc_text.grid(row=1, column=1, columnspan=2, sticky="ew")
         if info.description:
             self._desc_text.insert("1.0", info.description)
 
         # Type -----------------------------------------------------------
-        type_fr = ttk.LabelFrame(self._form, text="Type")
+        type_fr = ttk.LabelFrame(self._form, text=" Type ", padding=(12,8,12,12))
         type_fr.pack(fill="x", pady=(0, 6))
         self._type_var = tk.StringVar(value=info.type)
-        ttk.Label(type_fr, text="Type:").grid(row=0, column=0, sticky="w")
+        ttk.Label(type_fr, text="Type: ").grid(row=0, column=0, sticky="w")
         type_combo = ttk.Combobox(
             type_fr,
             textvariable=self._type_var,
@@ -300,23 +305,23 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         type_combo.bind("<<ComboboxSelected>>", self._on_type_change)
         type_fr.columnconfigure(1, weight=1)
 
-        self._opts_frame = ttk.LabelFrame(self._form, text="Type Options")
+        self._opts_frame = ttk.LabelFrame(self._form, text=" Type Options ", padding=(12,8,12,12))
         self._opts_frame.pack(fill="x", pady=(0, 6))
-        self._default_frame = ttk.LabelFrame(self._form, text="Default")
+        self._default_frame = ttk.LabelFrame(self._form, text=" Default ", padding=(12,8,12,12))
         self._default_frame.pack(fill="x", pady=(0, 6))
         ft = TYPE_REGISTRY.get(info.type)
         self._build_type_section(ft, default, info.options)
 
         # Grouping ------------------------------------------------------
-        group_fr = ttk.LabelFrame(self._form, text="Grouping")
+        group_fr = ttk.LabelFrame(self._form, text=" Grouping ", padding=(12,8,12,12))
         group_fr.pack(fill="x", pady=(0, 6))
         self._section_var = tk.StringVar(value=info.section or "")
-        ttk.Label(group_fr, text="Section:").grid(row=0, column=0, sticky="w")
+        ttk.Label(group_fr, text="Section: ").grid(row=0, column=0, sticky="w")
         ttk.Entry(group_fr, textvariable=self._section_var).grid(row=0, column=1, sticky="ew")
         self._order_var = tk.StringVar(
             value="" if info.order is None else str(info.order)
         )
-        ttk.Label(group_fr, text="Order:").grid(row=1, column=0, sticky="w")
+        ttk.Label(group_fr, text="Order: ").grid(row=1, column=0, sticky="w")
         ttk.Entry(group_fr, textvariable=self._order_var).grid(row=1, column=1, sticky="ew")
         group_fr.columnconfigure(1, weight=1)
 
@@ -454,4 +459,3 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
             self._diff_frame.pack(fill="both", expand=True)
         else:
             self._diff_frame.pack_forget()
-

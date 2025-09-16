@@ -32,6 +32,7 @@ _AURELIA_PALETTE: dict[str, object] = {
     "field_bd": "#C8D3E6",
     "gold": "#D4B76A",
     "gold_hi":"#f1d48e",
+    "title_accent":"#f1d48e",
     "primary": "#365DC6",
     "primary_hover": "#587BE2",
     "on_primary": "#F7FAFF",
