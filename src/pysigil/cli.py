@@ -11,6 +11,7 @@ from pathlib import Path
 from .authoring import (
     DefaultsValidationError,
     DevLinkError,
+    ensure_sigil_package_data,
     link as dev_link,
     list_links as dev_list,
     normalize_provider_id,
@@ -301,6 +302,7 @@ def author_register(args: argparse.Namespace) -> int:
             return 2
         provider_id = default_provider_id(pkg, dist_name)
         settings_path = ensure_defaults_file(pkg, provider_id)
+        ensure_sigil_package_data(root, pkg.name)
         try:
             dev_link(provider_id, settings_path, validate=not args.no_validate)
         except DevLinkError as exc:
@@ -333,6 +335,7 @@ def author_register(args: argparse.Namespace) -> int:
             else default_provider_id(pkg, dist_name)
         )
         settings_path = ensure_defaults_file(pkg, provider_id)
+        ensure_sigil_package_data(root, pkg.name)
         try:
             dev_link(provider_id, settings_path, validate=not args.no_validate)
         except DevLinkError as exc:

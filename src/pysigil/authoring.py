@@ -5,6 +5,8 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+import tomlkit
+
 from .paths import user_config_dir
 
 try:  # pragma: no cover - fallback when setuptools is missing
@@ -171,3 +173,39 @@ def import_package_from(ini_path: Path) -> str:
                     if pkg_dir / ".sigil" / "settings.ini" == ini_path:
                         return pkg
     return ini_path.parent.parent.name
+
+
+def ensure_sigil_package_data(project_root: Path, package: str) -> None:
+    """Ensure ``pyproject.toml`` includes ``.sigil`` package data for *package*.
+
+    If ``pyproject.toml`` is missing or can't be parsed, this is a no-op.
+    The function adds ``.sigil/*`` under ``[tool.setuptools.package-data]`` for
+    the given *package* if it's not already present. Existing entries are
+    preserved.
+    """
+
+    ppt = project_root / "pyproject.toml"
+    if not ppt.is_file():
+        return
+
+    try:  # pragma: no cover - defensive
+        doc = tomlkit.parse(ppt.read_text(encoding="utf-8"))
+    except Exception:  # pragma: no cover - defensive
+        return
+
+    tool = doc.setdefault("tool", tomlkit.table())
+    st = tool.setdefault("setuptools", tomlkit.table())
+    pd = st.setdefault("package-data", tomlkit.table())
+
+    arr = pd.get(package)
+    changed = False
+    if arr is None:
+        arr = tomlkit.array().multiline(True)
+        pd[package] = arr
+        changed = True
+    if ".sigil/*" not in [str(x) for x in arr]:
+        arr.append(".sigil/*")
+        changed = True
+
+    if changed:
+        ppt.write_text(tomlkit.dumps(doc), encoding="utf-8")
