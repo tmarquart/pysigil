@@ -8,6 +8,7 @@ from pathlib import Path
 from tkinter import messagebox, ttk
 
 from ...config import host_id, init_config, open_scope
+from ..aurelia_theme import get_palette, use
 
 
 def _launch(path: Path) -> None:  # pragma: no cover - best effort
@@ -24,8 +25,11 @@ def _launch(path: Path) -> None:  # pragma: no cover - best effort
 
 def launch() -> None:  # pragma: no cover - GUI interactions
     root = tk.Tk()
+    use(root)
+    palette = get_palette()
     root.title("Sigil Config")
-    ttk.Label(root, text=f"Host: {host_id()}").pack(padx=10, pady=10)
+    root.configure(bg=palette["bg"])  # type: ignore[call-arg]
+    ttk.Label(root, text=f"Host: {host_id()}", style="Card.TLabel").pack(padx=10, pady=10)
 
     def do_open() -> None:
         path = open_scope("user-custom", "user")

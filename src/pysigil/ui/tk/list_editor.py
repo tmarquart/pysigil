@@ -42,6 +42,8 @@ except Exception:  # pragma: no cover - fallback when tkinter missing
 import csv
 from io import StringIO
 
+from ..aurelia_theme import get_palette, use
+
 
 Mode = Literal["simple", "kv", "choice"]
 
@@ -82,7 +84,7 @@ class ListEditor(ttk.Frame):  # pragma: no cover - exercised via tk tests
     ) -> None:
         if tk is None:  # pragma: no cover - environment guard
             raise RuntimeError("tkinter is required for ListEditor")
-        super().__init__(master)
+        super().__init__(master, style="CardBody.TFrame")
         self.mode = mode
         self.unique = unique
         self.allow_empty = allow_empty
@@ -101,7 +103,7 @@ class ListEditor(ttk.Frame):  # pragma: no cover - exercised via tk tests
     # UI construction
     # ------------------------------------------------------------------
     def _build(self, columns: Sequence[Column] | None) -> None:
-        toolbar = ttk.Frame(self)
+        toolbar = ttk.Frame(self, style="CardBody.TFrame")
         toolbar.pack(fill="x", padx=2, pady=2)
         ttk.Button(toolbar, text="Add", command=self._on_add).pack(side="left")
         ttk.Button(toolbar, text="Edit", command=self._on_edit).pack(side="left")
@@ -419,15 +421,18 @@ class ListEditDialog(tk.Toplevel):  # pragma: no cover - exercised via tk tests
         if tk is None:  # pragma: no cover - environment guard
             raise RuntimeError("tkinter is required for ListEditDialog")
         super().__init__(parent)
+        use(self)
+        palette = get_palette()
         self.title("Edit List")
         self.transient(parent)
         self.grab_set()
         self.resizable(True, True)
-        body = ttk.Frame(self, padding=6)
+        self.configure(bg=palette["bg"])  # type: ignore[call-arg]
+        body = ttk.Frame(self, padding=6, style="Card.TFrame")
         body.pack(fill="both", expand=True)
         self.editor = ListEditor(body, **kwargs)
         self.editor.pack(fill="both", expand=True)
-        buttons = ttk.Frame(body)
+        buttons = ttk.Frame(body, style="CardBody.TFrame")
         buttons.pack(fill="x", pady=(6, 0))
         ttk.Button(buttons, text="OK", command=self._on_ok).pack(
             side="right", padx=2

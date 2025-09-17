@@ -58,10 +58,7 @@ class EditDialog(tk.Toplevel):  # type: ignore[misc]
         ttk.Label(self, text=label, style="Title.TLabel").pack(
             anchor="w", padx=18, pady=(12, 0)
         )
-        ttk.Style(self).configure(
-            "Key.TLabel", background=palette["bg"], foreground=palette["hdr_muted"]
-        )
-        ttk.Label(self, text=key, style="Key.TLabel").pack(
+        ttk.Label(self, text=key, style="CardMuted.TLabel").pack(
             anchor="w", padx=18, pady=(0, 6)
         )
         body = ttk.Frame(self, padding=12, style="Card.TFrame")
@@ -158,20 +155,22 @@ class EditDialog(tk.Toplevel):  # type: ignore[misc]
                 btn_remove.state(["disabled"])
 
             if vinfo and vinfo.error:
-                err = ttk.Label(body, text=vinfo.error, foreground="#b91c1c")
+                err = ttk.Label(
+                    body,
+                    text=vinfo.error,
+                    foreground="#b91c1c",
+                    style="Card.TLabel",
+                )
                 err.grid(row=row + 1, column=1, columnspan=3, sticky="w", pady=(0, 4))
                 row += 1
 
             self.entries[scope] = entry
             row += 1
-        ttk.Style(self).configure(
-            "Desc.TLabel", background=palette["card"], foreground=palette["ink_muted"]
-        )
         if info.description_short:
             ttk.Label(
                 body,
                 text=info.description_short,
-                style="Desc.TLabel",
+                style="CardMuted.TLabel",
                 wraplength=400,
                 anchor="w",
                 justify="left",
@@ -181,7 +180,7 @@ class EditDialog(tk.Toplevel):  # type: ignore[misc]
             ttk.Label(
                 body,
                 text=info.description,
-                style="Desc.TLabel",
+                style="CardMuted.TLabel",
                 wraplength=400,
                 anchor="w",
                 justify="left",

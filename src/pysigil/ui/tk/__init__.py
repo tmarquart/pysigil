@@ -31,20 +31,25 @@ class SectionFrame(ttk.Frame):  # pragma: no cover - simple container widget
     """Frame grouping field rows for a single section."""
 
     def __init__(self, master: tk.Widget, name: str, *, collapsible: bool, collapsed: bool) -> None:
-        super().__init__(master)
+        super().__init__(master, style="CardSection.TFrame")
         self.name = name
         self._collapsible = collapsible
         self._collapsed = collapsed if collapsible else False
-        header = ttk.Frame(self)
+        header = ttk.Frame(self, style="CardSection.TFrame")
         header.pack(fill="x", padx=(0, 0))
         if collapsible:
-            self._toggle = ttk.Label(header, text="\u25B8" if collapsed else "\u25BE", width=2)
+            self._toggle = ttk.Label(
+                header,
+                text="\u25B8" if collapsed else "\u25BE",
+                width=2,
+                style="CardToggle.TLabel",
+            )
             self._toggle.pack(side="left")
             self._toggle.bind("<Button-1>", lambda e: self.toggle())
         else:
             self._toggle = None
-        ttk.Label(header, text=name, style="Title.TLabel",padding=6).pack(side="left")
-        self.container = ttk.Frame(self)
+        ttk.Label(header, text=name, style="CardSection.TLabel", padding=6).pack(side="left")
+        self.container = ttk.Frame(self, style="CardSection.TFrame")
         if not self._collapsed:
             self.container.pack(fill="x")
 
@@ -209,13 +214,13 @@ class App:
 
     def _style_row(self, row: FieldRow) -> None:
         palette = self.palette
-        row.configure(bg=palette["card"])
-        row.key_frame.configure(style="CardFrame.TFrame")
-        row.lbl_key.configure(background=palette["card"], foreground=palette["ink"])
+        row.configure(bg=palette["card"], highlightthickness=0)
+        row.key_frame.configure(style="CardBody.TFrame")
+        row.lbl_key.configure(style="CardKey.TLabel")
         if row.info_btn:
             row.info_btn.configure(bg=palette["card"], fg=palette["ink_muted"])
         if row.lbl_desc:
-            row.lbl_desc.configure(background=palette["card"], foreground=palette["ink_muted"])
+            row.lbl_desc.configure(style="CardMuted.TLabel")
         row.lbl_eff.configure(
             bg=palette["field"],
             fg=palette["ink"],
@@ -225,7 +230,7 @@ class App:
             bd=0,
             relief="flat",
         )
-        row.pills.configure(style="CardFrame.TFrame")
+        row.pills.configure(style="CardBody.TFrame")
 
     def _populate_providers(self) -> None:
         providers = self.adapter.list_providers()
@@ -279,8 +284,6 @@ class App:
                     collapsible=sec.casefold() in collapsed,
                     collapsed=sec.casefold() in collapsed,
                 )
-                frame.configure(style="CardFrame.TFrame")
-                frame.container.configure(style="CardFrame.TFrame")
                 self.section_frames[sec] = frame
             rows = sorted(groups.get(sec, []), key=field_sort_key)
             for info in rows:
