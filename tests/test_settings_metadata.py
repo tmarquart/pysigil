@@ -1,5 +1,6 @@
 import pytest
 from pathlib import PurePosixPath
+from types import SimpleNamespace
 import pysigil.settings_metadata as settings_metadata
 from pysigil.errors import ConflictError
 from pysigil.settings_metadata import (
@@ -145,6 +146,36 @@ def test_ini_file_backend(tmp_path):
 
     assert backend.write_target_for("user-custom") == "settings-local-host.ini"
     assert backend.write_target_for("demo") == "settings.ini"
+
+
+def test_ini_file_backend_prefers_installed_defaults(monkeypatch, tmp_path):
+    user_dir = tmp_path / "user"
+    project_dir = tmp_path / "proj"
+    policy = DummyPolicy(user_dir, project_dir, host="host")
+    backend = IniFileBackend(policy=policy)
+
+    dev_defaults = tmp_path / "dev" / ".sigil" / "settings.ini"
+    dev_defaults.parent.mkdir(parents=True, exist_ok=True)
+    write_sections(dev_defaults, {"demo": {"alpha": "dev"}})
+
+    installed_defaults = tmp_path / "installed" / ".sigil" / "settings.ini"
+    installed_defaults.parent.mkdir(parents=True, exist_ok=True)
+    write_sections(installed_defaults, {"demo": {"alpha": "installed"}})
+
+    monkeypatch.setattr(
+        settings_metadata,
+        "get_dev_link",
+        lambda pid: SimpleNamespace(defaults_path=dev_defaults),
+    )
+
+    def fake_resolve(provider_id, filename="settings.ini"):
+        assert filename == "settings.ini"
+        return installed_defaults, "installed"
+
+    monkeypatch.setattr(settings_metadata, "resolve_defaults", fake_resolve)
+
+    layers = backend.read_layers("demo")
+    assert layers["default"]["alpha"] == "installed"
 
 
 def test_short_description_length_limit():
