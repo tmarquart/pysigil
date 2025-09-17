@@ -35,20 +35,22 @@ class SectionFrame(ttk.Frame):  # pragma: no cover - simple container widget
         self.name = name
         self._collapsible = collapsible
         self._collapsed = collapsed if collapsible else False
-        header = ttk.Frame(self, style="CardSection.TFrame")
+        header = ttk.Frame(self, style="SectionHeader.TFrame")
         header.pack(fill="x", padx=(0, 0))
         if collapsible:
             self._toggle = ttk.Label(
                 header,
                 text="\u25B8" if collapsed else "\u25BE",
                 width=2,
-                style="CardToggle.TLabel",
+                style="SectionHeaderToggle.TLabel",
             )
             self._toggle.pack(side="left")
             self._toggle.bind("<Button-1>", lambda e: self.toggle())
         else:
             self._toggle = None
-        ttk.Label(header, text=name, style="CardSection.TLabel", padding=6).pack(side="left")
+        ttk.Label(
+            header, text=name, style="SectionHeader.TLabel", padding=6
+        ).pack(side="left")
         self.container = ttk.Frame(self, style="CardSection.TFrame")
         if not self._collapsed:
             self.container.pack(fill="x")
