@@ -20,12 +20,16 @@ python -m pysigil --help
 ```
 
 ```python
-from pysigil import helpers_for
+from pysigil import get_project_directory, get_user_directory, helpers_for
 
 get_setting, set_setting = helpers_for("pysigil")
+project_assets = get_project_directory()
+user_assets = get_user_directory("pysigil")
 
 get_setting("ui.color")
 set_setting("ui.color", "blue")
+print(project_assets)
+print(user_assets)
 ```
 
 Once installed, try a few commands:
@@ -42,6 +46,8 @@ separate project. See `tests/manual_tests/README.md` for more examples.
 
 Typed helper methods are available for convenient access:
 `Sigil.get_int()`, `get_float()`, `get_bool()`.
+Project and user data folders are provided via
+`get_project_directory()` / `get_user_directory()` and are created on demand.
 For package integration details see [docs/integration.md](docs/integration.md).
 
 ## Policy API
