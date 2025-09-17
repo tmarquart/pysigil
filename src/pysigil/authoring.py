@@ -179,9 +179,8 @@ def ensure_sigil_package_data(project_root: Path, package: str) -> None:
     """Ensure ``pyproject.toml`` includes ``.sigil`` package data for *package*.
 
     If ``pyproject.toml`` is missing or can't be parsed, this is a no-op.
-    The function adds ``.sigil/*`` under ``[tool.setuptools.package-data]`` for
-    the given *package* if it's not already present. Existing entries are
-    preserved.
+    The function sets ``[tool.setuptools.package-data][<package>]`` to
+    ``[".sigil/*"]``. Other packages' configuration is preserved.
     """
 
     ppt = project_root / "pyproject.toml"
@@ -200,14 +199,11 @@ def ensure_sigil_package_data(project_root: Path, package: str) -> None:
     pd = st.setdefault("package-data", tomlkit.table())
 
     arr = pd.get(package)
-    changed = False
-    if arr is None:
-        arr = tomlkit.array().multiline(True)
-        pd[package] = arr
-        changed = True
-    if ".sigil/*" not in [str(x) for x in arr]:
-        arr.append(".sigil/*")
-        changed = True
-
-    if changed:
+    desired = [".sigil/*"]
+    current = [str(x) for x in arr] if arr is not None else None
+    if current != desired:
+        new_arr = tomlkit.array().multiline(True)
+        for item in desired:
+            new_arr.append(item)
+        pd[package] = new_arr
         ppt.write_text(tomlkit.dumps(doc), encoding="utf-8")

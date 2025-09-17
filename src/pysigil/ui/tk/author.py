@@ -7,12 +7,18 @@ import webbrowser
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
-from ...authoring import DevLinkError, _dev_dir, link, normalize_provider_id,ensure_sigil_package_data
+from ...authoring import (
+    DevLinkError,
+    _dev_dir,
+    ensure_sigil_package_data,
+    link,
+    normalize_provider_id,
+)
 from ...resolver import (
-    default_provider_id,
     ensure_defaults_file,
     find_package_dir,
     read_dist_name_from_pyproject,
+    validate_package_dir,
 )
 from ...root import ProjectRootNotFoundError, find_project_root
 from ..aurelia_theme import get_palette, use
@@ -92,28 +98,19 @@ class RegisterApp(tk.Tk):
             return
 
         chosen = Path(folder)
-        if (chosen / "__init__.py").exists():
-            pkg = chosen
-        else:
-            pkg = find_package_dir(chosen, None)
-        if not pkg:
+        try:
+            pkg = validate_package_dir(chosen)
+        except ValueError as exc:
             messagebox.showerror(
                 "Pick your package folder",
-                "Please choose the **package folder** that contains __init__.py\n"
-                "Examples:\n"
-                "- mypkg/\n"
-                "- src/mypkg/\n\n"
-                "Tip: If you picked the repo root, I can auto-detect only when there is exactly one package under src/.",
+                f"{exc}\n\nPick the folder that contains __init__.py.",
             )
             return
 
         self.defaults_path.set(str(pkg))
-        try:
-            root = find_project_root(pkg)
-        except ProjectRootNotFoundError:
-            root = pkg
-        dist_name = read_dist_name_from_pyproject(root)
-        self.provider_id.set(default_provider_id(pkg, dist_name))
+        import_name = pkg.name
+        if not self.provider_id.get().strip():
+            self.provider_id.set(normalize_provider_id(import_name))
         self.message_var.set(f"Package folder: {pkg}")
 
     def _try_autodetect(self) -> None:
@@ -125,8 +122,13 @@ class RegisterApp(tk.Tk):
         dist_name = read_dist_name_from_pyproject(root)
         pkg = find_package_dir(root, dist_name)
         if pkg:
+            try:
+                pkg = validate_package_dir(pkg)
+            except ValueError:
+                return
             self.defaults_path.set(str(pkg))
-            self.provider_id.set(default_provider_id(pkg, dist_name))
+            if not self.provider_id.get().strip():
+                self.provider_id.set(normalize_provider_id(pkg.name))
             self.message_var.set(f"Detected package folder: {pkg}")
 
     def on_register(self) -> None:
@@ -140,24 +142,30 @@ class RegisterApp(tk.Tk):
             messagebox.showerror("Missing provider id", "Please confirm or edit the provider id.")
             return
 
-        pkg_dir = Path(pkg_dir_raw)
-        if (pkg_dir / "__init__.py").exists():
-            pkg = pkg_dir
-        else:
-            pkg = find_package_dir(pkg_dir, None)
-        if not pkg or not (pkg / "__init__.py").exists():
+        try:
+            pkg = validate_package_dir(Path(pkg_dir_raw))
+        except ValueError as exc:
             messagebox.showerror(
                 "Invalid folder",
-                "That folder doesn’t look like a package. Pick the folder that contains __init__.py.",
+                f"{exc}\n\nPick the folder that contains __init__.py.",
             )
             return
+
+        import_name = pkg.name
+        if not provider:
+            provider = normalize_provider_id(import_name)
+            self.provider_id.set(provider)
 
         provider_norm = normalize_provider_id(provider)
         try:
             settings_path = ensure_defaults_file(pkg, provider_norm)
             dl = link(provider_norm, settings_path, validate=True)
             self.message_var.set(f"Linked {dl.provider_id} -> {dl.defaults_path}")
-            ensure_sigil_package_data(find_project_root(pkg_dir),provider)
+            try:
+                project_root = find_project_root(pkg)
+            except ProjectRootNotFoundError:
+                project_root = pkg
+            ensure_sigil_package_data(project_root, import_name)
             messagebox.showinfo(
                 "Success",
                 f"Created/verified {settings_path}\n\nRegistered dev link for {dl.provider_id}.",

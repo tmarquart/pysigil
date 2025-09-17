@@ -2,10 +2,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from pysigil.resolver import (
     default_provider_id,
     ensure_defaults_file,
     find_package_dir,
+    validate_package_dir,
     read_dist_name_from_pyproject,
 )
 from pysigil.root import find_project_root
@@ -29,12 +32,25 @@ def test_provider_from_pyproject(tmp_path: Path) -> None:
     write_pyproject(tmp_path, name="My_Package.Name")
     name = read_dist_name_from_pyproject(tmp_path)
     assert name == "My_Package.Name"
-    pkg = tmp_path / "pkg"
+    pkg = tmp_path / "my_pkg"
     pkg.mkdir()
     (pkg / "__init__.py").touch()
     assert (
-        default_provider_id(pkg, name) == "my-package-name"
+        default_provider_id(pkg, name) == "my-pkg"
     )
+
+
+def test_validate_package_dir(tmp_path: Path) -> None:
+    pkg = tmp_path / "pkg"
+    pkg.mkdir()
+    (pkg / "__init__.py").touch()
+    assert validate_package_dir(pkg) == pkg.resolve()
+    with pytest.raises(ValueError):
+        validate_package_dir(tmp_path / "missing")
+    other = tmp_path / "no_init"
+    other.mkdir()
+    with pytest.raises(ValueError):
+        validate_package_dir(other)
 
 
 def test_find_package_src_layout(tmp_path: Path) -> None:

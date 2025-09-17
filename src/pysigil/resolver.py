@@ -191,18 +191,31 @@ def find_package_dir(root: Path, dist_name: str | None) -> Path | None:
     return None
 
 
-def default_provider_id(package_dir: Path, dist_name: str | None) -> str:
-    """Return default provider id using ``dist_name`` or ``package_dir.name``."""
+def validate_package_dir(package_dir: Path) -> Path:
+    """Return *package_dir* if it contains ``__init__.py``."""
 
-    if dist_name:
-        return normalize_provider_id(dist_name)
-    return normalize_provider_id(package_dir.name)
+    pkg = Path(package_dir).expanduser().resolve()
+    if not pkg.is_dir():
+        raise ValueError(f"Package directory not found: {package_dir}")
+    init_py = pkg / "__init__.py"
+    if not init_py.is_file():
+        raise ValueError(f"Package directory must contain __init__.py: {package_dir}")
+    return pkg
+
+
+def default_provider_id(package_dir: Path, dist_name: str | None) -> str:
+    """Return default provider id derived from ``package_dir``."""
+
+    pkg = validate_package_dir(package_dir)
+    _ = dist_name  # compatibility - ignore distribution name
+    return normalize_provider_id(pkg.name)
 
 
 def ensure_defaults_file(package_dir: Path, provider_id: str) -> Path:
     """Ensure ``.sigil/settings.ini`` exists under ``package_dir``."""
 
-    sigil_dir = package_dir / ".sigil"
+    pkg = validate_package_dir(package_dir)
+    sigil_dir = pkg / ".sigil"
     sigil_dir.mkdir(exist_ok=True)
     ini = sigil_dir / "settings.ini"
     if not ini.exists():
