@@ -44,20 +44,20 @@ class FieldRow(tk.Frame):
         compact: bool = True,
         on_edit_click: Callable[[str], None] | None = None,
     ) -> None:
-        super().__init__(master)
+        palette = get_palette()
+        super().__init__(master, bg=palette["card"], highlightthickness=0)
         self.adapter = adapter
         self.key = key
         self._on_pill_click = on_pill_click
         self._on_edit_click = on_edit_click
         self.compact = compact
 
-        palette = get_palette()
         ink = palette["ink"]
         ink_muted = palette["ink_muted"]
         field = palette["field"]
 
         # container for key + info button
-        self.key_frame = ttk.Frame(self)
+        self.key_frame = ttk.Frame(self, style="CardBody.TFrame")
 
         self.key_frame.grid(row=0, column=0, sticky="w", pady=(6, 0))
 
@@ -68,7 +68,12 @@ class FieldRow(tk.Frame):
             except Exception:
                 info = None
         label = getattr(info, "label", None) or key
-        self.lbl_key = ttk.Label(self.key_frame, text=label,padding=6, font=(None, 10,"bold")) #this controls the labels themselves
+        self.lbl_key = ttk.Label(
+            self.key_frame,
+            text=label,
+            padding=6,
+            style="CardKey.TLabel",
+        )
         self.lbl_key.pack(side="left")
 
         self.info_btn: tk.Label | None = None
@@ -85,6 +90,7 @@ class FieldRow(tk.Frame):
                     text="\u24D8",
                     fg=ink_muted,
                     cursor="question_arrow",
+                    bg=palette["card"],
                     takefocus=1,
                 )
                 self.info_btn.pack(side="left", padx=(4, 0))
@@ -94,7 +100,7 @@ class FieldRow(tk.Frame):
                 self.lbl_desc = ttk.Label(
                     self,
                     text=info.description_short,
-                    foreground=ink_muted,
+                    style="CardMuted.TLabel",
                     wraplength=600,
                     padding=(6,0,0,0) # (left, top, right, bottom)
                 )
@@ -117,7 +123,7 @@ class FieldRow(tk.Frame):
         self.lbl_eff.grid(row=0, column=1, sticky="new", padx=(8, 8), pady=(6, 0))
 
         # container for scope pills
-        self.pills = ttk.Frame(self)
+        self.pills = ttk.Frame(self, style="CardBody.TFrame")
         self.pills.grid(row=0, column=2, sticky="nw", pady=(6, 0))
 
 

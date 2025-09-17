@@ -109,18 +109,25 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         )
         style.configure(
             "TLabelframe",
-            background=palette["bg"],
-            foreground=palette["hdr_fg"],
+            background=palette["card"],
+            bordercolor=palette["card_edge"],
+            borderwidth=1,
+            relief="solid",
+            foreground=palette["ink"],
         )
         style.configure(
             "TLabelframe.Label",
-            background=palette["bg"],
-            foreground=palette["title_accent"],font=10
+            background=palette["card"],
+            foreground=palette["ink_muted"],
+            font=(None, 10, "bold"),
         )
 
-        #style.configure('TFrame',padding=12)
-
-        style.configure("TLabel",font=(None, 10, "bold"))
+        style.configure(
+            "TLabel",
+            background=palette["bg"],
+            foreground=palette["hdr_fg"],
+            font=(None, 10, "bold"),
+        )
 
         pid = core.state.provider_id or ""
         project_root: Path | None = core.state.project_root
@@ -165,14 +172,14 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         self.geometry("800x600")
         ttk.Label(self, textvariable=self._info_var).pack(anchor="w", padx=6, pady=6)
         pw = ttk.PanedWindow(self, orient="horizontal")
-        self._left = ttk.Frame(pw)
-        self._right = ttk.Frame(pw)
+        self._left = ttk.Frame(pw, style="CardBody.TFrame")
+        self._right = ttk.Frame(pw, style="CardBody.TFrame")
         pw.add(self._left, weight=1)
         pw.add(self._right, weight=3)
         pw.pack(fill="both", expand=True)
 
         # -- left: search + tree -------------------------------------------------
-        search = ttk.Frame(self._left)
+        search = ttk.Frame(self._left, style="CardBody.TFrame")
         search.pack(fill="x", padx=6, pady=(6, 0))
         self._search_var = tk.StringVar()
         entry = ttk.Entry(search, textvariable=self._search_var)
@@ -186,7 +193,7 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         self._tree.bind("<<TreeviewOpen>>", self._on_tree_open)
 
         # -- right: placeholder frame for form -----------------------------------
-        self._form = ttk.Frame(self._right)
+        self._form = ttk.Frame(self._right, style="CardBody.TFrame")
         self._form.pack(fill="both", expand=True, padx=6, pady=6)
 
     # ------------------------------------------------------------------
@@ -607,15 +614,16 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
     # ------------------------------------------------------------------
     def _populate_form(self, info: FieldInfo, default: object | None, *, undiscovered: bool) -> None:
         self._clear_form()
+        palette = get_palette()
 
         # Identity -------------------------------------------------------
         ident = ttk.LabelFrame(self._form, text=" Identity ", padding=(12,8,12,12)) #
         ident.pack(fill="x", pady=(0, 6))
         self._key_var = tk.StringVar(value=info.key)
-        ttk.Label(ident, text="Key: ").grid(row=0, column=0, sticky="w")
+        ttk.Label(ident, text="Key: ", style="Card.TLabel").grid(row=0, column=0, sticky="w")
         ttk.Entry(ident, textvariable=self._key_var).grid(row=0, column=1, sticky="ew")
         self._label_var = tk.StringVar(value=info.label or "")
-        ttk.Label(ident, text="Label: ").grid(row=1, column=0, sticky="w")
+        ttk.Label(ident, text="Label: ", style="Card.TLabel").grid(row=1, column=0, sticky="w")
         ttk.Entry(ident, textvariable=self._label_var).grid(row=1, column=1, sticky="ew")
         ident.columnconfigure(1, weight=1)
 
@@ -623,10 +631,10 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         desc_fr = ttk.LabelFrame(self._form, text=" Descriptions ", padding=(12,8,12,12))
         desc_fr.pack(fill="x", pady=(0, 6))
         self._desc_short_var = tk.StringVar(value=info.description_short or "")
-        ttk.Label(desc_fr, text="Short: ").grid(row=0, column=0, sticky="w")
+        ttk.Label(desc_fr, text="Short: ", style="Card.TLabel").grid(row=0, column=0, sticky="w")
         short_entry = ttk.Entry(desc_fr, textvariable=self._desc_short_var)
         short_entry.grid(row=0, column=1, sticky="ew")
-        self._desc_short_count = ttk.Label(desc_fr, text="0/0")
+        self._desc_short_count = ttk.Label(desc_fr, text="0/0", style="CardMuted.TLabel")
         self._desc_short_count.grid(row=0, column=2, sticky="e")
         desc_fr.columnconfigure(1, weight=1)
 
@@ -638,8 +646,20 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         self._desc_short_var.trace_add("write", _update_count)
         _update_count()
 
-        ttk.Label(desc_fr, text="Long: ").grid(row=1, column=0, sticky="nw")
-        self._desc_text = tk.Text(desc_fr, height=4, wrap="word")
+        ttk.Label(desc_fr, text="Long: ", style="Card.TLabel").grid(row=1, column=0, sticky="nw")
+        self._desc_text = tk.Text(
+            desc_fr,
+            height=4,
+            wrap="word",
+            bg=palette["field"],
+            fg=palette["ink"],
+            insertbackground=palette["ink"],
+            highlightthickness=1,
+            highlightbackground=palette["field_bd"],
+            highlightcolor=palette["primary"],
+            relief="flat",
+            bd=1,
+        )
         self._desc_text.grid(row=1, column=1, columnspan=2, sticky="ew")
         if info.description:
             self._desc_text.insert("1.0", info.description)
@@ -648,7 +668,7 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         type_fr = ttk.LabelFrame(self._form, text=" Type ", padding=(12,8,12,12))
         type_fr.pack(fill="x", pady=(0, 6))
         self._type_var = tk.StringVar(value=info.type)
-        ttk.Label(type_fr, text="Type: ").grid(row=0, column=0, sticky="w")
+        ttk.Label(type_fr, text="Type: ", style="Card.TLabel").grid(row=0, column=0, sticky="w")
         type_combo = ttk.Combobox(
             type_fr,
             textvariable=self._type_var,
@@ -670,17 +690,17 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         group_fr = ttk.LabelFrame(self._form, text=" Grouping ", padding=(12,8,12,12))
         group_fr.pack(fill="x", pady=(0, 6))
         self._section_var = tk.StringVar(value=info.section or "")
-        ttk.Label(group_fr, text="Section: ").grid(row=0, column=0, sticky="w")
+        ttk.Label(group_fr, text="Section: ", style="Card.TLabel").grid(row=0, column=0, sticky="w")
         ttk.Entry(group_fr, textvariable=self._section_var).grid(row=0, column=1, sticky="ew")
         self._order_var = tk.StringVar(
             value="" if info.order is None else str(info.order)
         )
-        ttk.Label(group_fr, text="Order: ").grid(row=1, column=0, sticky="w")
+        ttk.Label(group_fr, text="Order: ", style="Card.TLabel").grid(row=1, column=0, sticky="w")
         ttk.Entry(group_fr, textvariable=self._order_var).grid(row=1, column=1, sticky="ew")
         group_fr.columnconfigure(1, weight=1)
 
         # Actions --------------------------------------------------------
-        actions = ttk.Frame(self._form)
+        actions = ttk.Frame(self._form, style="CardBody.TFrame")
         actions.pack(fill="x", pady=(0, 6))
         ttk.Button(actions, text="Save", command=self._on_save).pack(side="right")
         ttk.Button(actions, text="Revert", command=self._on_revert).pack(side="right")
@@ -698,8 +718,19 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
             style="Toolbutton",
         )
         toggle.pack(anchor="w")
-        self._diff_frame = ttk.Frame(self._form)
-        self._diff_text = tk.Text(self._diff_frame, height=6)
+        self._diff_frame = ttk.Frame(self._form, style="CardBody.TFrame")
+        self._diff_text = tk.Text(
+            self._diff_frame,
+            height=6,
+            bg=palette["field"],
+            fg=palette["ink"],
+            insertbackground=palette["ink"],
+            highlightthickness=1,
+            highlightbackground=palette["field_bd"],
+            highlightcolor=palette["primary"],
+            relief="flat",
+            bd=1,
+        )
         self._diff_text.pack(fill="both", expand=True)
         self._register_form_watchers()
         self._store_field_snapshot()
