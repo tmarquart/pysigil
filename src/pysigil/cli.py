@@ -44,6 +44,7 @@ from .resolver import (
     ensure_defaults_file,
     find_package_dir,
     read_dist_name_from_pyproject,
+    validate_package_dir,
 )
 from .root import ProjectRootNotFoundError, find_project_root
 from .ui.tk import launch as launch_gui
@@ -300,9 +301,19 @@ def author_register(args: argparse.Namespace) -> int:
         if not pkg:
             print("Could not auto-detect package directory", file=sys.stderr)
             return 2
-        provider_id = default_provider_id(pkg, dist_name)
+        try:
+            pkg = validate_package_dir(pkg)
+        except ValueError as exc:
+            print(str(exc), file=sys.stderr)
+            return 2
+        import_name = pkg.name
+        provider_id = (
+            normalize_provider_id(args.provider)
+            if args.provider
+            else default_provider_id(pkg, dist_name)
+        )
         settings_path = ensure_defaults_file(pkg, provider_id)
-        ensure_sigil_package_data(root, pkg.name)
+        ensure_sigil_package_data(root, import_name)
         try:
             dev_link(provider_id, settings_path, validate=not args.no_validate)
         except DevLinkError as exc:
@@ -316,13 +327,10 @@ def author_register(args: argparse.Namespace) -> int:
         return 2
 
     if args.package_dir:
-        chosen = args.package_dir
-        if (chosen / "__init__.py").exists():
-            pkg = chosen
-        else:
-            pkg = find_package_dir(chosen, None)
-        if not pkg:
-            print("That folder doesn't look like a package", file=sys.stderr)
+        try:
+            pkg = validate_package_dir(args.package_dir)
+        except ValueError as exc:
+            print(str(exc), file=sys.stderr)
             return 2
         try:
             root = find_project_root(pkg)
