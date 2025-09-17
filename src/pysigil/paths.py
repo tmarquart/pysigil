@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 import os
 from importlib import resources as ilr
 from pathlib import Path
@@ -10,7 +11,7 @@ from platformdirs import (
     user_data_dir as _ud,
 )
 
-from .root import find_project_root
+from .root import ProjectRootNotFoundError, find_project_root
 
 # ---------------------------------------------------------------------------
 # User directories
@@ -34,6 +35,22 @@ def user_cache_dir(app_name: str = "pysigil") -> Path:
 # ---------------------------------------------------------------------------
 # Project directories
 # ---------------------------------------------------------------------------
+def project_dir(package: str) -> Path:
+    """Return the project root directory for an importable *package*."""
+
+    module = importlib.import_module(package)
+    file_attr = getattr(module, "__file__", None)
+    if file_attr is not None:
+        pkg_root = Path(file_attr).resolve().parent
+    else:  # pragma: no cover - namespace package fallback
+        pkg_root = Path(str(ilr.files(package))).resolve()
+    try:
+        root = find_project_root(start=pkg_root)
+    except ProjectRootNotFoundError:
+        root = pkg_root
+    return root.resolve()
+
+
 def project_root(start: str | Path | None = None, **kw) -> Path:
     env = os.getenv("SIGIL_ROOT")
     if env:

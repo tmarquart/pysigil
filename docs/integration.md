@@ -24,12 +24,24 @@ sigil author register --auto  # or `sigil setup` / `sigil register`
 | 4 | (Optional) Expose helpers so callers never touch pysigil APIs | ```python
 # mypkg/__init__.py
 
-from pysigil import helpers_for
+from pysigil import (
+    get_project_directory,
+    get_user_directory,
+    helpers_for,
+)
 
 get_setting, set_setting = helpers_for(__name__)
-__all__ = ["get_setting", "set_setting"]
+ASSETS_DIR = get_project_directory(__name__) / "assets"
+USER_STATE_DIR = get_user_directory(__name__)
 
-``` | • One-line access:<br>`get_setting("db.host")`<br>• Handles env ▶ project ▶ user ▶ defaults without extra code. |
+__all__ = [
+    "get_setting",
+    "set_setting",
+    "ASSETS_DIR",
+    "USER_STATE_DIR",
+]
+
+``` | • One-line access:<br>`get_setting("db.host")`<br>• Handles env ▶ project ▶ user ▶ defaults without extra code.<br>• Shared helpers expose project/user folders for non-setting data. |
 
 Launch authoring tools without starting the main editor:
 
@@ -64,6 +76,11 @@ Zero runtime deps: pysigil is pure std-lib + your INI file.
 That’s it. Add one defaults file, register a dev link, (optionally) four helper
 lines — and your package instantly gains a robust, chain-aware configuration
 system.
+
+Need non-setting assets?  The toolkit helpers now include
+``get_project_directory()`` for locating files bundled with your package (such
+as templates or migrations) and ``get_user_directory()`` for per-user caches or
+exports.  Both accept the same application name you pass to ``helpers_for()``.
 
 ## Custom scopes
 

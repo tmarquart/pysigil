@@ -20,12 +20,20 @@ python -m pysigil --help
 ```
 
 ```python
-from pysigil import helpers_for
+from pysigil import (
+    get_project_directory,
+    get_user_directory,
+    helpers_for,
+)
 
 get_setting, set_setting = helpers_for("pysigil")
+project_root = get_project_directory("pysigil")
+user_data = get_user_directory("pysigil")
 
 get_setting("ui.color")
 set_setting("ui.color", "blue")
+# e.g. load a template shipped with the package
+(project_root / "templates" / "dialog.ui").read_text()
 ```
 
 Once installed, try a few commands:
