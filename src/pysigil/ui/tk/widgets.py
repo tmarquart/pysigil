@@ -153,6 +153,7 @@ class PillButton(tk.Canvas):
         self.configure(width=w)
         self.delete("all")
         palette = get_palette()
+        self.configure(bg=palette["card"])
         card = palette["card"]
         card_edge = palette["card_edge"]
         ink_muted = palette["ink_muted"]

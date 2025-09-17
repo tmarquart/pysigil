@@ -85,9 +85,18 @@ def apply_theme(
         option_add("*activeBackground", colors["primary_hover"])
         option_add("*activeForeground", colors["on_primary"])
         option_add("*highlightColor", colors["gold"])
+        option_add("*TCombobox*Listbox.background", colors["field"])
+        option_add("*TCombobox*Listbox.foreground", colors["ink"])
+        option_add("*TCombobox*Listbox.selectBackground", colors["primary_hover"])
+        option_add("*TCombobox*Listbox.selectForeground", colors["on_primary"])
 
     style.configure("TFrame", background=colors["bg"])
     style.configure("TLabel", background=colors["bg"], foreground=colors["hdr_fg"])
+    style.configure(
+        "Muted.TLabel",
+        background=colors["bg"],
+        foreground=colors["hdr_muted"],
+    )
 
     style.configure(
         "TMenubutton",
@@ -215,6 +224,22 @@ def apply_theme(
         background=colors["card"],
         foreground=colors["ink"],
         font=(None, 12, "bold"),
+    )
+    style.configure("SectionHeader.TFrame", background=colors["bg"])
+    style.configure(
+        "SectionHeader.TLabel",
+        background=colors["bg"],
+        foreground=colors["hdr_fg"],
+        font=(None, 12, "bold"),
+    )
+    style.configure(
+        "SectionHeaderToggle.TLabel",
+        background=colors["bg"],
+        foreground=colors["hdr_muted"],
+    )
+    style.map(
+        "SectionHeaderToggle.TLabel",
+        foreground=[("active", colors["hdr_fg"])],
     )
     style.configure(
         "CardToggle.TLabel",
