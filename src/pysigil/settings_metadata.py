@@ -707,13 +707,13 @@ class IniFileBackend:
         return self.policy.path(scope, provider_id)
 
     def _iter_read_paths(self, provider_id: str) -> Iterable[tuple[str, Path]]:
-        dl = get_dev_link(provider_id)
+        defaults_path, _source = resolve_defaults(provider_id, "settings.ini")
         for scope in reversed(self.policy.precedence(read=True)):
             if scope in {"env", "core"}:
                 continue
             if scope == "default":
-                if dl is not None and dl.defaults_path.is_file():
-                    yield "default", dl.defaults_path
+                if defaults_path is not None:
+                    yield "default", defaults_path
                 continue
             try:
                 yield scope, self.policy.path(scope, provider_id)
