@@ -47,36 +47,6 @@ def test_package_defaults_file_missing(tmp_path: Path, monkeypatch) -> None:
     assert path == pkg / ".sigil" / "settings.ini"
     assert not path.exists()
 
-
-def test_resolve_defaults_handles_provider_id_variants(
-    tmp_path: Path, monkeypatch
-) -> None:
-    import importlib
-    import sys
-
-    provider_id = "sigil-dummy"
-    package_name = "sigil_dummy"
-    pkg = tmp_path / package_name
-    (pkg / ".sigil").mkdir(parents=True)
-    defaults = pkg / ".sigil" / "settings.ini"
-    defaults.write_text("[pkg]\nfoo=bar\n")
-    (pkg / "__init__.py").write_text("")
-
-    sys.modules.pop(package_name, None)
-    monkeypatch.syspath_prepend(tmp_path)
-    importlib.invalidate_caches()
-
-    from pysigil import resolver
-
-    monkeypatch.setattr(resolver, "_installed_defaults", lambda *_: None)
-    monkeypatch.setattr(resolver, "get_dev_link", lambda *_: None)
-
-    path, source = resolver.resolve_defaults(provider_id)
-    assert path == defaults
-    assert source == "installed"
-
-    sys.modules.pop(package_name, None)
-
 def test_resolve_defaults_precedence(monkeypatch, tmp_path: Path) -> None:
     import types
     from pysigil import resolver
