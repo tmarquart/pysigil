@@ -36,10 +36,10 @@ class EditorWidget(Protocol):
 def _simple_entry(master) -> EditorWidget:
     if tk is None or ttk is None:  # pragma: no cover - tkinter missing
         raise RuntimeError("tkinter is required for widgets")
-    frame = ttk.Frame(master)
+    frame = ttk.Frame(master, style="CardBody.TFrame")
     entry = ttk.Entry(frame)
     entry.pack(side="left", fill="x", expand=True)
-    badge = ttk.Label(frame, text="")
+    badge = ttk.Label(frame, text="", style="CardMuted.TLabel")
     badge.pack(side="left", padx=4)
 
     def get_value() -> object | None:
@@ -70,14 +70,14 @@ def _simple_entry(master) -> EditorWidget:
 def _boolean_tristate(master) -> EditorWidget:
     if tk is None or ttk is None:  # pragma: no cover - tkinter missing
         raise RuntimeError("tkinter is required for widgets")
-    frame = ttk.Frame(master)
+    frame = ttk.Frame(master, style="CardBody.TFrame")
     var = tk.StringVar(value="unset")
-    btns = ttk.Frame(frame)
+    btns = ttk.Frame(frame, style="CardBody.TFrame")
     btns.pack(side="left")
-    ttk.Radiobutton(btns, text="True", variable=var, value="true").pack(side="left")
-    ttk.Radiobutton(btns, text="False", variable=var, value="false").pack(side="left")
-    ttk.Radiobutton(btns, text="Unset", variable=var, value="unset").pack(side="left")
-    badge = ttk.Label(frame, text="")
+    ttk.Radiobutton(btns, text="True", variable=var, value="true", style="Card.TRadiobutton").pack(side="left")
+    ttk.Radiobutton(btns, text="False", variable=var, value="false", style="Card.TRadiobutton").pack(side="left")
+    ttk.Radiobutton(btns, text="Unset", variable=var, value="unset", style="Card.TRadiobutton").pack(side="left")
+    badge = ttk.Label(frame, text="", style="CardMuted.TLabel")
     badge.pack(side="left", padx=4)
 
     def get_value() -> object | None:

@@ -160,6 +160,21 @@ def apply_theme(
     )
 
     style.configure(
+        "Card.TRadiobutton",
+        background=colors["card"],
+        foreground=colors["ink"],
+        indicatorcolor=colors["card_edge"],
+        focusthickness=1,
+        focuscolor=colors["primary"],
+    )
+    style.map(
+        "Card.TRadiobutton",
+        foreground=[("disabled", colors["ink_muted"]), ("active", colors["ink"])],
+        indicatorcolor=[("selected", colors["primary"]), ("!selected", colors["card_edge"])],
+        background=[("active", colors["card_edge"])],
+    )
+
+    style.configure(
         "TRadiobutton",
         background=colors["bg"],
         foreground=colors["hdr_muted"],
