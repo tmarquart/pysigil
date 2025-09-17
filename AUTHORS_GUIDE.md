@@ -19,6 +19,12 @@ We use your **PEP 503 normalized** distribution name as the provider id (lowerca
 * `My_Package.Name` → `my-package-name`
 * `awesome.pkg` → `awesome-pkg`
 
+At runtime Sigil probes importable module names derived from that provider id,
+so a provider like `my-package` automatically checks `my_package`, `mypackage`,
+and each component (`my`, `package`).  Keep your top-level package import name
+aligned with one of those forms and Sigil will locate `.sigil/settings.ini`
+without additional metadata.
+
 ## Automatic detection
 
 Sigil can auto-detect your package from the current directory using

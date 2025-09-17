@@ -57,12 +57,24 @@ def package_defaults_file(
     file is considered read-only and should not be modified at runtime.
     """
 
-    try:
-        pkg_root = resources.files(package)
-    except ModuleNotFoundError:  # pragma: no cover - defensive
-        return None
-    candidate = pkg_root / ".sigil" / filename
-    return Path(candidate).resolve()
+    candidates = [package, *_candidate_module_names(package)]
+    seen: set[str] = set()
+    fallback: Path | None = None
+    for cand in candidates:
+        if not cand or cand in seen:
+            continue
+        seen.add(cand)
+        try:
+            pkg_root = resources.files(cand)
+        except ModuleNotFoundError:  # pragma: no cover - defensive
+            continue
+        candidate = pkg_root / ".sigil" / filename
+        path = Path(candidate).resolve()
+        if path.exists():
+            return path
+        if fallback is None:
+            fallback = path
+    return fallback
 
 
 def _installed_defaults(provider_id: str, filename: str = DEFAULT_FILENAME) -> Path | None:
