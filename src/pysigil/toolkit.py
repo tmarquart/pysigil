@@ -48,6 +48,7 @@ def _normalise_app_name(app_name: str) -> str:
 
 
 def get_project_directory(
+
     *, start: str | Path | None = None, **kwargs: Any
 ) -> Path:
     """Return the shared project data directory.
@@ -58,6 +59,7 @@ def get_project_directory(
     """
 
     path = project_data_dir(start=start, **kwargs).resolve()
+
     path.mkdir(parents=True, exist_ok=True)
     return path
 

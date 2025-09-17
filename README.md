@@ -24,6 +24,7 @@ from pysigil import get_project_directory, get_user_directory, helpers_for
 
 get_setting, set_setting = helpers_for("pysigil")
 project_assets = get_project_directory()
+
 user_assets = get_user_directory("pysigil")
 
 get_setting("ui.color")

@@ -31,11 +31,13 @@ from pysigil import (
 )
 
 get_setting, set_setting = helpers_for(__name__)
+
 PROJECT_DATA = get_project_directory()
 USER_DATA = get_user_directory(__name__)
 __all__ = ["get_setting", "set_setting", "PROJECT_DATA", "USER_DATA"]
 
 ``` | • One-line access:<br>`get_setting("db.host")`<br>• Handles env ▶ project ▶ user ▶ defaults without extra code.<br>• Ready-to-use storage roots for data files. |
+
 
 Launch authoring tools without starting the main editor:
 
@@ -58,6 +60,7 @@ No boiler-plate: call `get_setting()` / `set_setting()` from anywhere in your co
 
 Need to ship additional assets (templates, caches, exports)?  Use
 `get_project_directory()` for project-scoped data and `get_user_directory()` for
+
 per-user storage.  The project helper returns the shared ``.sigil/data``
 directory for your workspace.  Combine it with
 ``pysigil.discovery.pep503_name(__name__)`` if you want a dedicated folder per
@@ -71,6 +74,7 @@ from pysigil.discovery import pep503_name
 get_setting, set_setting = helpers_for(__name__)
 shared_root = get_project_directory()
 shared_assets = shared_root / pep503_name(__name__) / "templates"
+
 user_exports = get_user_directory(__name__) / "exports"
 ```
 
