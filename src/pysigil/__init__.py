@@ -1,7 +1,7 @@
 from .core import Sigil, SigilError
 from .merge_policy import parse_key
 from .policy import policy
-from .toolkit import helpers_for
+from .toolkit import get_project_directory, get_user_directory, helpers_for
 
 
 # Toggle visibility of machine-specific scopes in the UI.  When ``False``
@@ -15,6 +15,7 @@ __all__ = [
     "parse_key",
     "policy",
     "helpers_for",
+    "get_project_directory",
+    "get_user_directory",
     "show_machine_scope",
-
 ]
