@@ -35,7 +35,7 @@ class OptionsForm(ttk.Frame):
     def __init__(self, master, field_type: str | FieldType) -> None:
         if tk is None or ttk is None:  # pragma: no cover - tkinter missing
             raise RuntimeError("tkinter is required for OptionsForm")
-        super().__init__(master)
+        super().__init__(master, style="CardBody.TFrame")
         self._ft = TYPE_REGISTRY[field_type] if isinstance(field_type, str) else field_type
         self._option_model = self._ft.option_model
         self._widgets: dict[str, EditorWidget] = {}
@@ -58,7 +58,7 @@ class OptionsForm(ttk.Frame):
             if ft.value_widget is None:
                 raise TypeError(f"no widget for option field type {key}")
             widget = ft.value_widget(self)  # type: ignore[assignment]
-            label = ttk.Label(self, text=f.name.replace("_", " "))
+            label = ttk.Label(self, text=f.name.replace("_", " "), style="Card.TLabel")
             label.grid(row=row, column=0, sticky="w", padx=4, pady=2)
             widget.grid(row=row, column=1, sticky="ew", padx=4, pady=2)
             self._widgets[f.name] = widget

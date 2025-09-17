@@ -172,8 +172,8 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         self.geometry("800x600")
         ttk.Label(self, textvariable=self._info_var).pack(anchor="w", padx=6, pady=6)
         pw = ttk.PanedWindow(self, orient="horizontal")
-        self._left = ttk.Frame(pw, style="CardBody.TFrame")
-        self._right = ttk.Frame(pw, style="CardBody.TFrame")
+        self._left = ttk.Frame(pw, style="TFrame")
+        self._right = ttk.Frame(pw, style="TFrame")
         pw.add(self._left, weight=1)
         pw.add(self._right, weight=3)
         pw.pack(fill="both", expand=True)
@@ -193,7 +193,7 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         self._tree.bind("<<TreeviewOpen>>", self._on_tree_open)
 
         # -- right: placeholder frame for form -----------------------------------
-        self._form = ttk.Frame(self._right, style="CardBody.TFrame")
+        self._form = ttk.Frame(self._right, style="TFrame")
         self._form.pack(fill="both", expand=True, padx=6, pady=6)
 
     # ------------------------------------------------------------------
