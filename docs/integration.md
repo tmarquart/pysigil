@@ -24,18 +24,12 @@ sigil author register --auto  # or `sigil setup` / `sigil register`
 | 4 | (Optional) Expose helpers so callers never touch pysigil APIs | ```python
 # mypkg/__init__.py
 
-from pysigil import (
-    get_project_directory,
-    get_user_directory,
-    helpers_for,
-)
+from pysigil import helpers_for
 
 get_setting, set_setting = helpers_for(__name__)
-PROJECT_DATA = get_project_directory(__name__)
-USER_DATA = get_user_directory(__name__)
-__all__ = ["get_setting", "set_setting", "PROJECT_DATA", "USER_DATA"]
+__all__ = ["get_setting", "set_setting"]
 
-``` | • One-line access:<br>`get_setting("db.host")`<br>• Handles env ▶ project ▶ user ▶ defaults without extra code.<br>• Ready-to-use app-specific folders for data files. |
+``` | • One-line access:<br>`get_setting("db.host")`<br>• Handles env ▶ project ▶ user ▶ defaults without extra code. |
 
 Launch authoring tools without starting the main editor:
 
@@ -55,20 +49,6 @@ If you don't need that separation simply ignore it—`pysigil` works fine withou
 the extra file.
 
 No boiler-plate: call `get_setting()` / `set_setting()` from anywhere in your code.
-
-Need to ship additional assets (templates, caches, exports)?  Use
-`get_project_directory()` for project-scoped data and `get_user_directory()` for
-per-user storage.  Both functions create the directories on demand and normalise
-the application name so that ``mypkg`` and ``My-Pkg`` stay in sync with the
-settings helpers:
-
-```python
-from pysigil import get_project_directory, get_user_directory, helpers_for
-
-get_setting, set_setting = helpers_for(__name__)
-shared_assets = get_project_directory(__name__) / "templates"
-user_exports = get_user_directory(__name__) / "exports"
-```
 
 User tooling already works:
 
