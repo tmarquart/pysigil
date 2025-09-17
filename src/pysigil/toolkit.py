@@ -48,21 +48,18 @@ def _normalise_app_name(app_name: str) -> str:
 
 
 def get_project_directory(
-    app_name: str,
-    /,
-    *,
-    start: str | Path | None = None,
-    **kwargs: Any,
-) -> Path:
-    """Return the project data directory for ``app_name``.
 
-    The directory lives under ``<project-root>/.sigil/data/<app-name>`` and is
-    created if necessary. ``start`` and ``**kwargs`` are forwarded to
+    *, start: str | Path | None = None, **kwargs: Any
+) -> Path:
+    """Return the shared project data directory.
+
+    The directory lives under ``<project-root>/.sigil/data`` and is created if
+    necessary. ``start`` and ``**kwargs`` are forwarded to
     :func:`pysigil.paths.project_data_dir` for custom root resolution.
     """
 
-    app = _normalise_app_name(app_name)
-    path = (project_data_dir(start=start, **kwargs) / app).resolve()
+    path = project_data_dir(start=start, **kwargs).resolve()
+
     path.mkdir(parents=True, exist_ok=True)
     return path
 
