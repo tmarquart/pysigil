@@ -42,9 +42,7 @@ def test_helpers_environment_scope(monkeypatch, tmp_path: Path) -> None:
     assert get_setting("section.value") is None
 
 
-
-def test_directory_helpers_return_expected_paths(
-
+def test_directory_helpers_return_app_specific_paths(
     monkeypatch, tmp_path: Path
 ) -> None:
     monkeypatch.setenv("SIGIL_ROOT", str(tmp_path / "project"))
@@ -54,15 +52,14 @@ def test_directory_helpers_return_expected_paths(
     app_name = "Demo_App"
     expected = pep503_name(app_name)
 
-    project_dir = get_project_directory()
-
+    project_dir = get_project_directory(app_name)
     user_dir = get_user_directory(app_name)
 
     assert project_dir.is_absolute()
     assert user_dir.is_absolute()
 
-    assert project_dir == (tmp_path / "project" / ".sigil" / "data").resolve()
-
+    assert project_dir.name == expected
+    assert project_dir.parent == (tmp_path / "project" / ".sigil" / "data").resolve()
     assert project_dir.is_dir()
 
     assert user_dir.name == expected
