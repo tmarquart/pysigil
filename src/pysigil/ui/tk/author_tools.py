@@ -108,7 +108,7 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
             foreground=[("selected", palette["on_primary"])],
         )
         style.configure(
-            "TLabelframe",
+            "AuthorTools.TLabelframe",
             background=palette["card"],
             bordercolor=palette["card_edge"],
             borderwidth=1,
@@ -116,10 +116,11 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
             foreground=palette["ink"],
         )
         style.configure(
-            "TLabelframe.Label",
-            background=palette["card"],
-            foreground=palette["ink_muted"],
+            "AuthorTools.TLabelframe.Label",
+            background=palette["bg"],
+            foreground=palette["hdr_fg"],
             font=(None, 10, "bold"),
+            padding=(6, 0, 6, 0),
         )
 
         style.configure(
@@ -527,6 +528,14 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
                     self._options_widget.set_values(options)
                 except Exception:
                     pass
+        has_options = self._options_widget is not None and bool(self._opts_frame.winfo_children())
+        if has_options:
+            if not self._opts_frame.winfo_manager():
+                pack_opts = getattr(self, "_opts_pack", {"fill": "x", "pady": (0, 6)})
+                self._opts_frame.pack(**pack_opts)
+        else:
+            if self._opts_frame.winfo_manager():
+                self._opts_frame.pack_forget()
         # Default editor
         if field_type.value_widget is not None:
             widget = field_type.value_widget(self._default_frame)  # type: ignore[assignment]
@@ -537,6 +546,14 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
                     widget.set_value(default)  # type: ignore[attr-defined]
                 except Exception:
                     pass
+        has_default = self._value_widget is not None and bool(self._default_frame.winfo_children())
+        if has_default:
+            if not self._default_frame.winfo_manager():
+                pack_opts = getattr(self, "_default_pack", {"fill": "x", "pady": (0, 6)})
+                self._default_frame.pack(**pack_opts)
+        else:
+            if self._default_frame.winfo_manager():
+                self._default_frame.pack_forget()
 
     # ------------------------------------------------------------------
     def _on_type_change(self, _event: object | None = None) -> None:
@@ -617,7 +634,14 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         palette = get_palette()
 
         # Identity -------------------------------------------------------
-        ident = ttk.LabelFrame(self._form, text=" Identity ", padding=(12,8,12,12)) #
+        lf_style = "AuthorTools.TLabelframe"
+
+        ident = ttk.LabelFrame(
+            self._form,
+            text=" Identity ",
+            padding=(12, 8, 12, 12),
+            style=lf_style,
+        )
         ident.pack(fill="x", pady=(0, 6))
         self._key_var = tk.StringVar(value=info.key)
         ttk.Label(ident, text="Key: ", style="Card.TLabel").grid(row=0, column=0, sticky="w")
@@ -628,7 +652,12 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         ident.columnconfigure(1, weight=1)
 
         # Descriptions ---------------------------------------------------
-        desc_fr = ttk.LabelFrame(self._form, text=" Descriptions ", padding=(12,8,12,12))
+        desc_fr = ttk.LabelFrame(
+            self._form,
+            text=" Descriptions ",
+            padding=(12, 8, 12, 12),
+            style=lf_style,
+        )
         desc_fr.pack(fill="x", pady=(0, 6))
         self._desc_short_var = tk.StringVar(value=info.description_short or "")
         ttk.Label(desc_fr, text="Short: ", style="Card.TLabel").grid(row=0, column=0, sticky="w")
@@ -665,7 +694,12 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
             self._desc_text.insert("1.0", info.description)
 
         # Type -----------------------------------------------------------
-        type_fr = ttk.LabelFrame(self._form, text=" Type ", padding=(12,8,12,12))
+        type_fr = ttk.LabelFrame(
+            self._form,
+            text=" Type ",
+            padding=(12, 8, 12, 12),
+            style=lf_style,
+        )
         type_fr.pack(fill="x", pady=(0, 6))
         self._type_var = tk.StringVar(value=info.type)
         ttk.Label(type_fr, text="Type: ", style="Card.TLabel").grid(row=0, column=0, sticky="w")
@@ -679,15 +713,32 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         type_combo.bind("<<ComboboxSelected>>", self._on_type_change)
         type_fr.columnconfigure(1, weight=1)
 
-        self._opts_frame = ttk.LabelFrame(self._form, text=" Type Options ", padding=(12,8,12,12))
-        self._opts_frame.pack(fill="x", pady=(0, 6))
-        self._default_frame = ttk.LabelFrame(self._form, text=" Default ", padding=(12,8,12,12))
-        self._default_frame.pack(fill="x", pady=(0, 6))
+        self._opts_frame = ttk.LabelFrame(
+            self._form,
+            text=" Type Options ",
+            padding=(12, 8, 12, 12),
+            style=lf_style,
+        )
+        self._opts_pack = {"fill": "x", "pady": (0, 6)}
+        self._opts_frame.pack(**self._opts_pack)
+        self._default_frame = ttk.LabelFrame(
+            self._form,
+            text=" Default ",
+            padding=(12, 8, 12, 12),
+            style=lf_style,
+        )
+        self._default_pack = {"fill": "x", "pady": (0, 6)}
+        self._default_frame.pack(**self._default_pack)
         ft = TYPE_REGISTRY.get(info.type)
         self._build_type_section(ft, default, info.options)
 
         # Grouping ------------------------------------------------------
-        group_fr = ttk.LabelFrame(self._form, text=" Grouping ", padding=(12,8,12,12))
+        group_fr = ttk.LabelFrame(
+            self._form,
+            text=" Grouping ",
+            padding=(12, 8, 12, 12),
+            style=lf_style,
+        )
         group_fr.pack(fill="x", pady=(0, 6))
         self._section_var = tk.StringVar(value=info.section or "")
         ttk.Label(group_fr, text="Section: ", style="Card.TLabel").grid(row=0, column=0, sticky="w")
@@ -700,7 +751,7 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         group_fr.columnconfigure(1, weight=1)
 
         # Actions --------------------------------------------------------
-        actions = ttk.Frame(self._form, style="CardBody.TFrame")
+        actions = ttk.Frame(self._form, style="TFrame")
         actions.pack(fill="x", pady=(0, 6))
         ttk.Button(actions, text="Save", command=self._on_save).pack(side="right")
         ttk.Button(actions, text="Revert", command=self._on_revert).pack(side="right")
@@ -718,7 +769,7 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
             style="Toolbutton",
         )
         toggle.pack(anchor="w")
-        self._diff_frame = ttk.Frame(self._form, style="CardBody.TFrame")
+        self._diff_frame = ttk.Frame(self._form, style="TFrame")
         self._diff_text = tk.Text(
             self._diff_frame,
             height=6,
