@@ -1,9 +1,9 @@
-from __future__ import annotations
-
 """Toolkit-agnostic theme management for tkinter UIs."""
 
+from __future__ import annotations
+
+from collections.abc import Mapping, MutableMapping
 from dataclasses import dataclass
-from typing import Mapping, MutableMapping
 
 try:  # pragma: no cover - importing tkinter is environment dependent
     import tkinter as tk
@@ -21,7 +21,7 @@ class ThemeSpec:
     ttk_theme: str
     palette: Mapping[str, object]
 
-    def with_palette(self, palette: Mapping[str, object]) -> "ThemeSpec":
+    def with_palette(self, palette: Mapping[str, object]) -> ThemeSpec:
         """Return a copy of the theme using *palette* instead of the default."""
 
         return ThemeSpec(name=self.name, ttk_theme=self.ttk_theme, palette=palette)

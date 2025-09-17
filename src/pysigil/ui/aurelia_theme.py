@@ -1,8 +1,15 @@
-from __future__ import annotations
-
 """Aurelia ttk theme palette definitions."""
 
-from typing import Mapping
+from __future__ import annotations
+
+from collections.abc import Mapping
+
+from .theme import (
+    ThemeSpec,
+    apply_theme,
+    get_active_palette,
+    register_scope_styles as _register_scope_styles,
+)
 
 try:  # pragma: no cover - importing tkinter is environment dependent
     import tkinter as tk
@@ -10,8 +17,6 @@ try:  # pragma: no cover - importing tkinter is environment dependent
 except Exception:  # pragma: no cover - fallback when tkinter missing
     tk = None  # type: ignore
     ttk = None  # type: ignore
-
-from .theme import ThemeSpec, apply_theme, get_active_palette, register_scope_styles as _register_scope_styles
 
 _AURELIA_PALETTE: dict[str, object] = {
     "bg": "#2B313B",
