@@ -2,7 +2,7 @@ from .core import Sigil, SigilError
 from .merge_policy import parse_key
 from .policy import policy
 from .toolkit import get_project_directory, get_user_directory, helpers_for
-
+from .root import find_project_root
 
 # Toggle visibility of machine-specific scopes in the UI.  When ``False``
 # machine scopes such as ``user-local`` and ``project-local`` are hidden.
