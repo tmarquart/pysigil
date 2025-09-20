@@ -81,8 +81,6 @@ def test_edit_field_type_change_convert_failure(tmp_path: Path) -> None:
     assert spec.fields[0].type == "string"
     eff = orch.get_effective("pkg")
     assert eff["num"].value == "forty-two"
-
-
 def test_delete_field_removes_values(tmp_path: Path) -> None:
     orch = _make_orch(tmp_path)
     orch.register_provider("pkg")

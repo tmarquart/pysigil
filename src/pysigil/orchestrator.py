@@ -47,6 +47,7 @@ class AuthorContext:
     mode: Literal["bootstrap", "edit"]
     spec: ProviderSpec | None = None
 
+
 # ---------------------------------------------------------------------------
 # orchestrator implementation
 # ---------------------------------------------------------------------------
@@ -293,12 +294,21 @@ class Orchestrator:
             new_raw = raw
             if nt != old_field.type:
                 if on_type_change == "convert":
+                    new_field = fields[index]
                     adapter = TYPE_REGISTRY[nt].adapter
                     try:
                         value = adapter.parse(raw)
-                        new_raw = adapter.serialize(value)
                     except Exception as exc:
                         raise ValidationError(str(exc)) from exc
+
+                    if value is None:
+                        new_raw = None
+                    else:
+                        try:
+                            adapter.validate(value, new_field)
+                        except Exception as exc:
+                            raise ValidationError(str(exc)) from exc
+                        new_raw = adapter.serialize(value)
                 elif on_type_change == "clear":
                     new_raw = None
             if nk != key:
