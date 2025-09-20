@@ -11,6 +11,7 @@ import pysigil.ui.tk.rows as tk_rows
 from pysigil.ui.tk.rows import FieldRow
 from pysigil.ui.tk.widgets import PillButton
 from pysigil.ui.provider_adapter import ValueInfo
+from pysigil.ui.aurelia_theme import SCOPE_COLORS
 
 
 class DummyAdapter:
@@ -208,7 +209,7 @@ def test_field_row_default_effective():
     pill = pills[0]
     assert pill.text == "Default"
     assert pill.state == "effective"
-    assert pill.color == "#000000"
+    assert pill.color == SCOPE_COLORS["Def"]
     assert pill.locked
     root.destroy()
 
