@@ -99,8 +99,23 @@ class OptionsForm(ttk.Frame):
         if value is None:
             return None
         ft = TYPE_REGISTRY[key]
-        serialized = ft.adapter.serialize(value)
-        return ft.adapter.parse(serialized) if key == "boolean" else serialized
+        if isinstance(value, str):
+            if key == "boolean":
+                try:
+                    return ft.adapter.parse(value)
+                except Exception:
+                    return value
+            return value
+        try:
+            serialized = ft.adapter.serialize(value)
+        except Exception:
+            return value
+        if key == "boolean":
+            try:
+                return ft.adapter.parse(serialized)
+            except Exception:
+                return serialized
+        return serialized
 
     # ------------------------------------------------------------------
     def get_values(self) -> dict[str, Any]:
