@@ -131,6 +131,25 @@ def apply_theme(
     )
 
     style.configure(
+        "Accent.TButton",
+        background=colors["gold"],
+        foreground=colors["ink"],
+        bordercolor=colors["gold"],
+        borderwidth=1,
+        relief="solid",
+    )
+    style.map(
+        "Accent.TButton",
+        background=[
+            ("disabled", colors["card_edge"]),
+            ("pressed", colors["gold_hi"]),
+            ("active", colors["gold_hi"]),
+        ],
+        foreground=[("disabled", colors["ink_muted"])],
+        bordercolor=[("disabled", colors["card_edge"])],
+    )
+
+    style.configure(
         "TCheckbutton",
         background=colors["bg"],
         foreground=colors["hdr_muted"],
