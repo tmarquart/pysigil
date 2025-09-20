@@ -142,6 +142,7 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         self._default_frame = None
         self._default_container = None
         self._default_pack: dict[str, Any] = {"fill": "x", "pady": (0, 6)}
+        self._actions: ttk.Frame | None = None
         # Undiscovered fields are loaded on demand
         self._undiscovered_loaded = False
         self._dirty_tabs: dict[str, bool] = {"fields": False, "defaults": False, "untracked": False}
@@ -199,10 +200,13 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         form_shell = ttk.Frame(self._right, style="TFrame")
         form_shell.pack(fill="both", expand=True, padx=6, pady=6)
 
-        canvas = tk.Canvas(form_shell, bg=palette["bg"], highlightthickness=0, bd=0)
+        scroll_container = ttk.Frame(form_shell, style="TFrame")
+        scroll_container.pack(fill="both", expand=True)
+
+        canvas = tk.Canvas(scroll_container, bg=palette["bg"], highlightthickness=0, bd=0)
         canvas.pack(side="left", fill="both", expand=True)
 
-        scroll = ttk.Scrollbar(form_shell, orient="vertical", command=canvas.yview)
+        scroll = ttk.Scrollbar(scroll_container, orient="vertical", command=canvas.yview)
         scroll.pack(side="right", fill="y")
         canvas.configure(yscrollcommand=scroll.set)
 
@@ -213,6 +217,9 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         canvas.bind("<Configure>", self._on_form_canvas_configure)
         canvas.bind("<Enter>", self._on_form_mouse_enter)
         canvas.bind("<Leave>", self._on_form_mouse_leave)
+
+        self._actions = ttk.Frame(form_shell, style="TFrame")
+        self._actions.pack(fill="x")
 
     # ------------------------------------------------------------------
     def _on_form_canvas_configure(self, event: tk.Event | None = None) -> None:
@@ -494,6 +501,9 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         self._clear_dirty_watchers()
         for child in self._form.winfo_children():
             child.destroy()
+        if self._actions is not None:
+            for child in self._actions.winfo_children():
+                child.destroy()
         if self._form_canvas is not None:
             self._form_canvas.yview_moveto(0)
             self._on_form_canvas_configure()
@@ -842,8 +852,9 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         group_fr.columnconfigure(1, weight=1)
 
         # Actions --------------------------------------------------------
-        actions = ttk.Frame(self._form, style="TFrame")
-        actions.pack(fill="x", pady=(0, 6))
+        actions_parent = self._actions or self._form
+        actions = ttk.Frame(actions_parent, style="TFrame")
+        actions.pack(fill="x", pady=(6, 6))
         ttk.Button(actions, text="Save", command=self._on_save).pack(side="right")
         ttk.Button(actions, text="Revert", command=self._on_revert).pack(side="right")
         ttk.Button(actions, text="Delete", command=self._on_delete).pack(side="right")
