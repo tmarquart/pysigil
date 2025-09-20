@@ -10,7 +10,10 @@ include = ["pysigil*"]
 "" = "src"
 
 [tool.setuptools.package-data]
-"*" = [".sigil/settings.ini"]
+"*" = [
+  ".sigil/settings.ini",
+  "ui/static/*.html",
+]
 
 [project]
 name = "pysigil"
