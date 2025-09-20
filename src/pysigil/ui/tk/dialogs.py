@@ -61,6 +61,11 @@ class EditDialog(tk.Toplevel):  # type: ignore[misc]
         ttk.Label(self, text=key, style="Muted.TLabel").pack(
             anchor="w", padx=18, pady=(0, 6)
         )
+        field_type = getattr(info, "type", None)
+        if field_type:
+            ttk.Label(self, text=f"Type: {field_type}", style="Muted.TLabel").pack(
+                anchor="w", padx=18, pady=(0, 12)
+            )
         body = ttk.Frame(self, padding=12, style="Card.TFrame")
         body.pack(fill="both", expand=True, padx=18, pady=(0, 12))
 

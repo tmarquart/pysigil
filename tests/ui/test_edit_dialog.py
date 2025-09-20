@@ -73,6 +73,7 @@ def test_edit_dialog_default_readonly():
     pill = body.grid_slaves(row=row, column=0)[0]
     assert isinstance(pill, PillButton)
     assert adapter.scope_description("default") in pill._tip_text()
+    assert "Type: string" not in pill._tip_text()
     dlg.destroy()
     root.destroy()
 
@@ -90,6 +91,7 @@ def test_edit_dialog_shows_metadata():
     texts = [w.cget("text") for w in children if isinstance(w, ttk.Label)]
     assert "Alpha Label" in texts
     assert "alpha" in texts
+    assert "Type: string" in texts
     body = next(w for w in children if isinstance(w, ttk.Frame))
     body_texts = [w.cget("text") for w in body.winfo_children() if isinstance(w, ttk.Label)]
     assert "Short description" in body_texts
