@@ -123,6 +123,7 @@ class FieldRow(tk.Frame):
         self.lbl_eff.grid(row=0, column=1, sticky="new", padx=(8, 8), pady=(6, 0))
         self._eff_fg_normal = ink
         self._eff_fg_error = "#b91c1c"
+        self._value_pad: int | None = None
 
         # container for scope pills
         self.pills = ttk.Frame(self, style="CardBody.TFrame")
@@ -249,10 +250,15 @@ class FieldRow(tk.Frame):
             self.update_idletasks()
             btn_h = self.btn_edit.winfo_height()
             lbl_h = self.lbl_eff.winfo_height()
-            diff = btn_h - lbl_h
-            if diff > 0:
-                pad = (diff+1) // 5
-                self.lbl_eff.configure(pady=pad)
+            if btn_h <= 0 or lbl_h <= 0:
+                return
+            if self._value_pad is None:
+                diff = btn_h - lbl_h
+                pad = (diff + 1) // 5 if diff > 0 else 0
+                if pad < 0:
+                    pad = 0
+                self._value_pad = pad
+            self.lbl_eff.configure(pady=self._value_pad)
         except Exception:
             pass
 

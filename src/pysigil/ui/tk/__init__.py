@@ -95,6 +95,7 @@ class App:
         if tk is None:  # pragma: no cover - environment without tkinter
             raise RuntimeError("tkinter is required for App")
 
+        owns_root = master is None
         self.root = master if master is not None else tk.Tk()
         self.adapter = adapter or ProviderAdapter(author_mode=author_mode)
         self.events = events or EventBus()
@@ -114,6 +115,10 @@ class App:
         self._rows_scrollbar: ttk.Scrollbar | None = None
         self._rows_window: int | None = None
         self._mousewheel_bound = False
+
+        if owns_root:
+            self.root.geometry("1200x760")
+            self.root.minsize(960, 640)
 
         use(self.root)
         self.palette = get_palette()
