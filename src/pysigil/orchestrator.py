@@ -298,17 +298,28 @@ class Orchestrator:
                     adapter = TYPE_REGISTRY[nt].adapter
                     try:
                         value = adapter.parse(raw)
-                    except Exception as exc:
-                        raise ValidationError(str(exc)) from exc
-
-                    if value is None:
-                        new_raw = None
+                    except (TypeError, ValueError):
+                        # Preserve the raw value when conversion fails; the
+                        # error will surface when reading the configuration.
+                        pass
                     else:
-                        try:
-                            adapter.validate(value, new_field)
-                        except Exception as exc:
-                            raise ValidationError(str(exc)) from exc
-                        new_raw = adapter.serialize(value)
+                        if value is None:
+                            new_raw = None
+                        else:
+                            try:
+                                adapter.validate(value, new_field)
+                            except (TypeError, ValueError):
+                                # Leave the stored raw value untouched when
+                                # validation against the new schema fails.
+                                pass
+                            else:
+                                try:
+                                    new_raw = adapter.serialize(value)
+                                except (TypeError, ValueError):
+                                    # Preserve the original raw text if the new
+                                    # adapter cannot serialise the converted
+                                    # value.
+                                    pass
                 elif on_type_change == "clear":
                     new_raw = None
             if nk != key:

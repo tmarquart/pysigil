@@ -302,6 +302,7 @@ class FieldValue:
         "env",
     ] | None = None
     raw: str | None = None
+    error: str | None = None
 
 ##########################
 ###### PROVIDER SPEC #####
@@ -852,9 +853,18 @@ class ProviderManager:
         for field in self.spec.fields:
             raw = raw_map.get(field.key)
             adapter = TYPE_REGISTRY[field.type].adapter
-            value = adapter.parse(raw)
+            try:
+                value = adapter.parse(raw)
+            except (TypeError, ValueError) as exc:
+                value = None
+                error = str(exc)
+            else:
+                error = None
             result[field.key] = FieldValue(
-                value=value, source=source_map.get(field.key), raw=raw
+                value=value,
+                source=source_map.get(field.key),
+                raw=raw,
+                error=error,
             )
         return result
 
@@ -870,8 +880,19 @@ class ProviderManager:
                     per_scope[scope] = None
                 else:
                     adapter = TYPE_REGISTRY[field.type].adapter
-                    value = adapter.parse(raw)
-                    per_scope[scope] = FieldValue(value=value, source=scope, raw=raw)
+                    try:
+                        value = adapter.parse(raw)
+                    except (TypeError, ValueError) as exc:
+                        value = None
+                        error = str(exc)
+                    else:
+                        error = None
+                    per_scope[scope] = FieldValue(
+                        value=value,
+                        source=scope,
+                        raw=raw,
+                        error=error,
+                    )
             result[field.key] = per_scope
         return result
 

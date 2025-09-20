@@ -142,7 +142,7 @@ class ProviderAdapter:
         for scope, val in per_scope.items():
             if val is None:
                 continue
-            result[scope] = ValueInfo(value=val.value, error=None)
+            result[scope] = ValueInfo(value=val.value, error=val.error)
         return result
 
     def effective_for_key(self, key: str) -> Tuple[Any | None, str | None]:
