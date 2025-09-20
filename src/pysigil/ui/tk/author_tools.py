@@ -578,10 +578,16 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         if info is not None:
             default_info = self.adapter.default_for_key(key)
             if default_info is not None:
-                if default_info.error and default_info.raw is not None:
-                    default = default_info.raw
+                has_error = hasattr(default_info, "error")
+                raw = getattr(default_info, "raw", None)
+                if has_error and getattr(default_info, "error", None) and raw is not None:
+                    default = raw
+                elif hasattr(default_info, "value"):
+                    default = getattr(default_info, "value")
+                elif raw is not None:
+                    default = raw
                 else:
-                    default = default_info.value
+                    default = default_info
         else:
             und = {u.key: u for u in self.adapter.list_undiscovered()}
             uinfo = und.get(key)
