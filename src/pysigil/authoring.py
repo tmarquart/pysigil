@@ -198,12 +198,24 @@ def ensure_sigil_package_data(project_root: Path, package: str) -> None:
     st = tool.setdefault("setuptools", tomlkit.table())
     pd = st.setdefault("package-data", tomlkit.table())
 
+    changed = False
     arr = pd.get(package)
-    desired = [".sigil/*"]
-    current = [str(x) for x in arr] if arr is not None else None
-    if current != desired:
-        new_arr = tomlkit.array().multiline(True)
-        for item in desired:
-            new_arr.append(item)
+
+    if not isinstance(arr, tomlkit.items.Array):
+        new_arr = tomlkit.array()
+        new_arr.multiline(False)
+        if arr is not None:
+            new_arr.append(getattr(arr, "value", arr))
         pd[package] = new_arr
+        arr = new_arr
+        changed = True
+
+    existing = set()
+    for item in arr:
+        existing.add(getattr(item, "value", item))
+    if ".sigil/*" not in existing:
+        arr.append(".sigil/*")
+        changed = True
+
+    if changed:
         ppt.write_text(tomlkit.dumps(doc), encoding="utf-8")
