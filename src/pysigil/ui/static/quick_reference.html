@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>pysigil GUI Quick Reference</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              aurora: {
+                surface: '#2B313B',
+                card: '#EEF3FA',
+                edge: '#D4DEEE',
+                ink: '#0E1724',
+                inkMuted: '#586A84',
+                gold: '#D4B76A',
+                goldHi: '#f1d48e',
+                primary: '#365DC6',
+                primaryHover: '#587BE2',
+              },
+              scope: {
+                env: '#1f9d66',
+                user: '#1e40af',
+                machine: '#1c6e7d',
+                project: '#D4B76A',
+                projectMachine: '#c25e0c',
+                default: '#334155',
+              },
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      body {
+        background: radial-gradient(circle at top, rgba(88, 115, 158, 0.35), transparent), #2B313B;
+      }
+    </style>
+  </head>
+  <body class="min-h-screen text-aurora-card">
+    <main class="mx-auto flex max-w-5xl flex-col gap-8 px-6 py-12">
+      <header class="rounded-2xl bg-aurora-card/95 p-8 shadow-xl shadow-black/30">
+        <p class="text-sm font-semibold uppercase tracking-widest text-aurora-inkMuted">pysigil quick reference</p>
+        <h1 class="mt-2 text-4xl font-bold text-aurora-ink">Configure settings with confidence</h1>
+        <p class="mt-4 max-w-3xl text-lg text-aurora-inkMuted">
+          Use this page as a concise guide when navigating the pysigil preferences GUI. Each
+          section highlights the essential actions and visual cues you will encounter.
+        </p>
+      </header>
+
+      <section class="grid gap-6 lg:grid-cols-2">
+        <article class="rounded-2xl border border-aurora-edge/60 bg-aurora-card/95 p-6 shadow-lg shadow-black/20">
+          <h2 class="text-xl font-semibold text-aurora-ink">Getting oriented</h2>
+          <ul class="mt-4 space-y-3 text-aurora-inkMuted">
+            <li class="flex gap-3">
+              <span class="mt-1 h-2 w-2 rounded-full bg-aurora-gold"></span>
+              <span><span class="font-medium text-aurora-ink">Provider</span> selects the definition set to inspect. The dropdown remembers your last choice.</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="mt-1 h-2 w-2 rounded-full bg-aurora-gold"></span>
+              <span><span class="font-medium text-aurora-ink">Compact</span> toggles between condensed pills and a spacious layout for easier reading.</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="mt-1 h-2 w-2 rounded-full bg-aurora-gold"></span>
+              <span>The <span class="font-medium text-aurora-ink">Project</span> field shows which project path is contributing overrides (read-only).</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="mt-1 h-2 w-2 rounded-full bg-aurora-gold"></span>
+              <span><span class="font-medium text-aurora-ink">Author Tools…</span> (author mode only) opens dialogs for editing metadata such as sections and defaults.</span>
+            </li>
+          </ul>
+        </article>
+
+        <article class="rounded-2xl border border-aurora-edge/60 bg-aurora-card/95 p-6 shadow-lg shadow-black/20">
+          <h2 class="text-xl font-semibold text-aurora-ink">Working with fields</h2>
+          <ul class="mt-4 space-y-3 text-aurora-inkMuted">
+            <li class="flex gap-3">
+              <span class="mt-1 h-2 w-2 rounded-full bg-aurora-primary"></span>
+              <span>Hover the <span class="font-medium text-aurora-ink">ℹ</span> icon to read the field description and see the tuple-key backing the value.</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="mt-1 h-2 w-2 rounded-full bg-aurora-primary"></span>
+              <span>The <span class="font-medium text-aurora-ink">Effective value</span> chip shows what currently applies and which scope provided it. Errors are highlighted in red.</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="mt-1 h-2 w-2 rounded-full bg-aurora-primary"></span>
+              <span>Pills display every scope. A solid pill marks the active source; outlined pills hold values that are overridden; muted pills are empty.</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="mt-1 h-2 w-2 rounded-full bg-aurora-primary"></span>
+              <span>Click any writable pill to focus that layer when editing. Locked scopes display a padlock cursor and ignore clicks.</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="mt-1 h-2 w-2 rounded-full bg-aurora-primary"></span>
+              <span>Use <span class="font-medium text-aurora-ink">Edit…</span> to open the scoped editor. Validation feedback appears immediately.</span>
+            </li>
+          </ul>
+        </article>
+      </section>
+
+      <section class="rounded-2xl border border-aurora-edge/60 bg-aurora-card/95 p-6 shadow-lg shadow-black/20">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h2 class="text-xl font-semibold text-aurora-ink">Scope colors</h2>
+            <p class="mt-2 max-w-2xl text-aurora-inkMuted">
+              Pills inherit the Aurelia palette so you can tell each layer at a glance. Only scopes that are enabled for your provider will appear.
+            </p>
+          </div>
+          <div class="rounded-full bg-aurora-surface px-4 py-2 text-sm font-semibold uppercase tracking-wider text-aurora-gold">
+            Effective ➜ Present ➜ Empty
+          </div>
+        </div>
+        <dl class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div class="flex items-center gap-3 rounded-xl border border-aurora-edge/70 bg-white/80 p-4 shadow">
+            <span class="h-8 w-8 rounded-full border-4 border-white shadow-inner" style="background-color: #1f9d66"></span>
+            <div>
+              <dt class="font-semibold text-aurora-ink">Environment</dt>
+              <dd class="text-sm text-aurora-inkMuted">Runtime overrides via environment variables.</dd>
+            </div>
+          </div>
+          <div class="flex items-center gap-3 rounded-xl border border-aurora-edge/70 bg-white/80 p-4 shadow">
+            <span class="h-8 w-8 rounded-full border-4 border-white shadow-inner" style="background-color: #1e40af"></span>
+            <div>
+              <dt class="font-semibold text-aurora-ink">User</dt>
+              <dd class="text-sm text-aurora-inkMuted">Settings saved in your profile directory.</dd>
+            </div>
+          </div>
+          <div class="flex items-center gap-3 rounded-xl border border-aurora-edge/70 bg-white/80 p-4 shadow">
+            <span class="h-8 w-8 rounded-full border-4 border-white shadow-inner" style="background-color: #1c6e7d"></span>
+            <div>
+              <dt class="font-semibold text-aurora-ink">Machine</dt>
+              <dd class="text-sm text-aurora-inkMuted">Host-specific user overrides.</dd>
+            </div>
+          </div>
+          <div class="flex items-center gap-3 rounded-xl border border-aurora-edge/70 bg-white/80 p-4 shadow">
+            <span class="h-8 w-8 rounded-full border-4 border-white shadow-inner" style="background-color: #D4B76A"></span>
+            <div>
+              <dt class="font-semibold text-aurora-ink">Project</dt>
+              <dd class="text-sm text-aurora-inkMuted">Values bundled with the active project.</dd>
+            </div>
+          </div>
+          <div class="flex items-center gap-3 rounded-xl border border-aurora-edge/70 bg-white/80 p-4 shadow">
+            <span class="h-8 w-8 rounded-full border-4 border-white shadow-inner" style="background-color: #c25e0c"></span>
+            <div>
+              <dt class="font-semibold text-aurora-ink">Project · Machine</dt>
+              <dd class="text-sm text-aurora-inkMuted">Project overrides pinned to the current host.</dd>
+            </div>
+          </div>
+          <div class="flex items-center gap-3 rounded-xl border border-aurora-edge/70 bg-white/80 p-4 shadow">
+            <span class="h-8 w-8 rounded-full border-4 border-white shadow-inner" style="background-color: #334155"></span>
+            <div>
+              <dt class="font-semibold text-aurora-ink">Default</dt>
+              <dd class="text-sm text-aurora-inkMuted">Baseline defined by the provider package.</dd>
+            </div>
+          </div>
+        </dl>
+      </section>
+
+      <section class="grid gap-6 lg:grid-cols-2">
+        <article class="rounded-2xl border border-aurora-edge/60 bg-aurora-card/95 p-6 shadow-lg shadow-black/20">
+          <h2 class="text-xl font-semibold text-aurora-ink">Smart navigation</h2>
+          <ul class="mt-4 space-y-3 text-aurora-inkMuted">
+            <li class="flex gap-3">
+              <span class="mt-1 h-2 w-2 rounded-full bg-aurora-primaryHover"></span>
+              <span>Collapse or expand sections to focus on related fields. The app remembers per-session state.</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="mt-1 h-2 w-2 rounded-full bg-aurora-primaryHover"></span>
+              <span>Use the keyboard: Tab between pills, press <kbd class="rounded bg-aurora-surface px-1">Space</kbd> or <kbd class="rounded bg-aurora-surface px-1">Enter</kbd> to activate focused pills.</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="mt-1 h-2 w-2 rounded-full bg-aurora-primaryHover"></span>
+              <span>Tooltips summarise values and validation issues without opening dialogs.</span>
+            </li>
+          </ul>
+        </article>
+        <article class="rounded-2xl border border-aurora-edge/60 bg-aurora-card/95 p-6 shadow-lg shadow-black/20">
+          <h2 class="text-xl font-semibold text-aurora-ink">Troubleshooting</h2>
+          <ul class="mt-4 space-y-3 text-aurora-inkMuted">
+            <li class="flex gap-3">
+              <span class="mt-1 h-2 w-2 rounded-full bg-aurora-inkMuted"></span>
+              <span>Red text inside the effective chip indicates validation errors. Open <span class="font-medium text-aurora-ink">Edit…</span> to review details.</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="mt-1 h-2 w-2 rounded-full bg-aurora-inkMuted"></span>
+              <span>Pills labelled <span class="font-medium text-aurora-ink">synthetic</span> show computed values that cannot be edited.</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="mt-1 h-2 w-2 rounded-full bg-aurora-inkMuted"></span>
+              <span>Enable the <code class="rounded bg-aurora-surface px-1 py-0.5">SIGIL_GUI_DEBUG</code> environment variable before launch for verbose logging.</span>
+            </li>
+          </ul>
+        </article>
+      </section>
+
+      <footer class="mb-6 text-center text-sm text-aurora-inkMuted">
+        pysigil &middot; Aurelia theme &middot; Crafted for fast configuration reviews
+      </footer>
+    </main>
+  </body>
+</html>

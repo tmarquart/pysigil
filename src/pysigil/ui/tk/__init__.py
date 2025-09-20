@@ -12,12 +12,16 @@ be shared with other UI layers in the future.
 
 from __future__ import annotations
 
+from importlib import resources
+import webbrowser
+
 try:  # pragma: no cover - tkinter availability depends on the env
     import tkinter as tk
-    from tkinter import ttk
+    from tkinter import messagebox, ttk
 except Exception:  # pragma: no cover - fallback when tkinter missing
     tk = None  # type: ignore
     ttk = None  # type: ignore
+    messagebox = None  # type: ignore
 
 from ..core import EventBus, AppCore
 from ..provider_adapter import ProviderAdapter
@@ -175,6 +179,11 @@ class App:
             header, textvariable=self._project_var, state="readonly"
         )
         self._project_entry.pack(side="left", padx=(4, 0), fill="x", expand=True)
+        ttk.Button(
+            header,
+            text="Quick Reference",
+            command=self._open_quick_reference,
+        ).pack(side="right", padx=(8, 0))
         if self.author_mode:
             ttk.Button(
                 header, text="Author Tools…", command=self._open_author_tools
@@ -376,6 +385,27 @@ class App:
                 initial = providers[0]
             self._provider_var.set(initial)
             self.on_provider_change()
+
+    def _open_quick_reference(self) -> None:  # pragma: no cover - GUI interactions
+        if tk is None:
+            return
+        try:
+            ref = resources.files("pysigil.ui").joinpath("static", "quick_reference.html")
+            with resources.as_file(ref) as path:
+                opened = webbrowser.open_new_tab(path.as_uri())
+            if not opened:
+                raise RuntimeError("browser refused to launch quick reference")
+        except Exception:
+            if messagebox is None:
+                return
+            try:
+                messagebox.showerror(
+                    "pysigil",
+                    "Unable to open the quick reference guide.",
+                    parent=self.root,
+                )
+            except Exception:
+                pass
 
     def _open_author_tools(self) -> None:  # pragma: no cover - GUI interactions
         if not (self.author_mode and self.core):
