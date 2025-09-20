@@ -183,6 +183,7 @@ class App:
             header,
             text="Quick Reference",
             command=self._open_quick_reference,
+            style="Accent.TButton",
         ).pack(side="right", padx=(8, 0))
         if self.author_mode:
             ttk.Button(
