@@ -18,4 +18,5 @@ __all__ = [
     "get_project_directory",
     "get_user_directory",
     "show_machine_scope",
+    "find_project_root"
 ]
