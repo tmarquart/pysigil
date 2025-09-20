@@ -22,6 +22,8 @@ def _setup_adapter(tmp_path, monkeypatch):
     orch = Orchestrator(spec_backend=spec, config_backend=cfg)
     monkeypatch.setattr(api, "_ORCH", orch, raising=False)
     monkeypatch.setattr("pysigil.ui.provider_adapter.policy", pol, raising=False)
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
+    monkeypatch.delenv("SIGIL_APP_NAME", raising=False)
     adapter = ProviderAdapter()
     api.register_provider("demo", title="Demo")
     handle = api.handle("demo")
