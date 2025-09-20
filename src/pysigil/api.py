@@ -61,8 +61,16 @@ class FieldInfo:
 @dataclass(frozen=True)
 class ValueInfo:
     value: Any | None
-    source: Literal["user", "user-local", "project", "project-local", "env"] | None
+    source: Literal[
+        "user",
+        "user-local",
+        "project",
+        "project-local",
+        "default",
+        "env",
+    ] | None
     raw: str | None
+    error: str | None = None
 
 
 @dataclass(frozen=True)
@@ -104,7 +112,7 @@ def _provider_info(spec: ProviderSpec) -> ProviderInfo:
 
 
 def _value_info(val: FieldValue) -> ValueInfo:
-    return ValueInfo(value=val.value, source=val.source, raw=val.raw)
+    return ValueInfo(value=val.value, source=val.source, raw=val.raw, error=val.error)
 
 
 # ---------------------------------------------------------------------------
