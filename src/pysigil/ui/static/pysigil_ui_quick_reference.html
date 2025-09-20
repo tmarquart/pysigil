@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>pysigil GUI • Quick Reference</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              aurora: {
+                surface: '#2B313B',
+                card: '#EEF3FA',
+                edge: '#D4DEEE',
+                ink: '#0E1724',
+                inkMuted: '#586A84',
+                gold: '#D4B76A',
+                primary: '#365DC6',
+                primaryHover: '#587BE2',
+              },
+              scope: {
+                env: '#1f9d66',
+                user: '#1e40af',
+                machine: '#1c6e7d',
+                project: '#D4B76A',
+                projectMachine: '#c25e0c',
+                default: '#334155',
+              },
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      body { background: radial-gradient(circle at top, rgba(88, 115, 158, 0.35), transparent), #2B313B; }
+      .pill{display:inline-flex;align-items:center;gap:.375rem;border-radius:9999px;padding:.25rem .625rem;font-weight:600;font-size:.825rem;line-height:1;}
+      .pill-outline{background:transparent;border:2px solid currentColor;}
+      .pill-solid{color:white;}
+      .pill-muted{background:#e5e7eb;color:#6b7280;font-weight:600;}
+    </style>
+  </head>
+  <body class="min-h-screen text-aurora-card">
+    <main class="mx-auto flex max-w-5xl flex-col gap-8 px-6 py-12">
+      <header class="rounded-2xl bg-aurora-card/95 p-8 shadow-xl shadow-black/30">
+        <p class="text-sm font-semibold uppercase tracking-widest text-aurora-inkMuted">pysigil quick reference</p>
+        <h1 class="mt-2 text-4xl font-bold text-aurora-ink">Key controls &amp; pill legend</h1>
+        <p class="mt-4 max-w-3xl text-lg text-aurora-inkMuted">
+          A fast, visual guide to the pills and controls you see in the preferences window.
+          Scopes are ordered <strong class="text-aurora-ink">left → right</strong> from highest to lowest priority.
+        </p>
+      </header>
+
+      <!-- Orientation -->
+      <section class="grid gap-6 lg:grid-cols-2">
+        <article class="rounded-2xl border border-aurora-edge/60 bg-aurora-card/95 p-6 shadow-lg shadow-black/20">
+          <h2 class="text-xl font-semibold text-aurora-ink">Getting oriented</h2>
+          <ul class="mt-4 list-disc space-y-2 pl-6 text-aurora-inkMuted">
+            <li><span class="font-medium text-aurora-ink">Provider</span> selects which <em>project</em> you’re setting values for. It remembers your last pick.</li>
+            <li><span class="font-medium text-aurora-ink">Project</span> shows the active project path (read‑only).</li>
+            <li><span class="font-medium text-aurora-ink">Compact</span> toggles a tighter layout for dense pages.</li>
+          </ul>
+        </article>
+
+        <article class="rounded-2xl border border-aurora-edge/60 bg-aurora-card/95 p-6 shadow-lg shadow-black/20">
+          <h2 class="text-xl font-semibold text-aurora-ink">Working with fields</h2>
+          <ul class="mt-4 list-disc space-y-2 pl-6 text-aurora-inkMuted">
+            <li><span class="font-medium text-aurora-ink">Tooltips</span>: hover the <span class="font-semibold text-aurora-ink">i</span> for field info; hover a pill to see details about that scope.</li>
+            <li><span class="font-medium text-aurora-ink">Editing</span>: click <span class="font-semibold text-aurora-ink">Edit…</span> or click a pill for that scope to edit directly.</li>
+            <li><span class="font-medium text-aurora-ink">Effective</span> chip shows the value currently applied and where it comes from.</li>
+          </ul>
+        </article>
+      </section>
+
+      <!-- Scope colors with pill states (Active + Overridden only here) -->
+      <section class="rounded-2xl border border-aurora-edge/60 bg-aurora-card/95 p-6 shadow-lg shadow-black/20">
+        <h2 class="text-xl font-semibold text-aurora-ink">Scope colors</h2>
+        <p class="mt-2 max-w-2xl text-aurora-inkMuted">
+          Recognize each scope by color. Below are the two states you’ll use most: <strong class="text-aurora-ink">Active</strong> (solid) and <strong class="text-aurora-ink">Overridden</strong> (outline).
+        </p>
+
+        <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <!-- Env -->
+          <div class="rounded-xl border border-aurora-edge/70 bg-white/90 p-4 shadow">
+            <div class="text-sm font-semibold text-aurora-ink mb-2">Environment</div>
+            <div class="flex flex-wrap gap-2">
+              <span class="pill pill-solid" style="background:#1f9d66">Env</span>
+              <span class="pill pill-outline" style="color:#1f9d66">Env</span>
+            </div>
+          </div>
+          <!-- User -->
+          <div class="rounded-xl border border-aurora-edge/70 bg-white/90 p-4 shadow">
+            <div class="text-sm font-semibold text-aurora-ink mb-2">User</div>
+            <div class="flex flex-wrap gap-2">
+              <span class="pill pill-solid" style="background:#1e40af">User</span>
+              <span class="pill pill-outline" style="color:#1e40af">User</span>
+            </div>
+          </div>
+          <!-- Machine -->
+          <div class="rounded-xl border border-aurora-edge/70 bg-white/90 p-4 shadow">
+            <div class="text-sm font-semibold text-aurora-ink mb-2">Machine</div>
+            <div class="flex flex-wrap gap-2">
+              <span class="pill pill-solid" style="background:#1c6e7d">Machine</span>
+              <span class="pill pill-outline" style="color:#1c6e7d">Machine</span>
+            </div>
+          </div>
+          <!-- Project -->
+          <div class="rounded-xl border border-aurora-edge/70 bg-white/90 p-4 shadow">
+            <div class="text-sm font-semibold text-aurora-ink mb-2">Project</div>
+            <div class="flex flex-wrap gap-2">
+              <span class="pill pill-solid" style="background:#D4B76A;color:#111827">Project</span>
+              <span class="pill pill-outline" style="color:#D4B76A">Project</span>
+            </div>
+          </div>
+          <!-- Project · Machine -->
+          <div class="rounded-xl border border-aurora-edge/70 bg-white/90 p-4 shadow">
+            <div class="text-sm font-semibold text-aurora-ink mb-2">Project · Machine</div>
+            <div class="flex flex-wrap gap-2">
+              <span class="pill pill-solid" style="background:#c25e0c">Proj·Mach</span>
+              <span class="pill pill-outline" style="color:#c25e0c">Proj·Mach</span>
+            </div>
+          </div>
+          <!-- Default -->
+          <div class="rounded-xl border border-aurora-edge/70 bg-white/90 p-4 shadow">
+            <div class="text-sm font-semibold text-aurora-ink mb-2">Default</div>
+            <div class="flex flex-wrap gap-2">
+              <span class="pill pill-solid" style="background:#334155">Default</span>
+              <span class="pill pill-outline" style="color:#334155">Default</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Pill glossary (Active, Overridden, Empty only) -->
+      <section class="rounded-2xl border border-aurora-edge/60 bg-aurora-card/95 p-6 shadow-lg shadow-black/20">
+        <h2 class="text-xl font-semibold text-aurora-ink">Pill glossary</h2>
+        <div class="mt-4 grid gap-4 lg:grid-cols-3">
+          <div class="rounded-xl border border-aurora-edge/70 bg-white/90 p-4 shadow">
+            <div class="pill pill-solid" style="background:#1e40af">User</div>
+            <div class="mt-2 text-sm text-aurora-inkMuted">Active — this scope currently determines the effective value.</div>
+          </div>
+          <div class="rounded-xl border border-aurora-edge/70 bg-white/90 p-4 shadow">
+            <div class="pill pill-outline" style="color:#1e40af">User</div>
+            <div class="mt-2 text-sm text-aurora-inkMuted">Overridden — present at this scope but superseded by a higher priority.</div>
+          </div>
+          <div class="rounded-xl border border-aurora-edge/70 bg-white/90 p-4 shadow">
+            <div class="pill pill-muted">User</div>
+            <div class="mt-2 text-sm text-aurora-inkMuted">Empty — no value set at this scope.</div>
+          </div>
+        </div>
+      </section>
+
+      <footer class="mb-6 text-center text-sm text-aurora-inkMuted">
+        pysigil • Aurelia theme • Quick visual guide
+      </footer>
+    </main>
+  </body>
+</html>

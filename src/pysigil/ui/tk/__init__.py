@@ -390,7 +390,7 @@ class App:
         if tk is None:
             return
         try:
-            ref = resources.files("pysigil.ui").joinpath("static", "quick_reference.html")
+            ref = resources.files("pysigil.ui").joinpath("static", "pysigil_ui_quick_reference.html")
             with resources.as_file(ref) as path:
                 opened = webbrowser.open_new_tab(path.as_uri())
             if not opened:
