@@ -22,6 +22,10 @@ def _app_name(default: str) -> str:
 
 def user_config_dir(app_name: str = "pysigil") -> Path:
     app = _app_name(app_name)
+    override = os.getenv("XDG_CONFIG_HOME")
+    if override:
+        base = Path(override).expanduser()
+        return (base / app).resolve()
     return Path(_uc(appname=app)).resolve()
 
 def user_data_dir(app_name: str = "pysigil") -> Path:
