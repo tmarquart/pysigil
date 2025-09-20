@@ -99,8 +99,8 @@ def test_app_can_disable_remember(monkeypatch, tk_root):
     def fail(*_args, **_kwargs):  # pragma: no cover - defensive helper
         raise AssertionError("should not persist state when disabled")
 
-    monkeypatch.setattr("pysigil.ui.tk.__init__.load_last_provider", fail)
-    monkeypatch.setattr("pysigil.ui.tk.__init__.save_last_provider", fail)
+    monkeypatch.setattr("pysigil.ui.tk.load_last_provider", fail)
+    monkeypatch.setattr("pysigil.ui.tk.save_last_provider", fail)
     adapter = StubAdapter(["alpha", "beta"])
     app = App(tk_root, adapter=adapter, remember=False)
     assert app._provider_var.get() == "alpha"
