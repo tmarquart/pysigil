@@ -19,10 +19,73 @@ def test_ensure_sigil_package_data(tmp_path: Path) -> None:
     ensure_sigil_package_data(tmp_path, "demo_pkg")
     data = tomllib.loads((tmp_path / "pyproject.toml").read_text(encoding="utf-8"))
     assert data["tool"]["setuptools"]["package-data"]["demo_pkg"] == [".sigil/*"]
+    content = (tmp_path / "pyproject.toml").read_text(encoding="utf-8")
+    assert '[".sigil/*"]' in content
     # idempotent
     ensure_sigil_package_data(tmp_path, "demo_pkg")
     data = tomllib.loads((tmp_path / "pyproject.toml").read_text(encoding="utf-8"))
     assert data["tool"]["setuptools"]["package-data"]["demo_pkg"] == [".sigil/*"]
+
+
+def test_package_data_empty_table(tmp_path: Path) -> None:
+    content = """\
+[project]
+name = "demo"
+
+[tool.setuptools]
+
+[tool.setuptools.package-data]
+"""
+    (tmp_path / "pyproject.toml").write_text(content, encoding="utf-8")
+
+    ensure_sigil_package_data(tmp_path, "demo_pkg")
+
+    data = tomllib.loads((tmp_path / "pyproject.toml").read_text(encoding="utf-8"))
+    assert data["tool"]["setuptools"]["package-data"]["demo_pkg"] == [".sigil/*"]
+    content = (tmp_path / "pyproject.toml").read_text(encoding="utf-8")
+    assert 'demo_pkg = [".sigil/*"]' in content
+
+
+def test_package_data_preserves_existing_entries(tmp_path: Path) -> None:
+    content = """\
+[project]
+name = "demo"
+
+[tool.setuptools]
+
+[tool.setuptools.package-data]
+demo_pkg = ["data/*"]
+"""
+    (tmp_path / "pyproject.toml").write_text(content, encoding="utf-8")
+
+    ensure_sigil_package_data(tmp_path, "demo_pkg")
+
+    data = tomllib.loads((tmp_path / "pyproject.toml").read_text(encoding="utf-8"))
+    assert data["tool"]["setuptools"]["package-data"]["demo_pkg"] == [
+        "data/*",
+        ".sigil/*",
+    ]
+    content = (tmp_path / "pyproject.toml").read_text(encoding="utf-8")
+    assert 'demo_pkg = ["data/*", ".sigil/*"]' in content
+
+
+def test_package_data_noop_when_sigil_present(tmp_path: Path) -> None:
+    content = """\
+[project]
+name = "demo"
+
+[tool.setuptools]
+
+[tool.setuptools.package-data]
+demo_pkg = ["data/*", ".sigil/*"]
+"""
+    (tmp_path / "pyproject.toml").write_text(content, encoding="utf-8")
+    before = (tmp_path / "pyproject.toml").read_text(encoding="utf-8")
+
+    ensure_sigil_package_data(tmp_path, "demo_pkg")
+
+    after = (tmp_path / "pyproject.toml").read_text(encoding="utf-8")
+    assert after == before
 
 
 def test_author_register_adds_package_data(monkeypatch, tmp_path: Path) -> None:
