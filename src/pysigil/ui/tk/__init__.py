@@ -110,6 +110,10 @@ class App:
         self._eff_col_width: int | None = None
         self._edit_col_width: int | None = None
         self._author_tools: tk.Toplevel | None = None
+        self._rows_canvas: tk.Canvas | None = None
+        self._rows_scrollbar: ttk.Scrollbar | None = None
+        self._rows_window: int | None = None
+        self._mousewheel_bound = False
 
         use(self.root)
         self.palette = get_palette()
@@ -191,10 +195,11 @@ class App:
         )
         self._table.pack(fill="both", expand=True, padx=18, pady=(6, 18))  # padding for main table
         self._table.columnconfigure(0, weight=1)
+        self._table.columnconfigure(1, weight=0)
         self._table.rowconfigure(1, weight=1)
 
         self._header = ttk.Frame(self._table, style="CardFrame.TFrame")
-        self._header.grid(row=0, column=0, sticky="ew", padx=12, pady=6)
+        self._header.grid(row=0, column=0, columnspan=2, sticky="ew", padx=12, pady=6)
         self._hdr_key = ttk.Label(
             self._header, text="Key", style="CardHeader.TLabel", anchor="center"
         )
@@ -211,8 +216,122 @@ class App:
         self._hdr_edit.grid(row=0, column=3, sticky="ew")
         self._header.columnconfigure(1, weight=1)
 
-        self._rows_container = ttk.Frame(self._table, style="CardFrame.TFrame")
-        self._rows_container.grid(row=1, column=0, sticky="nsew", padx=0, pady=(0, 0)) #this controls the group labels and overall alignment
+        try:
+            style.configure(
+                "Card.Vertical.TScrollbar",
+                background=palette["card_edge"],
+                troughcolor=palette["card"],
+                bordercolor=palette["card"],
+                arrowcolor=palette["ink"],
+            )
+        except tk.TclError:
+            style.configure(
+                "Card.Vertical.TScrollbar",
+                background=palette["card_edge"],
+                troughcolor=palette["card"],
+            )
+        try:
+            style.map(
+                "Card.Vertical.TScrollbar",
+                background=[("active", palette["ink_muted"])],
+                arrowcolor=[("active", palette["card"])],
+            )
+        except tk.TclError:
+            pass
+
+        self._rows_canvas = tk.Canvas(
+            self._table,
+            bg=palette["card"],
+            highlightthickness=0,
+            bd=0,
+        )
+        self._rows_canvas.grid(row=1, column=0, sticky="nsew", padx=(12, 0), pady=(0, 0))
+        self._rows_scrollbar = ttk.Scrollbar(
+            self._table,
+            orient="vertical",
+            command=self._rows_canvas.yview,
+            style="Card.Vertical.TScrollbar",
+        )
+        self._rows_scrollbar.grid(row=1, column=1, sticky="ns", padx=(0, 12), pady=(0, 0))
+        self._rows_canvas.configure(yscrollcommand=self._rows_scrollbar.set)
+
+        self._rows_container = ttk.Frame(self._rows_canvas, style="CardFrame.TFrame")
+        self._rows_window = self._rows_canvas.create_window(
+            (0, 0),
+            window=self._rows_container,
+            anchor="nw",
+        )
+        self._rows_container.bind("<Configure>", self._on_rows_container_configure)
+        self._rows_container.bind("<Enter>", self._on_rows_mouse_enter)
+        self._rows_container.bind("<Leave>", self._on_rows_mouse_leave)
+        self._rows_canvas.bind("<Configure>", self._on_rows_canvas_configure)
+        self._rows_canvas.bind("<Enter>", self._on_rows_mouse_enter)
+        self._rows_canvas.bind("<Leave>", self._on_rows_mouse_leave)
+
+    def _update_rows_scrollregion(self) -> None:
+        if not self._rows_canvas:
+            return
+        bbox = self._rows_canvas.bbox("all")
+        if bbox is None:
+            bbox = (0, 0, 0, 0)
+        self._rows_canvas.configure(scrollregion=bbox)
+
+    def _on_rows_container_configure(self, _event: tk.Event) -> None:
+        self._update_rows_scrollregion()
+
+    def _on_rows_canvas_configure(self, event: tk.Event) -> None:
+        if not self._rows_canvas or self._rows_window is None:
+            return
+        self._rows_canvas.itemconfigure(self._rows_window, width=event.width)
+        self._update_rows_scrollregion()
+
+    def _on_rows_mouse_enter(self, _event: tk.Event) -> None:
+        self._bind_rows_mousewheel()
+
+    def _on_rows_mouse_leave(self, event: tk.Event) -> None:
+        if not self._rows_canvas:
+            return
+        dest_widget = self._rows_canvas.winfo_containing(event.x_root, event.y_root)
+        widget = dest_widget
+        while widget is not None:
+            if widget is self._rows_canvas:
+                return
+            widget = getattr(widget, "master", None)
+        self._unbind_rows_mousewheel()
+
+    def _bind_rows_mousewheel(self) -> None:
+        if not self._rows_canvas or self._mousewheel_bound:
+            return
+        self._rows_canvas.bind_all("<MouseWheel>", self._on_rows_mousewheel)
+        self._rows_canvas.bind_all("<Button-4>", self._on_rows_mousewheel)
+        self._rows_canvas.bind_all("<Button-5>", self._on_rows_mousewheel)
+        self._mousewheel_bound = True
+
+    def _unbind_rows_mousewheel(self) -> None:
+        if not self._rows_canvas or not self._mousewheel_bound:
+            return
+        self._rows_canvas.unbind_all("<MouseWheel>")
+        self._rows_canvas.unbind_all("<Button-4>")
+        self._rows_canvas.unbind_all("<Button-5>")
+        self._mousewheel_bound = False
+
+    def _on_rows_mousewheel(self, event: tk.Event) -> str | None:
+        if not self._rows_canvas:
+            return None
+        delta = getattr(event, "delta", 0)
+        if delta:
+            if abs(delta) >= 120:
+                step = -int(delta / 120)
+            else:
+                step = -1 if delta > 0 else 1
+            self._rows_canvas.yview_scroll(step, "units")
+        else:
+            num = getattr(event, "num", None)
+            if num == 4:
+                self._rows_canvas.yview_scroll(-1, "units")
+            elif num == 5:
+                self._rows_canvas.yview_scroll(1, "units")
+        return "break"
 
     def _style_row(self, row: FieldRow) -> None:
         palette = self.palette
@@ -329,6 +448,7 @@ class App:
         self._key_col_width = None
         self._pill_col_width = None
         self._schedule_align()
+        self._update_rows_scrollregion()
 
     def _open_edit_dialog(self, key: str, scope: str | None = None) -> None:
         dlg = EditDialog(
