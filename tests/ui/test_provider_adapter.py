@@ -40,18 +40,18 @@ def test_adapter_writes_and_effective(tmp_path, monkeypatch):
     assert adapter.provider_sections_collapsed() is None
 
     adapter.set_value("alpha", "user", 1)
-    eff_val, eff_scope = adapter.effective_for_key("alpha")
-    assert eff_val == 1
+    eff_info, eff_scope = adapter.effective_for_key("alpha")
+    assert eff_info is not None and eff_info.value == 1
     assert eff_scope == "user"
 
     adapter.set_value("alpha", "project", 2)
-    eff_val, eff_scope = adapter.effective_for_key("alpha")
-    assert eff_val == 2
+    eff_info, eff_scope = adapter.effective_for_key("alpha")
+    assert eff_info is not None and eff_info.value == 2
     assert eff_scope == "project"
 
     adapter.clear_value("alpha", "project")
-    eff_val, eff_scope = adapter.effective_for_key("alpha")
-    assert eff_val == 1
+    eff_info, eff_scope = adapter.effective_for_key("alpha")
+    assert eff_info is not None and eff_info.value == 1
     assert eff_scope == "user"
 
 

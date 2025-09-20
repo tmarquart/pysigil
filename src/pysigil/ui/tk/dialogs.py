@@ -67,6 +67,7 @@ class EditDialog(tk.Toplevel):  # type: ignore[misc]
         self.entries: dict[str, ttk.Entry] = {}
 
         values = adapter.values_for_key(key)
+        default_info = adapter.default_for_key(key)
         scopes = list(adapter.scopes())
         if "default" not in scopes:
             scopes.append("default")
@@ -74,19 +75,27 @@ class EditDialog(tk.Toplevel):  # type: ignore[misc]
         _, eff_src = adapter.effective_for_key(key)
 
         row = 0
+        def tooltip_value(info: ValueInfo | None) -> object:
+            if info is None:
+                return None
+            if info.error:
+                raw_txt = info.raw if info.raw not in (None, "") else "—"
+                return f"{raw_txt} (invalid: {info.error})"
+            return info.value
         for scope in scopes:
             if scope == "env" and scope not in values:
                 continue
 
             vinfo: ValueInfo | None = values.get(scope)
+            display_info = vinfo if vinfo is not None else (
+                default_info if scope == "default" else None
+            )
 
             def value_provider(s=scope) -> object:
-                v = values.get(s)
-                if v and v.value is not None:
-                    return v.value
-                if s == "default":
-                    return self.adapter.default_for_key(self.key)
-                return None
+                info = values.get(s)
+                if info is None and s == "default":
+                    info = default_info
+                return tooltip_value(info)
 
             can_write = adapter.can_write(scope)
             if scope == "default":
@@ -99,7 +108,7 @@ class EditDialog(tk.Toplevel):  # type: ignore[misc]
                 state = "disabled"
             elif eff_src == scope:
                 state = "effective"
-            elif vinfo and vinfo.value is not None:
+            elif display_info and (display_info.value is not None or display_info.raw is not None):
                 state = "present"
             else:
                 state = "empty"
@@ -108,6 +117,12 @@ class EditDialog(tk.Toplevel):  # type: ignore[misc]
             long_label = adapter.scope_label(scope, short=False)
             palette = get_palette()
             color = _SCOPE_COLORS.get(scope, palette["ink_muted"])
+            desc = adapter.scope_description(scope)
+            if display_info is not None and display_info.error:
+                if desc:
+                    desc = f"{desc}\n\n⚠ {display_info.error}"
+                else:
+                    desc = f"⚠ {display_info.error}"
 
             pill = PillButton(
                 body,
@@ -117,7 +132,7 @@ class EditDialog(tk.Toplevel):  # type: ignore[misc]
                 value_provider=value_provider,
                 clickable=False,
                 tooltip_title=long_label,
-                tooltip_desc=adapter.scope_description(scope),
+                tooltip_desc=desc,
                 locked=locked,
             )
             pill.grid(row=row, column=0, sticky="w", padx=(0, 8), pady=4)
@@ -125,8 +140,11 @@ class EditDialog(tk.Toplevel):  # type: ignore[misc]
             entry = ttk.Entry(body)
             entry.grid(row=row, column=1, sticky="ew", pady=4)
 
-            if vinfo and vinfo.value is not None:
-                entry.insert(0, str(vinfo.value))
+            if display_info is not None:
+                if display_info.error and display_info.raw is not None:
+                    entry.insert(0, display_info.raw)
+                elif display_info.value is not None:
+                    entry.insert(0, str(display_info.value))
 
             if scope == "default":
                 entry.state(["readonly"])
