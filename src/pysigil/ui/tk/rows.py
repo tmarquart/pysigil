@@ -78,12 +78,16 @@ class FieldRow(tk.Frame):
 
         self.info_btn: tk.Label | None = None
         self.lbl_desc: ttk.Label | None = None
+        self.field_type: str | None = getattr(info, "type", None) if info else None
         if info:
             desc = info.description or info.description_short
-            tip_lines = [f"Key: {key}"]
+            meta_lines = [f"Key: {key}"]
+            if self.field_type:
+                meta_lines.append(f"Type: {self.field_type}")
+            tip_sections = ["\n".join(meta_lines)]
             if desc:
-                tip_lines.append(desc)
-            tip = "\n\n".join(tip_lines)
+                tip_sections.append(desc)
+            tip = "\n\n".join(tip_sections)
             if desc or key:
                 self.info_btn = tk.Label(
                     self.key_frame,
@@ -233,6 +237,7 @@ class FieldRow(tk.Frame):
                 can_write=can_write,
                 value_provider=value_provider,
                 tooltip_desc=desc,
+                tooltip_type=self.field_type,
             )
 
         # adjust value label height when geometry might change
@@ -286,6 +291,7 @@ class FieldRow(tk.Frame):
         can_write: bool,
         value_provider: Callable[[], Any],
         tooltip_desc: str | None = None,
+        tooltip_type: str | None = None,
     ) -> None:
         """Update or create a single pill widget.
 
@@ -344,6 +350,7 @@ class FieldRow(tk.Frame):
                 on_click=cb,
                 tooltip_title=long_label,
                 tooltip_desc=desc_text,
+                tooltip_type=tooltip_type,
                 locked=locked,
             )
             self._pill_widgets[name] = pill
@@ -356,6 +363,7 @@ class FieldRow(tk.Frame):
             pill.value_provider = value_provider
             pill.tooltip_title = long_label
             pill.tooltip_desc = desc_text
+            pill.tooltip_type = tooltip_type
             pill.on_click = cb
             pill.bind("<Button-1>", lambda e: cb())
             pill.configure(cursor="hand2")
@@ -372,13 +380,18 @@ class FieldRow(tk.Frame):
         label = getattr(info, "label", None) or key
         self.lbl_key.configure(text=label)
         desc = getattr(info, "description", None) or getattr(info, "description_short", None)
-        tip_lines = [f"Key: {key}"]
+        self.field_type = getattr(info, "type", self.field_type)
+        meta_lines = [f"Key: {key}"]
+        if self.field_type:
+            meta_lines.append(f"Type: {self.field_type}")
+        tip_sections = ["\n".join(meta_lines)]
         if desc:
-            tip_lines.append(desc)
-        tip = "\n\n".join(tip_lines)
+            tip_sections.append(desc)
+        tip = "\n\n".join(tip_sections)
         if self.info_btn is not None:
             HoverTip(self.info_btn, lambda: tip)
         HoverTip(self.lbl_key, lambda: tip)
+        self.refresh()
 
 
 __all__ = ["FieldRow"]
