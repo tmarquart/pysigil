@@ -47,6 +47,7 @@ class RegisterApp(tk.Tk):
 
         self.defaults_path: tk.StringVar = tk.StringVar(value="")
         self.provider_id: tk.StringVar = tk.StringVar(value="")
+        self.register_in_pyproject: tk.BooleanVar = tk.BooleanVar(value=True)
         self.message_var: tk.StringVar = tk.StringVar(
             value="Pick your package folder (contains __init__.py). Provider ID is pre-filled; edit if needed."
         )
@@ -75,6 +76,21 @@ class RegisterApp(tk.Tk):
         ttk.Label(row2, text="2) Provider ID (PEP 503 normalized):").pack(anchor=tk.W)
         prov = ttk.Entry(row2, textvariable=self.provider_id)
         prov.pack(fill=tk.X)
+
+        options = ttk.Frame(frm)
+        options.pack(fill=tk.X, **pad)
+        ttk.Checkbutton(
+            options,
+            text="Update pyproject.toml with .sigil/* package data (recommended)",
+            variable=self.register_in_pyproject,
+            takefocus=False,
+        ).pack(anchor=tk.W)
+        ttk.Label(
+            options,
+            text="Keeps your .sigil defaults registered in pyproject.toml. Uncheck if you prefer to manage it yourself.",
+            wraplength=460,
+            justify=tk.LEFT,
+        ).pack(anchor=tk.W, padx=(22, 0))
 
         actions = ttk.Frame(frm)
         actions.pack(fill=tk.X, **pad)
@@ -165,7 +181,8 @@ class RegisterApp(tk.Tk):
                 project_root = find_project_root(pkg)
             except ProjectRootNotFoundError:
                 project_root = pkg
-            ensure_sigil_package_data(project_root, import_name)
+            if self.register_in_pyproject.get():
+                ensure_sigil_package_data(project_root, import_name)
             messagebox.showinfo(
                 "Success",
                 f"Created/verified {settings_path}\n\nRegistered dev link for {dl.provider_id}.",
