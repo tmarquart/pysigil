@@ -44,59 +44,32 @@
     <main class="mx-auto flex max-w-5xl flex-col gap-8 px-6 py-12">
       <header class="rounded-2xl bg-aurora-card/95 p-8 shadow-xl shadow-black/30">
         <p class="text-sm font-semibold uppercase tracking-widest text-aurora-inkMuted">pysigil quick reference</p>
-        <h1 class="mt-2 text-4xl font-bold text-aurora-ink">Configure settings with confidence</h1>
+        <h1 class="mt-2 text-4xl font-bold text-aurora-ink">Key controls at a glance</h1>
         <p class="mt-4 max-w-3xl text-lg text-aurora-inkMuted">
-          Use this page as a concise guide when navigating the pysigil preferences GUI. Each
-          section highlights the essential actions and visual cues you will encounter.
+          Use this single-page guide when navigating the pysigil preferences GUI. Each section highlights the
+          essential actions and visual cues you will encounter.
         </p>
       </header>
 
       <section class="grid gap-6 lg:grid-cols-2">
         <article class="rounded-2xl border border-aurora-edge/60 bg-aurora-card/95 p-6 shadow-lg shadow-black/20">
           <h2 class="text-xl font-semibold text-aurora-ink">Getting oriented</h2>
-          <ul class="mt-4 space-y-3 text-aurora-inkMuted">
-            <li class="flex gap-3">
-              <span class="mt-1 h-2 w-2 rounded-full bg-aurora-gold"></span>
-              <span><span class="font-medium text-aurora-ink">Provider</span> selects the definition set to inspect. The dropdown remembers your last choice.</span>
-            </li>
-            <li class="flex gap-3">
-              <span class="mt-1 h-2 w-2 rounded-full bg-aurora-gold"></span>
-              <span><span class="font-medium text-aurora-ink">Compact</span> toggles between condensed pills and a spacious layout for easier reading.</span>
-            </li>
-            <li class="flex gap-3">
-              <span class="mt-1 h-2 w-2 rounded-full bg-aurora-gold"></span>
-              <span>The <span class="font-medium text-aurora-ink">Project</span> field shows which project path is contributing overrides (read-only).</span>
-            </li>
-            <li class="flex gap-3">
-              <span class="mt-1 h-2 w-2 rounded-full bg-aurora-gold"></span>
-              <span><span class="font-medium text-aurora-ink">Author Tools…</span> (author mode only) opens dialogs for editing metadata such as sections and defaults.</span>
-            </li>
+          <ul class="mt-4 list-disc space-y-2 pl-6 text-aurora-inkMuted">
+            <li><span class="font-medium text-aurora-ink">Provider</span> selects the definition set to inspect. The dropdown remembers your last choice.</li>
+            <li><span class="font-medium text-aurora-ink">Compact</span> toggles between a condensed view and a spacious layout for easier reading.</li>
+            <li>The <span class="font-medium text-aurora-ink">Project</span> field shows which project path is contributing overrides (read-only).</li>
+            <li><span class="font-medium text-aurora-ink">Author Tools…</span> (author mode only) opens dialogs for editing metadata such as sections and defaults.</li>
           </ul>
         </article>
 
         <article class="rounded-2xl border border-aurora-edge/60 bg-aurora-card/95 p-6 shadow-lg shadow-black/20">
           <h2 class="text-xl font-semibold text-aurora-ink">Working with fields</h2>
-          <ul class="mt-4 space-y-3 text-aurora-inkMuted">
-            <li class="flex gap-3">
-              <span class="mt-1 h-2 w-2 rounded-full bg-aurora-primary"></span>
-              <span>Hover the <span class="font-medium text-aurora-ink">ℹ</span> icon to read the field description and see the tuple-key backing the value.</span>
-            </li>
-            <li class="flex gap-3">
-              <span class="mt-1 h-2 w-2 rounded-full bg-aurora-primary"></span>
-              <span>The <span class="font-medium text-aurora-ink">Effective value</span> chip shows what currently applies and which scope provided it. Errors are highlighted in red.</span>
-            </li>
-            <li class="flex gap-3">
-              <span class="mt-1 h-2 w-2 rounded-full bg-aurora-primary"></span>
-              <span>Pills display every scope. A solid pill marks the active source; outlined pills hold values that are overridden; muted pills are empty.</span>
-            </li>
-            <li class="flex gap-3">
-              <span class="mt-1 h-2 w-2 rounded-full bg-aurora-primary"></span>
-              <span>Click any writable pill to focus that layer when editing. Locked scopes display a padlock cursor and ignore clicks.</span>
-            </li>
-            <li class="flex gap-3">
-              <span class="mt-1 h-2 w-2 rounded-full bg-aurora-primary"></span>
-              <span>Use <span class="font-medium text-aurora-ink">Edit…</span> to open the scoped editor. Validation feedback appears immediately.</span>
-            </li>
+          <ul class="mt-4 list-disc space-y-2 pl-6 text-aurora-inkMuted">
+            <li>Hover the <span class="font-medium text-aurora-ink">ℹ</span> icon to read the field description, see the tuple-key backing the value, and preview tooltip notes.</li>
+            <li>The <span class="font-medium text-aurora-ink">Effective value</span> chip shows what currently applies and which scope provided it. Errors are highlighted in red.</li>
+            <li>Pills display every scope. A solid pill marks the active source; outlined pills hold values that are overridden; muted pills are empty.</li>
+            <li>Click any writable pill to focus that layer when editing. Locked scopes display a padlock cursor and ignore clicks.</li>
+            <li>Use <span class="font-medium text-aurora-ink">Edit…</span> to open the scoped editor. Validation feedback appears immediately.</li>
           </ul>
         </article>
       </section>
@@ -159,41 +132,63 @@
         </dl>
       </section>
 
-      <section class="grid gap-6 lg:grid-cols-2">
-        <article class="rounded-2xl border border-aurora-edge/60 bg-aurora-card/95 p-6 shadow-lg shadow-black/20">
-          <h2 class="text-xl font-semibold text-aurora-ink">Smart navigation</h2>
-          <ul class="mt-4 space-y-3 text-aurora-inkMuted">
-            <li class="flex gap-3">
-              <span class="mt-1 h-2 w-2 rounded-full bg-aurora-primaryHover"></span>
-              <span>Collapse or expand sections to focus on related fields. The app remembers per-session state.</span>
-            </li>
-            <li class="flex gap-3">
-              <span class="mt-1 h-2 w-2 rounded-full bg-aurora-primaryHover"></span>
-              <span>Use the keyboard: Tab between pills, press <kbd class="rounded bg-aurora-surface px-1">Space</kbd> or <kbd class="rounded bg-aurora-surface px-1">Enter</kbd> to activate focused pills.</span>
-            </li>
-            <li class="flex gap-3">
-              <span class="mt-1 h-2 w-2 rounded-full bg-aurora-primaryHover"></span>
-              <span>Tooltips summarise values and validation issues without opening dialogs.</span>
-            </li>
-          </ul>
-        </article>
-        <article class="rounded-2xl border border-aurora-edge/60 bg-aurora-card/95 p-6 shadow-lg shadow-black/20">
-          <h2 class="text-xl font-semibold text-aurora-ink">Troubleshooting</h2>
-          <ul class="mt-4 space-y-3 text-aurora-inkMuted">
-            <li class="flex gap-3">
-              <span class="mt-1 h-2 w-2 rounded-full bg-aurora-inkMuted"></span>
-              <span>Red text inside the effective chip indicates validation errors. Open <span class="font-medium text-aurora-ink">Edit…</span> to review details.</span>
-            </li>
-            <li class="flex gap-3">
-              <span class="mt-1 h-2 w-2 rounded-full bg-aurora-inkMuted"></span>
-              <span>Pills labelled <span class="font-medium text-aurora-ink">synthetic</span> show computed values that cannot be edited.</span>
-            </li>
-            <li class="flex gap-3">
-              <span class="mt-1 h-2 w-2 rounded-full bg-aurora-inkMuted"></span>
-              <span>Enable the <code class="rounded bg-aurora-surface px-1 py-0.5">SIGIL_GUI_DEBUG</code> environment variable before launch for verbose logging.</span>
-            </li>
-          </ul>
-        </article>
+      <section class="rounded-2xl border border-aurora-edge/60 bg-aurora-card/95 p-6 shadow-lg shadow-black/20">
+        <h2 class="text-xl font-semibold text-aurora-ink">Effective, active &amp; missing examples</h2>
+        <p class="mt-2 text-aurora-inkMuted">
+          Match the pills you see with these real values. The <span class="font-medium text-aurora-ink">Effective value</span>
+          chip should line up with the active source in the second column.
+        </p>
+        <div class="mt-4 overflow-x-auto">
+          <table class="w-full min-w-[36rem] border-collapse text-sm text-aurora-inkMuted">
+            <thead class="bg-aurora-surface/60 text-aurora-ink">
+              <tr>
+                <th class="border-b border-aurora-edge/60 px-3 py-2 text-left font-semibold">Field</th>
+                <th class="border-b border-aurora-edge/60 px-3 py-2 text-left font-semibold">Effective</th>
+                <th class="border-b border-aurora-edge/60 px-3 py-2 text-left font-semibold">Present but overridden</th>
+                <th class="border-b border-aurora-edge/60 px-3 py-2 text-left font-semibold">Empty</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="border-b border-aurora-edge/40 px-3 py-2 align-top"><code class="text-aurora-ink">logs.level</code></td>
+                <td class="border-b border-aurora-edge/40 px-3 py-2 align-top"><span class="font-medium text-aurora-ink">Project</span> &rarr; <code>warning</code></td>
+                <td class="border-b border-aurora-edge/40 px-3 py-2 align-top"><span class="font-medium text-aurora-ink">Default</span> &rarr; <code>info</code></td>
+                <td class="border-b border-aurora-edge/40 px-3 py-2 align-top">Environment, User, Machine, Project &middot; Machine</td>
+              </tr>
+              <tr>
+                <td class="border-b border-aurora-edge/40 px-3 py-2 align-top"><code class="text-aurora-ink">editor.theme</code></td>
+                <td class="border-b border-aurora-edge/40 px-3 py-2 align-top"><span class="font-medium text-aurora-ink">User</span> &rarr; <code>aurora-dark</code></td>
+                <td class="border-b border-aurora-edge/40 px-3 py-2 align-top">
+                  <div class="space-y-1">
+                    <div><span class="font-medium text-aurora-ink">Project</span> &rarr; <code>aurora-light</code></div>
+                    <div><span class="font-medium text-aurora-ink">Default</span> &rarr; <code>classic</code></div>
+                  </div>
+                </td>
+                <td class="border-b border-aurora-edge/40 px-3 py-2 align-top">Environment, Machine, Project &middot; Machine</td>
+              </tr>
+              <tr>
+                <td class="px-3 py-2 align-top"><code class="text-aurora-ink">network.proxy</code></td>
+                <td class="px-3 py-2 align-top"><span class="font-medium text-aurora-ink">Environment</span> &rarr; <code>https://internal.example</code></td>
+                <td class="px-3 py-2 align-top">
+                  <div class="space-y-1">
+                    <div><span class="font-medium text-aurora-ink">Project</span> &rarr; <code>https://public.example</code></div>
+                    <div><span class="font-medium text-aurora-ink">Default</span> &rarr; <code>direct</code></div>
+                  </div>
+                </td>
+                <td class="px-3 py-2 align-top">User, Machine, Project &middot; Machine</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="rounded-2xl border border-aurora-edge/60 bg-aurora-card/95 p-6 shadow-lg shadow-black/20">
+        <h2 class="text-xl font-semibold text-aurora-ink">Troubleshooting</h2>
+        <ul class="mt-4 list-disc space-y-2 pl-6 text-aurora-inkMuted">
+          <li>Red text inside the <span class="font-medium text-aurora-ink">Effective value</span> chip indicates validation errors. Open <span class="font-medium text-aurora-ink">Edit…</span> to review details.</li>
+          <li>If the pill you edited stays outlined, another scope still overrides it — compare with the examples above to spot the active layer.</li>
+          <li>A muted pill with a dash is expected when a scope is empty. Fill it only when your workflow needs that override.</li>
+        </ul>
       </section>
 
       <footer class="mb-6 text-center text-sm text-aurora-inkMuted">
