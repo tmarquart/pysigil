@@ -97,4 +97,5 @@ def test_upsert_field_parses_default(tmp_path, monkeypatch):
     with pytest.raises(ValidationError):
         author.upsert_field("beta", "integer", default="1")
     author.upsert_field("beta", "integer", default=parse_field_value("integer", "1"))
-    assert author.default_for_key("beta") == 1
+    default_info = author.default_for_key("beta")
+    assert default_info is not None and default_info.value == 1

@@ -577,17 +577,7 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         undiscovered = False
         if info is not None:
             default_info = self.adapter.default_for_key(key)
-            if default_info is not None:
-                has_error = hasattr(default_info, "error")
-                raw = getattr(default_info, "raw", None)
-                if has_error and getattr(default_info, "error", None) and raw is not None:
-                    default = raw
-                elif hasattr(default_info, "value"):
-                    default = getattr(default_info, "value")
-                elif raw is not None:
-                    default = raw
-                else:
-                    default = default_info
+            default = self._default_display_value(default_info)
         else:
             und = {u.key: u for u in self.adapter.list_undiscovered()}
             uinfo = und.get(key)
@@ -808,6 +798,63 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
             return val if isinstance(val, dict) else {}
         return None
 
+    def _default_display_value(self, info: object | None) -> object | None:
+        if info is None:
+            return None
+        error = getattr(info, "error", None)
+        raw = getattr(info, "raw", None)
+        if error and raw is not None:
+            return raw
+        value = getattr(info, "value", None)
+        if value is not None:
+            return value
+        if raw is not None:
+            return raw
+        if hasattr(info, "value") or hasattr(info, "raw"):
+            return None
+        return info
+
+    def _confirm_action(self, title: str, message: str) -> bool:
+        if messagebox is None:
+            return True
+        try:
+            return bool(messagebox.askyesno(title, message, icon="warning", parent=self))
+        except Exception:
+            return True
+
+    def _confirm_revert(self) -> bool:
+        if not self._dirty_tabs.get("fields"):
+            return True
+        label = self._current_key or ""
+        if not label and hasattr(self, "_key_var"):
+            try:
+                label = self._key_var.get().strip()
+            except Exception:
+                label = ""
+        if label:
+            message = f"Discard unsaved changes for '{label}'?"
+        else:
+            message = "Discard unsaved changes for this field?"
+        return self._confirm_action("Revert changes", message)
+
+    def _confirm_delete(self) -> bool:
+        if not self._current_key:
+            return True
+        key = self._current_key
+        message = f"Delete '{key}' from the provider specification?"
+        preview = None
+        try:
+            preview = self.adapter.preview_delete(key)
+        except Exception:
+            preview = None
+        if preview is not None and getattr(preview, "layers", None):
+            scopes = ", ".join(sorted(preview.layers))
+            message += (
+                "\n\nExisting values were found in: "
+                f"{scopes}. They will remain in configuration and appear as untracked entries."
+            )
+        return self._confirm_action("Delete field", message)
+
     def _try_save_field(self) -> bool:
         if self._current_key is None:
             return False
@@ -873,12 +920,9 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         self._reload_tree()
         defined = {f.key: f for f in self.adapter.list_defined()}
         info = defined.get(key)
-        default_val = self.adapter.default_for_key(key)
+        default_info = self.adapter.default_for_key(key)
         if info is not None:
-            if default_val is not None and default_val.error and default_val.raw is not None:
-                default_display = default_val.raw
-            else:
-                default_display = None if default_val is None else default_val.value
+            default_display = self._default_display_value(default_info)
             self._populate_form(info, default_display, undiscovered=False)
         if target is not None:
             self._select_tree_iid(target)
@@ -889,20 +933,19 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
 
     def _on_revert(self) -> None:
         if self._current_key is not None:
+            if not self._confirm_revert():
+                return
             defined = {f.key: f for f in self.adapter.list_defined()}
             info = defined.get(self._current_key)
             default_info = self.adapter.default_for_key(self._current_key)
-            if default_info is not None and default_info.error and default_info.raw is not None:
-                default = default_info.raw
-            elif default_info is not None:
-                default = default_info.value
-            else:
-                default = None
+            default = self._default_display_value(default_info)
             if info is not None:
                 self._populate_form(info, default, undiscovered=False)
 
     def _on_delete(self) -> None:
         if self._current_key:
+            if not self._confirm_delete():
+                return
             try:
                 self.adapter.delete_field(self._current_key)
             except Exception:
@@ -929,12 +972,7 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         defined = {f.key: f for f in self.adapter.list_defined()}
         info = defined.get(key)
         default_info = self.adapter.default_for_key(key)
-        if default_info is not None and default_info.error and default_info.raw is not None:
-            default = default_info.raw
-        elif default_info is not None:
-            default = default_info.value
-        else:
-            default = None
+        default = self._default_display_value(default_info)
         if info is not None:
             self._populate_form(info, default, undiscovered=False)
         if target is not None:

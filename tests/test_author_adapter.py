@@ -21,7 +21,8 @@ def test_upsert_field_sets_options_and_default(tmp_path, monkeypatch):
 
     fields = {f.key: f for f in adapter.list_defined()}
     assert fields["alpha"].options == {"minimum": 0}
-    assert adapter.default_for_key("alpha") == 5
+    default_info = adapter.default_for_key("alpha")
+    assert default_info is not None and default_info.value == 5
 
 
 def test_adopt_untracked(tmp_path, monkeypatch):

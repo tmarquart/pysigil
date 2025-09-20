@@ -45,6 +45,7 @@ class ValueInfo:
     raw: str | None
     scope: str | None = None
     value: Any | None = None
+    error: str | None = None
 
 
 @dataclass(frozen=True)
@@ -158,14 +159,16 @@ class AuthorAdapter:
             infos.append(UntrackedInfo(key=key, raw=raw, guessed_type=guessed))
         return infos
 
-    def default_for_key(self, key: str) -> Any | None:
-        """Return the value from the ``default`` scope for *key*."""
+    def default_for_key(self, key: str) -> ValueInfo | None:
+        """Return value information from the ``default`` scope for *key*."""
 
         handle = self._require_handle()
         layers = handle.layers()
         per_scope = layers.get(key, {})
         val = per_scope.get("default")
-        return None if val is None else val.value
+        if val is None:
+            return None
+        return ValueInfo(raw=val.raw, scope="default", value=val.value, error=val.error)
 
     def get_sections_order(self) -> list[str] | None:
         handle = self._require_handle()
