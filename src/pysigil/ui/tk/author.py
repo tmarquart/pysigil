@@ -84,9 +84,15 @@ class RegisterApp(tk.Tk):
             text="Update pyproject.toml with .sigil/* package data (recommended)",
             variable=self.register_in_pyproject,
             takefocus=False,
+
+        ).pack(anchor=tk.W)
+        ttk.Label(
+            options,
+            text="Keeps your .sigil defaults registered in pyproject.toml. Uncheck if you prefer to manage it yourself.",
             wraplength=460,
             justify=tk.LEFT,
-        ).pack(anchor=tk.W)
+        ).pack(anchor=tk.W, padx=(22, 0))
+
 
         actions = ttk.Frame(frm)
         actions.pack(fill=tk.X, **pad)
