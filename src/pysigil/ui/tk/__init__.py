@@ -117,8 +117,8 @@ class App:
         self._mousewheel_bound = False
 
         if owns_root:
-            self.root.geometry("1200x760")
-            self.root.minsize(960, 640)
+            self.root.geometry("800x600")
+            self.root.minsize(600, 400)
 
         use(self.root)
         self.palette = get_palette()
