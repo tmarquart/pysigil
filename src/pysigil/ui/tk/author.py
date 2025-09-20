@@ -81,17 +81,17 @@ class RegisterApp(tk.Tk):
         options.pack(fill=tk.X, **pad)
         ttk.Checkbutton(
             options,
-            text="Update pyproject.toml with .sigil/* package data (recommended)",
+            text="Update pyproject.toml with .sigil/* package data (recommended)\nKeeps your .sigil defaults registered in pyproject.toml. Uncheck if you plan to package differently.",
             variable=self.register_in_pyproject,
             takefocus=False,
 
         ).pack(anchor=tk.W)
-        ttk.Label(
-            options,
-            text="Keeps your .sigil defaults registered in pyproject.toml. Uncheck if you prefer to manage it yourself.",
-            wraplength=460,
-            justify=tk.LEFT,
-        ).pack(anchor=tk.W, padx=(22, 0))
+        # ttk.Label(
+        #     options,
+        #     text="Keeps your .sigil defaults registered in pyproject.toml. Uncheck if you prefer to manage it yourself.",
+        #     wraplength=460,
+        #     justify=tk.LEFT,
+        # ).pack(anchor=tk.W, padx=(22, 0))
 
 
         actions = ttk.Frame(frm)
