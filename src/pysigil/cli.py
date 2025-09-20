@@ -208,7 +208,11 @@ def export_cmd(args: argparse.Namespace) -> int:
 
 
 def gui_cmd(args: argparse.Namespace) -> int:  # pragma: no cover - GUI interactions
-    launch_gui(initial_provider=args.app, author_mode=author_mode_enabled(args))
+    launch_gui(
+        initial_provider=args.app,
+        author_mode=author_mode_enabled(args),
+        remember=not getattr(args, "no_remember", False),
+    )
     return 0
 
 

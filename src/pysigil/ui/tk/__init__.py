@@ -23,6 +23,7 @@ from ..core import EventBus, AppCore
 from ..provider_adapter import ProviderAdapter
 from ..sections import bucket_by_section, compute_section_order, field_sort_key
 from ..aurelia_theme import get_palette, use
+from ..state import load_last_provider, save_last_provider
 from .dialogs import EditDialog
 from .rows import FieldRow
 
@@ -91,6 +92,7 @@ class App:
         events: EventBus | None = None,
         initial_provider: str | None = None,
         author_mode: bool = False,
+        remember: bool = True,
     ) -> None:
         if tk is None:  # pragma: no cover - environment without tkinter
             raise RuntimeError("tkinter is required for App")
@@ -105,6 +107,7 @@ class App:
         self.section_frames: dict[str, SectionFrame] = {}
         self.field_rows: dict[str, FieldRow] = {}
         self._initial_provider = initial_provider
+        self._remember = remember
         self._align_pending = False
         self._key_col_width: int | None = None
         self._pill_col_width: int | None = None
@@ -362,11 +365,15 @@ class App:
         providers = self.adapter.list_providers()
         self._provider_box["values"] = providers
         if providers:
-            initial = (
-                self._initial_provider
-                if self._initial_provider in providers
-                else providers[0]
-            )
+            initial: str | None = None
+            if self._initial_provider and self._initial_provider in providers:
+                initial = self._initial_provider
+            elif self._remember:
+                remembered = load_last_provider()
+                if remembered in providers:
+                    initial = remembered
+            if initial is None:
+                initial = providers[0]
             self._provider_var.set(initial)
             self.on_provider_change()
 
@@ -484,6 +491,8 @@ class App:
             except Exception as exc:  # pragma: no cover - defensive
                 self.events.emit_error(str(exc))
                 return
+            if self._remember:
+                save_last_provider(pid)
             self._rebuild_rows()
             try:
                 proj_path = self.adapter.target_path("project")
@@ -568,9 +577,18 @@ class App:
             self._edit_col_width = edit_w
 
 
-def launch(initial_provider: str | None = None, *, author_mode: bool = False) -> None:
+def launch(
+    initial_provider: str | None = None,
+    *,
+    author_mode: bool = False,
+    remember: bool = True,
+) -> None:
     """Convenience helper to launch the tkinter UI."""
-    app = App(initial_provider=initial_provider, author_mode=author_mode)
+    app = App(
+        initial_provider=initial_provider,
+        author_mode=author_mode,
+        remember=remember,
+    )
     app.root.mainloop()
 
 
