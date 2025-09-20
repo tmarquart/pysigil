@@ -142,6 +142,7 @@ def apply_theme(
         "TCheckbutton",
         foreground=[("disabled", colors["ink_muted"]), ("active", colors["hdr_fg"])],
         indicatorcolor=[("selected", colors["primary"]), ("!selected", colors["card_edge"])],
+        background=[("active", colors["bg"]), ("pressed", colors["bg"])],
     )
 
     style.configure(
@@ -156,7 +157,7 @@ def apply_theme(
         "Card.TCheckbutton",
         foreground=[("disabled", colors["ink_muted"]), ("active", colors["ink"])],
         indicatorcolor=[("selected", colors["primary"]), ("!selected", colors["card_edge"])],
-        background=[("active", colors["card_edge"])],
+        background=[("active", colors["card"]), ("pressed", colors["card"])],
     )
 
     style.configure(
@@ -171,7 +172,7 @@ def apply_theme(
         "Card.TRadiobutton",
         foreground=[("disabled", colors["ink_muted"]), ("active", colors["ink"])],
         indicatorcolor=[("selected", colors["primary"]), ("!selected", colors["card_edge"])],
-        background=[("active", colors["card_edge"])],
+        background=[("active", colors["card"]), ("pressed", colors["card"])],
     )
 
     style.configure(
@@ -186,6 +187,7 @@ def apply_theme(
         "TRadiobutton",
         foreground=[("disabled", colors["ink_muted"]), ("active", colors["hdr_fg"])],
         indicatorcolor=[("selected", colors["primary"]), ("!selected", colors["card_edge"])],
+        background=[("active", colors["bg"]), ("pressed", colors["bg"])],
     )
 
     style.configure(
