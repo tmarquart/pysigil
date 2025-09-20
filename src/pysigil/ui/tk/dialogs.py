@@ -138,7 +138,6 @@ class EditDialog(tk.Toplevel):  # type: ignore[misc]
                 clickable=False,
                 tooltip_title=long_label,
                 tooltip_desc=desc,
-                tooltip_type=field_type,
                 locked=locked,
             )
             pill.grid(row=row, column=0, sticky="w", padx=(0, 8), pady=4)

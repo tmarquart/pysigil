@@ -73,7 +73,7 @@ def test_edit_dialog_default_readonly():
     pill = body.grid_slaves(row=row, column=0)[0]
     assert isinstance(pill, PillButton)
     assert adapter.scope_description("default") in pill._tip_text()
-    assert "Type: string" in pill._tip_text()
+    assert "Type: string" not in pill._tip_text()
     dlg.destroy()
     root.destroy()
 

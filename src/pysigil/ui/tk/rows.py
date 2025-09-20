@@ -237,7 +237,6 @@ class FieldRow(tk.Frame):
                 can_write=can_write,
                 value_provider=value_provider,
                 tooltip_desc=desc,
-                tooltip_type=self.field_type,
             )
 
         # adjust value label height when geometry might change
@@ -291,7 +290,6 @@ class FieldRow(tk.Frame):
         can_write: bool,
         value_provider: Callable[[], Any],
         tooltip_desc: str | None = None,
-        tooltip_type: str | None = None,
     ) -> None:
         """Update or create a single pill widget.
 
@@ -350,7 +348,6 @@ class FieldRow(tk.Frame):
                 on_click=cb,
                 tooltip_title=long_label,
                 tooltip_desc=desc_text,
-                tooltip_type=tooltip_type,
                 locked=locked,
             )
             self._pill_widgets[name] = pill
@@ -363,7 +360,6 @@ class FieldRow(tk.Frame):
             pill.value_provider = value_provider
             pill.tooltip_title = long_label
             pill.tooltip_desc = desc_text
-            pill.tooltip_type = tooltip_type
             pill.on_click = cb
             pill.bind("<Button-1>", lambda e: cb())
             pill.configure(cursor="hand2")
