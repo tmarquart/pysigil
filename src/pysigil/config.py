@@ -149,7 +149,7 @@ def ensure_gitignore(*, auto: bool = False) -> Path:
         lines = gi.read_text().splitlines()
     if "project-local" in policy.machine_scopes():
         path = policy.path("project-local", "user-custom", auto=auto)
-        rule = str(path.relative_to(root).parent / "settings-local*")
+        rule = (path.relative_to(root).parent / "settings-local*").as_posix()
         if rule not in lines:
             lines.append(rule)
             gi.write_text("\n".join(lines) + "\n")
