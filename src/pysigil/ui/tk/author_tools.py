@@ -133,6 +133,9 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         self._current_key: str | None = None
         self._value_widget: object | None = None
         self._options_widget: object | None = None
+        self._form_canvas: tk.Canvas | None = None
+        self._form_window: int | None = None
+        self._form_mousewheel_bound = False
         self._opts_frame = None
         self._opts_container = None
         self._opts_pack: dict[str, Any] = {"fill": "x", "pady": (0, 6)}
@@ -161,6 +164,7 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
     # ------------------------------------------------------------------
     def _build(self) -> None:
         self.geometry("800x600")
+        palette = get_palette()
         ttk.Label(self, textvariable=self._info_var).pack(anchor="w", padx=6, pady=6)
         pw = ttk.PanedWindow(self, orient="horizontal")
         self._left = ttk.Frame(pw, style="TFrame")
@@ -192,8 +196,86 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         self._tree.bind("<<TreeviewOpen>>", self._on_tree_open)
 
         # -- right: placeholder frame for form -----------------------------------
-        self._form = ttk.Frame(self._right, style="TFrame")
-        self._form.pack(fill="both", expand=True, padx=6, pady=6)
+        form_shell = ttk.Frame(self._right, style="TFrame")
+        form_shell.pack(fill="both", expand=True, padx=6, pady=6)
+
+        canvas = tk.Canvas(form_shell, bg=palette["bg"], highlightthickness=0, bd=0)
+        canvas.pack(side="left", fill="both", expand=True)
+
+        scroll = ttk.Scrollbar(form_shell, orient="vertical", command=canvas.yview)
+        scroll.pack(side="right", fill="y")
+        canvas.configure(yscrollcommand=scroll.set)
+
+        self._form_canvas = canvas
+        self._form = ttk.Frame(canvas, style="TFrame")
+        self._form_window = canvas.create_window((0, 0), window=self._form, anchor="nw")
+        self._form.bind("<Configure>", self._on_form_canvas_configure)
+        canvas.bind("<Configure>", self._on_form_canvas_configure)
+        canvas.bind("<Enter>", self._on_form_mouse_enter)
+        canvas.bind("<Leave>", self._on_form_mouse_leave)
+
+    # ------------------------------------------------------------------
+    def _on_form_canvas_configure(self, event: tk.Event | None = None) -> None:
+        if not self._form_canvas or self._form_window is None:
+            return
+        bbox = self._form_canvas.bbox("all")
+        if bbox:
+            self._form_canvas.configure(scrollregion=bbox)
+        else:
+            self._form_canvas.configure(scrollregion=(0, 0, 0, 0))
+        width = getattr(event, "width", None)
+        if not width or width <= 0:
+            width = self._form_canvas.winfo_width()
+        if width > 0:
+            self._form_canvas.itemconfigure(self._form_window, width=width)
+
+    def _on_form_mouse_enter(self, _event: tk.Event) -> None:
+        self._bind_form_mousewheel()
+
+    def _on_form_mouse_leave(self, event: tk.Event) -> None:
+        if not self._form_canvas:
+            return
+        dest_widget = self._form_canvas.winfo_containing(event.x_root, event.y_root)
+        widget = dest_widget
+        while widget is not None:
+            if widget is self._form_canvas:
+                return
+            widget = getattr(widget, "master", None)
+        self._unbind_form_mousewheel()
+
+    def _bind_form_mousewheel(self) -> None:
+        if not self._form_canvas or self._form_mousewheel_bound:
+            return
+        self._form_canvas.bind_all("<MouseWheel>", self._on_form_mousewheel)
+        self._form_canvas.bind_all("<Button-4>", self._on_form_mousewheel)
+        self._form_canvas.bind_all("<Button-5>", self._on_form_mousewheel)
+        self._form_mousewheel_bound = True
+
+    def _unbind_form_mousewheel(self) -> None:
+        if not self._form_canvas or not self._form_mousewheel_bound:
+            return
+        self._form_canvas.unbind_all("<MouseWheel>")
+        self._form_canvas.unbind_all("<Button-4>")
+        self._form_canvas.unbind_all("<Button-5>")
+        self._form_mousewheel_bound = False
+
+    def _on_form_mousewheel(self, event: tk.Event) -> str | None:
+        if not self._form_canvas:
+            return None
+        delta = getattr(event, "delta", 0)
+        if delta:
+            if abs(delta) >= 120:
+                step = -int(delta / 120)
+            else:
+                step = -1 if delta > 0 else 1
+            self._form_canvas.yview_scroll(step, "units")
+        else:
+            num = getattr(event, "num", None)
+            if num == 4:
+                self._form_canvas.yview_scroll(-1, "units")
+            elif num == 5:
+                self._form_canvas.yview_scroll(1, "units")
+        return "break"
 
     # ------------------------------------------------------------------
     def _update_window_title(self) -> None:
@@ -412,6 +494,9 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         self._clear_dirty_watchers()
         for child in self._form.winfo_children():
             child.destroy()
+        if self._form_canvas is not None:
+            self._form_canvas.yview_moveto(0)
+            self._on_form_canvas_configure()
         self._value_widget = None
         self._options_widget = None
         self._opts_frame = None
