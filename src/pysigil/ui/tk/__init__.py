@@ -13,6 +13,7 @@ be shared with other UI layers in the future.
 from __future__ import annotations
 
 from importlib import resources
+from pathlib import Path
 import webbrowser
 
 try:  # pragma: no cover - tkinter availability depends on the env
@@ -529,8 +530,16 @@ class App:
                 proj_path = self.adapter.target_path("project")
             except Exception:
                 proj_path = ""
-            #self._project_var.set(proj_path.as_posix())
-            self._project_var.set(str(proj_path))
+
+            if proj_path:
+                try:
+                    proj_value = Path(proj_path).as_posix()
+                except TypeError:
+                    proj_value = str(proj_path)
+            else:
+                proj_value = ""
+
+            self._project_var.set(proj_value)
 
     def on_pill_click(self, key: str, scope: str) -> None:
         self._open_edit_dialog(key, scope)
