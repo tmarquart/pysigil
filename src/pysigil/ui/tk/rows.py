@@ -121,6 +121,8 @@ class FieldRow(tk.Frame):
             anchor="nw",
         )
         self.lbl_eff.grid(row=0, column=1, sticky="new", padx=(8, 8), pady=(6, 0))
+        self._eff_fg_normal = ink
+        self._eff_fg_error = "#b91c1c"
 
         # container for scope pills
         self.pills = ttk.Frame(self, style="CardBody.TFrame")
@@ -166,16 +168,36 @@ class FieldRow(tk.Frame):
             return
 
         # effective value -------------------------------------------------------
-        eff_val, eff_src = self.adapter.effective_for_key(self.key)
-        val_txt = "—" if eff_val is None else str(eff_val)
+        eff_info, eff_src = self.adapter.effective_for_key(self.key)
         if eff_src is None:
             src_txt = "—"
         else:
             src_txt = self.adapter.scope_label(eff_src)
-        self.var_eff.set(f"{val_txt}  ({src_txt})")
+        if eff_info is None:
+            val_txt = "—"
+            self.lbl_eff.configure(fg=self._eff_fg_normal)
+            self.var_eff.set(f"{val_txt}  ({src_txt})")
+        elif eff_info.error:
+            raw_txt = eff_info.raw if eff_info.raw not in (None, "") else "—"
+            err_txt = eff_info.error
+            self.lbl_eff.configure(fg=self._eff_fg_error)
+            self.var_eff.set(f"{raw_txt}  ({src_txt})  ⚠ {err_txt}")
+        else:
+            val_txt = "—" if eff_info.value is None else str(eff_info.value)
+            self.lbl_eff.configure(fg=self._eff_fg_normal)
+            self.var_eff.set(f"{val_txt}  ({src_txt})")
 
         values: Dict[str, ValueInfo] = self.adapter.values_for_key(self.key)
+        default_info = self.adapter.default_for_key(self.key)
         scopes = self.adapter.scopes()
+
+        def tooltip_value(info: ValueInfo | None) -> Any:
+            if info is None:
+                return None
+            if info.error:
+                raw_txt = info.raw if info.raw not in (None, "") else "—"
+                return f"{raw_txt} (invalid: {info.error})"
+            return info.value
 
         # Ensure pills are packed in the same order as ``scopes`` by first
         # unpacking any existing widgets.  Without this, newly created scopes
@@ -185,12 +207,23 @@ class FieldRow(tk.Frame):
 
         for scope in scopes:
             has_value = scope in values
-            def value_provider(s=scope) -> Any:
-                if s in values:
-                    return values[s].value
-                if s == "default":
-                    return self.adapter.default_for_key(self.key)
-                return None
+            scope_info = values.get(scope)
+
+            def value_provider(s=scope, info=scope_info) -> Any:
+                scoped = info
+                if scoped is None and s == "default":
+                    scoped = default_info
+                return tooltip_value(scoped)
+
+            display_info = scope_info if scope_info is not None else (
+                default_info if scope == "default" else None
+            )
+            desc = self.adapter.scope_description(scope)
+            if display_info is not None and display_info.error:
+                if desc:
+                    desc = f"{desc}\n\n⚠ {display_info.error}"
+                else:
+                    desc = f"⚠ {display_info.error}"
             can_write = self.adapter.can_write(scope)
             self.update_pill(
                 scope,
@@ -198,6 +231,7 @@ class FieldRow(tk.Frame):
                 present=has_value,
                 can_write=can_write,
                 value_provider=value_provider,
+                tooltip_desc=desc,
             )
 
         # adjust value label height when geometry might change
@@ -245,6 +279,7 @@ class FieldRow(tk.Frame):
         present: bool,
         can_write: bool,
         value_provider: Callable[[], Any],
+        tooltip_desc: str | None = None,
     ) -> None:
         """Update or create a single pill widget.
 
@@ -278,6 +313,7 @@ class FieldRow(tk.Frame):
         long_label = self.adapter.scope_label(name, short=False)
         palette = get_palette()
         color = _SCOPE_COLORS.get(name, palette["ink_muted"])
+        desc_text = tooltip_desc if tooltip_desc is not None else self.adapter.scope_description(name)
 
         def cb() -> None:
             if not locked and self._on_pill_click:
@@ -301,7 +337,7 @@ class FieldRow(tk.Frame):
                 clickable=True,
                 on_click=cb,
                 tooltip_title=long_label,
-                tooltip_desc=self.adapter.scope_description(name),
+                tooltip_desc=desc_text,
                 locked=locked,
             )
             self._pill_widgets[name] = pill
@@ -313,7 +349,7 @@ class FieldRow(tk.Frame):
             pill.clickable = True
             pill.value_provider = value_provider
             pill.tooltip_title = long_label
-            pill.tooltip_desc = self.adapter.scope_description(name)
+            pill.tooltip_desc = desc_text
             pill.on_click = cb
             pill.bind("<Button-1>", lambda e: cb())
             pill.configure(cursor="hand2")

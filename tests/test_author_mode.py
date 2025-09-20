@@ -59,11 +59,36 @@ def test_default_scope_requires_author_mode(tmp_path, monkeypatch):
     adapter.author_mode = True
     assert adapter.can_write("default")
     adapter.set_value("alpha", "default", 1)
-    val, src = adapter.effective_for_key("alpha")
-    assert val == 1 and src == "default"
+    info, src = adapter.effective_for_key("alpha")
+    assert info is not None and info.value == 1 and src == "default"
     adapter.clear_value("alpha", "default")
-    val, src = adapter.effective_for_key("alpha")
-    assert val is None and src is None
+    info, src = adapter.effective_for_key("alpha")
+    assert info is None and src is None
+
+
+def test_values_expose_raw_and_error(tmp_path, monkeypatch):
+    adapter = _adapter_with_default(tmp_path, monkeypatch, author_mode=True)
+    adapter.set_value("alpha", "default", 1)
+
+    user_ini = tmp_path / "user" / "demo-auth" / "settings.ini"
+    user_ini.parent.mkdir(parents=True, exist_ok=True)
+    user_ini.write_text("[demo-auth]\nalpha = nope\n")
+
+    values = adapter.values_for_key("alpha")
+    user_info = values["user"]
+    assert user_info.value is None
+    assert user_info.raw == "nope"
+    assert user_info.error and "invalid literal" in user_info.error
+
+    eff_info, eff_src = adapter.effective_for_key("alpha")
+    assert eff_info is not None and eff_src == "user"
+    assert eff_info.raw == "nope"
+    assert eff_info.error == user_info.error
+
+    default_info = adapter.default_for_key("alpha")
+    assert default_info is not None
+    assert default_info.value == 1
+    assert default_info.error is None
 
 
 def test_upsert_field_parses_default(tmp_path, monkeypatch):

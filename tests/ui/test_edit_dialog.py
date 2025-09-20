@@ -23,6 +23,12 @@ class DummyAdapter:
     def values_for_key(self, key):
         return {"default": ValueInfo("d")}
 
+    def effective_for_key(self, key):
+        return ValueInfo("d"), "default"
+
+    def default_for_key(self, key):
+        return ValueInfo("d")
+
     def can_write(self, scope):
         return scope != "default"
 

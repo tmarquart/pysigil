@@ -16,6 +16,7 @@ class ValueInfo:
     """UI facing value information."""
 
     value: Any | None
+    raw: str | None = None
     error: str | None = None
 
 
@@ -142,25 +143,33 @@ class ProviderAdapter:
         for scope, val in per_scope.items():
             if val is None:
                 continue
-            result[scope] = ValueInfo(value=val.value, error=val.error)
+            result[scope] = ValueInfo(value=val.value, raw=val.raw, error=val.error)
         return result
 
-    def effective_for_key(self, key: str) -> Tuple[Any | None, str | None]:
-        """Return the effective value and its source scope for *key*."""
+    def effective_for_key(self, key: str) -> Tuple[ValueInfo | None, str | None]:
+        """Return the effective value information and its source scope."""
         handle = self._require_handle()
         eff = handle.effective()
         vi = eff.get(key)
-        if vi is None:
+        if vi is None or (
+            getattr(vi, "source", None) is None
+            and getattr(vi, "value", None) is None
+            and getattr(vi, "raw", None) is None
+            and getattr(vi, "error", None) is None
+        ):
             return None, None
-        return vi.value, vi.source
+        info = ValueInfo(value=vi.value, raw=vi.raw, error=vi.error)
+        return info, vi.source
 
-    def default_for_key(self, key: str) -> Any | None:
-        """Return the value from the ``default`` scope for *key*."""
+    def default_for_key(self, key: str) -> ValueInfo | None:
+        """Return value information from the ``default`` scope for *key*."""
         handle = self._require_handle()
         layers = handle.layers()
         per_scope = layers.get(key, {})
         val = per_scope.get("default")
-        return None if val is None else val.value
+        if val is None:
+            return None
+        return ValueInfo(value=val.value, raw=val.raw, error=val.error)
 
     # ------------------------------------------------------------------
     # Writes

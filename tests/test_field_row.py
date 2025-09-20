@@ -63,10 +63,10 @@ class DummyAdapter:
         }
 
     def effective_for_key(self, key):
-        return "u", "user"
+        return ValueInfo("u"), "user"
 
     def default_for_key(self, key):
-        return "d"
+        return ValueInfo("d")
 
     def scope_hint(self, scope_id):
         if scope_id == "default":
@@ -151,7 +151,7 @@ class NoDefaultAdapter(DummyAdapter):
         return {"env": ValueInfo("e")}
 
     def effective_for_key(self, key):
-        return "e", "env"
+        return ValueInfo("e"), "env"
 
     def default_for_key(self, key):
         return None
@@ -192,7 +192,7 @@ class DefaultOnlyAdapter(DummyAdapter):
         return {"default": ValueInfo("d")}
 
     def effective_for_key(self, key):
-        return "d", "default"
+        return ValueInfo("d"), "default"
 
 
 def test_field_row_default_effective():

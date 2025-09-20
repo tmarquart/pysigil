@@ -576,7 +576,12 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         default: object | None = None
         undiscovered = False
         if info is not None:
-            default = self.adapter.default_for_key(key)
+            default_info = self.adapter.default_for_key(key)
+            if default_info is not None:
+                if default_info.error and default_info.raw is not None:
+                    default = default_info.raw
+                else:
+                    default = default_info.value
         else:
             und = {u.key: u for u in self.adapter.list_undiscovered()}
             uinfo = und.get(key)
@@ -864,7 +869,11 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         info = defined.get(key)
         default_val = self.adapter.default_for_key(key)
         if info is not None:
-            self._populate_form(info, default_val, undiscovered=False)
+            if default_val is not None and default_val.error and default_val.raw is not None:
+                default_display = default_val.raw
+            else:
+                default_display = None if default_val is None else default_val.value
+            self._populate_form(info, default_display, undiscovered=False)
         if target is not None:
             self._select_tree_iid(target)
         return True
@@ -876,7 +885,13 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         if self._current_key is not None:
             defined = {f.key: f for f in self.adapter.list_defined()}
             info = defined.get(self._current_key)
-            default = self.adapter.default_for_key(self._current_key)
+            default_info = self.adapter.default_for_key(self._current_key)
+            if default_info is not None and default_info.error and default_info.raw is not None:
+                default = default_info.raw
+            elif default_info is not None:
+                default = default_info.value
+            else:
+                default = None
             if info is not None:
                 self._populate_form(info, default, undiscovered=False)
 
@@ -907,7 +922,13 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         self._reload_tree()
         defined = {f.key: f for f in self.adapter.list_defined()}
         info = defined.get(key)
-        default = self.adapter.default_for_key(key)
+        default_info = self.adapter.default_for_key(key)
+        if default_info is not None and default_info.error and default_info.raw is not None:
+            default = default_info.raw
+        elif default_info is not None:
+            default = default_info.value
+        else:
+            default = None
         if info is not None:
             self._populate_form(info, default, undiscovered=False)
         if target is not None:
