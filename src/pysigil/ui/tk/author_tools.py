@@ -178,8 +178,16 @@ class AuthorTools(tk.Toplevel):  # pragma: no cover - simple UI wrapper
         ttk.Button(search, text="Add", command=self._on_add).pack(side="right", padx=(4, 0))
         self._search_var.trace_add("write", lambda *_: self._reload_tree())
 
-        self._tree = ttk.Treeview(self._left, show="tree")
-        self._tree.pack(fill="both", expand=True, padx=6, pady=6)
+        tree_wrap = ttk.Frame(self._left, style="CardBody.TFrame")
+        tree_wrap.pack(fill="both", expand=True, padx=6, pady=6)
+
+        scroll = ttk.Scrollbar(tree_wrap, orient="vertical")
+        scroll.pack(side="right", fill="y")
+
+        self._tree = ttk.Treeview(tree_wrap, show="tree")
+        self._tree.pack(side="left", fill="both", expand=True)
+        self._tree.configure(yscrollcommand=scroll.set)
+        scroll.configure(command=self._tree.yview)
         self._tree.bind("<<TreeviewSelect>>", self._on_select)
         self._tree.bind("<<TreeviewOpen>>", self._on_tree_open)
 
